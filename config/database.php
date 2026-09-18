@@ -97,6 +97,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Must match app.timezone: Laravel sends dates without an offset, so
+            // PostgreSQL reads them in the session time zone.
+            'timezone' => 'America/Argentina/Tucuman',
         ],
 
         'sqlsrv' => [

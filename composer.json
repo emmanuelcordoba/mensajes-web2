@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "emmanuelcordoba/mensajes-web2",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Panel web y API de las apps de Mensajes Cadetería.",
     "keywords": [
         "laravel",
         "framework"

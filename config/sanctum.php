@@ -54,6 +54,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Expiration Without Use
+    |--------------------------------------------------------------------------
+    |
+    | Minutes a token stays valid after its last use. Every request pushes
+    | "expires_at" forward (see App\Models\PersonalAccessToken), so an app in
+    | daily use is never logged out and abandoned tokens die on their own.
+    | The fixed "expiration" above stays null: it would log a cadete out in
+    | the middle of a delivery.
+    |
+    */
+
+    'inactivity_expiration' => 60 * 24 * 180,
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |

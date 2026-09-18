@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\PersonalAccessToken;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +26,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureApiTokens();
+    }
+
+    /**
+     * Make API tokens expire by inactivity. See config/sanctum.php.
+     */
+    protected function configureApiTokens(): void
+    {
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
     }
 
     /**

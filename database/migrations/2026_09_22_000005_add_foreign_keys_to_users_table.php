@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->text('two_factor_secret')->after('password')->nullable();
-            $table->text('two_factor_recovery_codes')->after('two_factor_secret')->nullable();
-            $table->timestampTz('two_factor_confirmed_at')->after('two_factor_recovery_codes')->nullable();
+            $table->foreign('rol_id')->references('id')->on('roles');
+            $table->foreign('bloqueado')->references('codigo')->on('motivos_bloqueo');
+            $table->foreign('cliente_restringido_id')->references('id')->on('clientes');
         });
     }
 
@@ -24,11 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn([
-                'two_factor_secret',
-                'two_factor_recovery_codes',
-                'two_factor_confirmed_at',
-            ]);
+            $table->dropForeign(['rol_id']);
+            $table->dropForeign(['bloqueado']);
+            $table->dropForeign(['cliente_restringido_id']);
         });
     }
 };

@@ -2,12 +2,17 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * The users table follows ESQUEMA.sql, where every column is explained.
+     * The foreign keys to roles, motivos_bloqueo and clientes are added once
+     * those tables exist (add_foreign_keys_to_users_table).
      */
     public function up(): void
     {
@@ -15,11 +20,22 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->string('password')->nullable();
             $table->rememberToken();
-            $table->timestamps();
+            $table->timestampTz('email_verified_at')->nullable();
+            $table->string('iniciales', 4)->nullable();
+            $table->string('color', 7)->nullable();
+            $table->integer('codigo_de_verificacion')->nullable();
+            $table->timestampTz('codigo_generado_at')->nullable();
+            $table->string('bloqueado', 30)->nullable();
+            $table->string('bloqueado_mensaje')->nullable();
+            $table->foreignId('rol_id')->nullable()->index();
+            $table->foreignId('cliente_restringido_id')->nullable()->index();
+            $table->timestampsTz();
+            $table->softDeletesTz();
         });
+
+        DB::statement('ALTER TABLE users ADD CONSTRAINT users_email_normalizado_check CHECK (email = lower(btrim(email)))');
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();

@@ -56,9 +56,37 @@ services:
             - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
+    # Andamiaje del ETL (ETL-1), sólo para desarrollo: acá se restaura la copia de
+    # producción para migrarla. Producción corre MongoDB 3.6.3 y el driver moderno
+    # ya no le habla, pero el ETL lee un backup restaurado y nosotros elegimos
+    # dónde: un mongodump de la 3.6 se restaura en la 6 sin problema —probado en
+    # este proyecto—. Se borra con el corte, junto con el comando.
+    #
+    # No arranca con `sail up`: está en el perfil `etl`, así que hay que pedirlo
+    # con `sail --profile etl up -d`.
+    mongo:
+        image: 'mongo:6'
+        profiles: ['etl']
+        ports:
+            - '${FORWARD_MONGO_PORT:-27017}:27017'
+        volumes:
+            - 'sail-mongo:/data/db'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - mongosh
+                - '--quiet'
+                - '--eval'
+                - 'db.adminCommand("ping")'
+            retries: 3
+            timeout: 5s
 networks:
     sail:
         driver: bridge
 volumes:
     sail-pgsql:
+        driver: local
+    sail-mongo:
         driver: local

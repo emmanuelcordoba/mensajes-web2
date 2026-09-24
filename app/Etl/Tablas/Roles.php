@@ -12,14 +12,16 @@ use App\Etl\Origen;
  * resolverlos ANTES del ETL: acá `rol` es UNIQUE y la carga falla. Que falle es
  * lo correcto; el ETL no elige cuál de los dos sobrevive.
  *
- * La colección se llama `rols` en el sistema viejo, por el pluralizador de
- * Eloquent.
+ * ⚠️ La colección es `roles`, NO `rols`. `app/Rol.php` del sistema viejo
+ * declara `protected $collection = 'roles'`, así que el pluralizador de
+ * Eloquent no manda acá. `rols` existe —6 documentos— pero está muerta: es el
+ * residuo de una versión anterior del modelo, y DATA-3 la manda borrar.
  */
 class Roles extends Migrador
 {
     public function coleccion(): string
     {
-        return 'rols';
+        return 'roles';
     }
 
     public function tabla(): string

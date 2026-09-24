@@ -168,14 +168,14 @@ test('an application has at most one document of each kind', function () {
         'email' => 'ana@mail.com',
         'tipo_vehiculo' => 'B',
     ]);
-    $foto = ['postulacion_id' => $postulacion, 'tipo' => 'foto', 'contenido_base64' => 'data:image/png;base64,AAAA'];
+    $foto = ['postulacion_id' => $postulacion, 'tipo' => 'foto', 'ruta_archivo' => 'postulaciones/1/foto.png'];
 
     DB::table('postulacion_documentos')->insert($foto);
 
     expect(fn () => DB::transaction(fn () => DB::table('postulacion_documentos')->insert($foto)))
         ->toThrow(QueryException::class, 'SQLSTATE[23505]');
 
-    expect(fn () => DB::transaction(fn () => DB::table('postulacion_documentos')->insert(['tipo' => 'selfie'] + $foto)))
+    expect(fn () => DB::transaction(fn () => DB::table('postulacion_documentos')->insert(['tipo' => 'selfie', 'ruta_archivo' => 'postulaciones/1/selfie.png'] + $foto)))
         ->toThrow(QueryException::class, 'postulacion_documentos_tipo_check');
 });
 
@@ -217,4 +217,20 @@ test('the shown name never keeps spare spaces nor comes out empty', function () 
     // Neither side filled in: the client would have no name at all.
     expect(fn () => DB::transaction(fn () => schemaInsertCliente(['nombre' => null])))
         ->toThrow(QueryException::class, 'SQLSTATE[23502]');
+});
+
+test('an image row holds a relative path, and no two rows share a file', function () {
+    $foto = fn (string $ruta) => ['user_id' => schemaInsertUser(), 'ruta_archivo' => $ruta];
+
+    // These paths are joined to a root directory to serve the file (PERF-2).
+    foreach (['/etc/passwd', 'fotos/../../etc/passwd', '', 'fotos/mi foto.png'] as $ruta) {
+        expect(fn () => DB::transaction(fn () => DB::table('user_fotos')->insert($foto($ruta))))
+            ->toThrow(QueryException::class, 'user_fotos_ruta_relativa_check');
+    }
+
+    DB::table('user_fotos')->insert($foto('user-fotos/2026/09/1540.jpg'));
+
+    // Deleting one row would leave the other pointing at nothing.
+    expect(fn () => DB::transaction(fn () => DB::table('user_fotos')->insert($foto('user-fotos/2026/09/1540.jpg'))))
+        ->toThrow(QueryException::class, 'SQLSTATE[23505]');
 });

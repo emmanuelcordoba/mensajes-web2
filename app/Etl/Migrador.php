@@ -70,15 +70,81 @@ abstract class Migrador
     }
 
     /**
+     * Lo que el esquema va a rechazar, mirado en el origen ANTES de escribir.
+     *
+     * El diseño pide que el ETL «frene y liste, no saltee en silencio». Dejar
+     * que lo haga PostgreSQL cumple la primera mitad pero no la segunda: sobre
+     * 9.238 usuarios, un UNIQUE roto sale como un SQLSTATE con el INSERT de mil
+     * filas adentro, que no le dice a nadie qué hay que corregir. Esto lo mira
+     * antes, y con el vocabulario del problema.
+     *
+     * Cada elemento es una línea del informe. Vacío es que no hay nada.
+     *
+     * @return array<int, string>
+     */
+    public function problemas(): array
+    {
+        return [];
+    }
+
+    /**
      * Migra la colección entera y devuelve cuántas filas escribió.
+     *
+     * Todo en una transacción, para que la tabla quede entera o no quede: sin
+     * esto, fallar en el pedido 500.000 deja medio millón de filas cargadas y
+     * sus entradas en `migracion_ids`, y volver a correr duplica.
+     *
+     * ⚠️ No se puso por velocidad, y conviene decirlo porque parece que debería
+     * ayudar. Se midió: 419 s contra 445 s, y después la MISMA carga dio 308 s
+     * y 405 s en corridas distintas. La varianza entre corridas es de un 30%,
+     * así que esa comparación no mide nada. Lo único medido con confianza es
+     * que leer el origen tarda 18,6 s y traducir 13,4 s sobre los 959.973
+     * pedidos: el resto del tiempo son las escrituras, y ahí manda el trabajo
+     * de mantener 7 índices y validar 3 claves foráneas por fila.
      */
     public function ejecutar(): int
     {
+        return DB::transaction(fn (): int => $this->cargar());
+    }
+
+    private function cargar(): int
+    {
         $escritas = 0;
+        $documentos = [];
+
+        foreach ($this->origen->documentos($this->coleccion(), $this->filtro(), $this->campos()) as $documento) {
+            $documentos[] = $documento;
+
+            if (count($documentos) >= static::LOTE) {
+                $escritas += $this->procesar($documentos);
+                $documentos = [];
+            }
+        }
+
+        return $escritas + $this->procesar($documentos);
+    }
+
+    /**
+     * Traduce un lote entero y lo escribe.
+     *
+     * Se junta el lote de DOCUMENTOS antes de traducirlos, y no se traduce de a
+     * uno, para que `prepararLote()` pueda resolver de una sola vez lo que el
+     * lote necesita. Ver ese método.
+     *
+     * @param  array<int, array<string, mixed>>  $documentos
+     */
+    private function procesar(array $documentos): int
+    {
+        if ($documentos === []) {
+            return 0;
+        }
+
+        $this->prepararLote($documentos);
+
         $lote = [];
         $legacy = [];
 
-        foreach ($this->origen->documentos($this->coleccion(), $this->filtro(), $this->campos()) as $documento) {
+        foreach ($documentos as $documento) {
             $fila = $this->fila($documento);
 
             if ($fila === null) {
@@ -87,16 +153,26 @@ abstract class Migrador
 
             $lote[] = $fila;
             $legacy[] = Origen::id($documento['_id'] ?? null);
-
-            if (count($lote) >= static::LOTE) {
-                $escritas += $this->escribir($lote, $legacy);
-                $lote = [];
-                $legacy = [];
-            }
         }
 
-        return $escritas + $this->escribir($lote, $legacy);
+        return $this->escribir($lote, $legacy);
     }
+
+    /**
+     * Se llama con cada lote de documentos ANTES de traducirlos.
+     *
+     * Existe por una tabla: `logs_estados_pedidos` tiene 3.637.456 filas y
+     * apunta a `pedidos`, que tiene 959.973 entradas en `migracion_ids`.
+     * Sostener ese mapa en memoria es lo que el diseño evita, y resolver de a
+     * una fila serían 3,6 millones de consultas. Resolver por lote son mil ids
+     * en un `IN`, una consulta cada mil filas, y la memoria queda plana.
+     *
+     * Las tablas cuyos padres entran holgados en memoria —roles, users,
+     * clientes, cadetes— no lo necesitan y no lo implementan.
+     *
+     * @param  array<int, array<string, mixed>>  $documentos
+     */
+    protected function prepararLote(array $documentos): void {}
 
     /**
      * @param  array<int, array<string, mixed>>  $lote

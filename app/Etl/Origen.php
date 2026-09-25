@@ -59,9 +59,19 @@ class Origen
             ['readPreference' => new ReadPreference(ReadPreference::PRIMARY)],
         );
 
-        foreach ($cursor as $documento) {
-            yield json_decode(json_encode($documento), true);
-        }
+        // El driver arma los arrays directamente, en vez de devolver objetos
+        // que había que convertir con json_decode(json_encode(...)).
+        //
+        // El motivo es de corrección, no de velocidad: ese ida y vuelta pasaba
+        // los enteros de 64 bits por JSON, que no es donde uno quiere que
+        // vivan. ⚠️ Se midió esperando que además fuera más rápido y NO lo es:
+        // 442,6 s contra 445,3 s sobre los 959.973 pedidos, o sea nada.
+        //
+        // Con esto `_id` sigue siendo un ObjectId y las fechas UTCDateTime, que
+        // es lo que Origen::id() y Origen::fecha() prefieren.
+        $cursor->setTypeMap(['root' => 'array', 'document' => 'array', 'array' => 'array']);
+
+        yield from $cursor;
     }
 
     /**
@@ -78,6 +88,28 @@ class Origen
         );
 
         return (int) $cursor->toArray()[0]->n;
+    }
+
+    /**
+     * Los valores distintos de un campo. Sirve para comprobar claves foráneas
+     * sin recorrer la colección entera desde PHP: los 959.973 pedidos apuntan a
+     * lo sumo a 11.057 clientes, y comprobar 11.057 es otra cosa que comprobar
+     * un millón.
+     *
+     * ⚠️ El resultado entra en un solo documento BSON, o sea 16 MB. Alcanza de
+     * sobra para las claves foráneas de este sistema; no sirve para un campo con
+     * millones de valores distintos.
+     *
+     * @return array<int, mixed>
+     */
+    public function distintos(string $coleccion, string $campo): array
+    {
+        $cursor = $this->manager->executeCommand(
+            $this->base,
+            new Command(['distinct' => $coleccion, 'key' => $campo]),
+        );
+
+        return (array) $cursor->toArray()[0]->values;
     }
 
     /**

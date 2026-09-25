@@ -97,6 +97,29 @@ class MapaDeIds
             ->all();
     }
 
+    /**
+     * El mapa de unos pocos documentos, y no el de la tabla entera.
+     *
+     * Es lo que usan los hijos de `pedidos`: pedir los mil ids que el lote
+     * necesita en vez de traerse el millón. Ver Migrador::prepararLote().
+     *
+     * @param  array<int, string>  $legacyIds
+     * @return array<string, int>
+     */
+    public static function deVarios(string $tabla, array $legacyIds): array
+    {
+        if ($legacyIds === []) {
+            return [];
+        }
+
+        return DB::table(self::TABLA)
+            ->where('tabla', $tabla)
+            ->whereIn('legacy_id', array_values(array_unique($legacyIds)))
+            ->pluck('id', 'legacy_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
+    }
+
     public static function cuantos(string $tabla): int
     {
         return DB::table(self::TABLA)->where('tabla', $tabla)->count();

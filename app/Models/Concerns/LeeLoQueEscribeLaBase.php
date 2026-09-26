@@ -9,8 +9,15 @@ use Illuminate\Support\Facades\DB;
  * Trae, después de insertar, las columnas que escribe PostgreSQL y no PHP.
  *
  * Eloquent sólo lee de vuelta la clave primaria. Todo lo demás que ponga la base
- * —un `DEFAULT nextval(...)`, una columna generada— queda en NULL en el modelo
- * recién creado, aunque en la tabla tenga su valor.
+ * queda en NULL en el modelo recién creado, aunque en la tabla tenga su valor, y
+ * son tres casos:
+ *
+ * - Una **secuencia**: `DEFAULT nextval(...)`, como `pedidos.numero`.
+ * - Una **columna generada**, como `clientes.nombre_mostrado`.
+ * - Un **DEFAULT cualquiera**, como `mensajes.leido_web DEFAULT FALSE`. Éste es el
+ *   más fácil de pasar por alto: el modelo devuelve NULL donde la tabla dice
+ *   `false`, así que una respuesta de la API serializa null y una comparación con
+ *   `=== false` falla.
  *
  * Y en este esquema eso no es un detalle: `numero` es **el número de pedido**, lo
  * que la oficina dice en voz alta y lo que el comprobante imprime. Un

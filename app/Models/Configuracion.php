@@ -96,6 +96,35 @@ class Configuracion extends Model
         return $valor;
     }
 
+    /**
+     * El valor de una configuración numérica **como cadena**, sin convertir.
+     *
+     * Es lo que hace falta para operar con dinero: `numero()` devuelve un `float`
+     * —como el sistema viejo— y un float no es donde se hacen cuentas de plata.
+     *
+     * Exige que sea de tipo `numero`, y con eso el `CHECK` de la columna garantiza
+     * que sean dígitos con un punto decimal opcional: la cadena se puede pasar a
+     * bcmath tal cual.
+     *
+     * @return numeric-string
+     */
+    public static function numeroCrudo(string $nombre): string
+    {
+        $configuracion = self::query()->where('nombre', $nombre)->first();
+
+        if ($configuracion === null) {
+            throw new RuntimeException("No existe la configuración «{$nombre}».");
+        }
+
+        if (! $configuracion->esNumerica() || ! is_numeric($configuracion->valor)) {
+            throw new RuntimeException(
+                "La configuración «{$nombre}» no es un número, y se pidió para una cuenta."
+            );
+        }
+
+        return $configuracion->valor;
+    }
+
     public function esNumerica(): bool
     {
         return $this->tipo === self::TIPO_NUMERO;

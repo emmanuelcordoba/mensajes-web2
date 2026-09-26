@@ -38,9 +38,6 @@ use Illuminate\Support\Carbon;
  * toda consulta, así que un listado de mil pedidos pagaba dos relaciones que casi
  * nunca se usaban. Cada consulta dice qué necesita.
  *
- * ⚠️ Falta la relación con `cadete`, porque el modelo `Cadete` todavía no existe.
- * La columna y su clave foránea sí están.
- *
  * @property int $id
  * @property int|null $numero
  * @property string|null $direccion
@@ -65,6 +62,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Cliente|null $cliente
+ * @property-read Cadete|null $cadete
  * @property-read User|null $user
  */
 #[Fillable([
@@ -93,15 +91,15 @@ class Pedido extends Model
     use HasFactory, LeeLoQueEscribeLaBase, SoftDeletes;
 
     /**
-     * `numero` sale de `pedidos_numero_seq` por DEFAULT, así que la base lo escribe
-     * y hay que leerlo de vuelta. Ver el trait: es el número que imprime el
-     * comprobante.
+     * `numero` sale de `pedidos_numero_seq`, y los dos booleanos tienen
+     * `DEFAULT FALSE`: sin esto vuelven en NULL donde la tabla dice `false`. Ver el
+     * trait. `numero` además es el número que imprime el comprobante.
      *
      * @return list<string>
      */
     protected function loQueEscribeLaBase(): array
     {
-        return ['numero'];
+        return ['numero', 'gastronomia', 'retorno_origen'];
     }
 
     public const ESTADO_SIN_ASIGNAR = 'Sin asignar';
@@ -184,6 +182,16 @@ class Pedido extends Model
     }
 
     /**
+     * El cadete que lo lleva. NULLABLE: un pedido sin asignar no tiene ninguno.
+     *
+     * @return BelongsTo<Cadete, $this>
+     */
+    public function cadete(): BelongsTo
+    {
+        return $this->belongsTo(Cadete::class);
+    }
+
+    /**
      * Quién lo cargó: un empleado desde el panel, o el cliente desde la app.
      *
      * @return BelongsTo<User, $this>
@@ -209,6 +217,36 @@ class Pedido extends Model
 
         // @phpstan-ignore nullsafe.neverNull
         return $cliente?->nombre_mostrado ?? $this->nombre_cliente;
+    }
+
+    /**
+     * Lo que se le descuenta del saldo al cadete por finalizar este pedido: un
+     * porcentaje del valor del pedido.
+     *
+     * ⚠️ Se calcula con bcmath sobre las cadenas, no con floats. Acá es donde la
+     * decisión de no castear `valor` rinde: el sistema viejo hacía
+     * `$this->valor * ($porcentaje/100)` en punto flotante, sobre la deuda de una
+     * persona. Devuelve una cadena con dos decimales, lista para la columna.
+     *
+     * @return numeric-string
+     */
+    public function montoDeCobranzaSaldo(): string
+    {
+        $porcentaje = Configuracion::numeroCrudo('COBRANZA_SALDO_PORCENTAJE');
+
+        return bcmul(self::comoMonto($this->valor), bcdiv($porcentaje, '100', 8), 2);
+    }
+
+    /**
+     * Un monto que salió de una columna NUMERIC, listo para bcmath.
+     *
+     * La columna es nullable, y un pedido sin valor vale 0 para estas cuentas.
+     *
+     * @return numeric-string
+     */
+    public static function comoMonto(?string $valor): string
+    {
+        return is_numeric($valor) ? $valor : '0';
     }
 
     /** Si todavía no hay cadete, el cliente puede cancelarlo desde la app. */

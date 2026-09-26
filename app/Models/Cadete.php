@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LeeLoQueEscribeLaBase;
 use Database\Factories\CadeteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,8 +12,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Un cadete. Son 1.768 en producción, y la tabla con más restricciones del
@@ -35,14 +38,13 @@ use Illuminate\Support\Carbon;
  * acepta el año 190. Hay 32 cadetes con fechas imposibles y son 41 personas
  * contando las postulaciones (DATA-10): se corrigen antes de migrar, no acá.
  *
- * ## Lo que falta, porque los modelos no existen todavía
+ * ## El cierre de actividad va en el guardado, no en un método
  *
- * Faltan las relaciones con `ActividadCadete`, `Mensaje`, `LogEstadoPedido`,
- * `MovimientoCobranzaSaldo` y `Postulacion`, y con ellas:
- *
- * - `cerrarActividadSiSaleDeLaApp()` y el `saving` que lo dispara (PANEL-17).
- * - `cambiarEstado()`, que abre y cierra actividad.
- * - `cobrarSaldoPedido()`.
+ * `cerrarActividadSiSaleDeLaApp()` se dispara en `saving`, en **cualquier** camino
+ * que saque al cadete de la app. Antes lo escribía sólo `cambiarEstado()` y sólo
+ * desde `activo-app` —la condición comparaba ese estado dos veces—, así que con un
+ * pedido en curso, al cerrar sesión o al sacarlo la central de la cola, el tramo de
+ * actividad quedaba abierto para siempre. Ver PANEL-17.
  *
  * @property int $id
  * @property int $numero_movil
@@ -75,6 +77,11 @@ use Illuminate\Support\Carbon;
  * @property-read string $nombre_completo
  * @property-read User $user
  * @property-read Collection<int, Pedido> $pedidos
+ * @property-read Collection<int, ActividadCadete> $actividades
+ * @property-read Collection<int, Mensaje> $mensajes
+ * @property-read Collection<int, LogEstadoPedido> $logsEstadosPedidos
+ * @property-read Collection<int, MovimientoCobranzaSaldo> $movimientosCobranzaSaldo
+ * @property-read Postulacion|null $postulacion
  */
 #[Fillable([
     'numero_movil',
@@ -105,7 +112,18 @@ use Illuminate\Support\Carbon;
 class Cadete extends Model
 {
     /** @use HasFactory<CadeteFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, LeeLoQueEscribeLaBase, SoftDeletes;
+
+    /**
+     * Las dos con `DEFAULT` en la tabla. `modalidad_cobranza` arranca en 'Semanal',
+     * que es lo que a producción le falta, y el booleano en `false`. Ver el trait.
+     *
+     * @return list<string>
+     */
+    protected function loQueEscribeLaBase(): array
+    {
+        return ['tiene_monto_semanal_personal', 'modalidad_cobranza'];
+    }
 
     public const ESTADO_ACTIVO_APP = 'activo-app';
 
@@ -175,6 +193,38 @@ class Cadete extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // El fin de la actividad se registra al guardar, en cualquier camino que
+        // saque al cadete de la app. Ver PANEL-17 y el docblock de arriba.
+        static::saving(static function (self $cadete): void {
+            $cadete->cerrarActividadSiSaleDeLaApp();
+        });
+    }
+
+    /**
+     * Cierra el tramo de actividad abierto, si el estado que se va a guardar saca
+     * al cadete de la app.
+     *
+     * ⚠️ Cierra **el abierto**, no el último creado. El sistema viejo buscaba el
+     * último por fecha sin filtrar por `fin`, así que podía volver a cerrar uno ya
+     * cerrado y dejar el abierto de verdad sin tocar.
+     */
+    public function cerrarActividadSiSaleDeLaApp(): void
+    {
+        if (! $this->exists || ! $this->isDirty('estado')) {
+            return;
+        }
+
+        $estaba = in_array($this->getOriginal('estado'), self::ESTADOS_EN_LA_APP, true);
+
+        if (! $estaba || $this->estaEnLaApp()) {
+            return;
+        }
+
+        $this->actividades()->abiertas()->first()?->cerrar();
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
@@ -185,6 +235,40 @@ class Cadete extends Model
     public function pedidos(): HasMany
     {
         return $this->hasMany(Pedido::class);
+    }
+
+    /** @return HasMany<ActividadCadete, $this> */
+    public function actividades(): HasMany
+    {
+        return $this->hasMany(ActividadCadete::class);
+    }
+
+    /** @return HasMany<Mensaje, $this> */
+    public function mensajes(): HasMany
+    {
+        return $this->hasMany(Mensaje::class);
+    }
+
+    /** @return HasMany<LogEstadoPedido, $this> */
+    public function logsEstadosPedidos(): HasMany
+    {
+        return $this->hasMany(LogEstadoPedido::class);
+    }
+
+    /** @return HasMany<MovimientoCobranzaSaldo, $this> */
+    public function movimientosCobranzaSaldo(): HasMany
+    {
+        return $this->hasMany(MovimientoCobranzaSaldo::class);
+    }
+
+    /**
+     * La postulación de la que salió, si vino de una.
+     *
+     * @return HasOne<Postulacion, $this>
+     */
+    public function postulacion(): HasOne
+    {
+        return $this->hasOne(Postulacion::class);
     }
 
     /**
@@ -274,6 +358,46 @@ class Cadete extends Model
     public static function siguienteNumeroMovil(): int
     {
         return (int) self::withTrashed()->max('numero_movil') + 1;
+    }
+
+    /**
+     * Descuenta del saldo lo que corresponde por un pedido finalizado.
+     *
+     * No hace nada si el cadete no cobra por saldo. Devuelve el movimiento escrito,
+     * o null si no había nada que cobrar.
+     *
+     * ⚠️ **`pedido_id` se escribe siempre**, y es lo que impide el cobro doble: el
+     * índice único parcial `cobranza_mov_un_descuento_por_pedido` deja un solo
+     * descuento por pedido. El sistema viejo no guardaba el pedido, y por eso COB-1
+     * pudo medir 438 cobros dobles por $233.243,64 sin que nada los frenara.
+     *
+     * ⚠️ Va en una transacción porque son dos escrituras que no pueden quedar a
+     * medias: el movimiento y el saldo nuevo. Si el índice rechaza un segundo cobro,
+     * el saldo no se toca.
+     */
+    public function cobrarSaldoPedido(Pedido $pedido, ?int $userId = null): ?MovimientoCobranzaSaldo
+    {
+        if (! $this->cobraPorSaldo()) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($pedido, $userId): MovimientoCobranzaSaldo {
+            $monto = $pedido->montoDeCobranzaSaldo();
+
+            $movimiento = $this->movimientosCobranzaSaldo()->create([
+                'monto' => $monto,
+                'monto_positivo' => false,
+                'saldo_parcial' => $this->cobranza_saldo,
+                'tipo' => MovimientoCobranzaSaldo::PEDIDO_FINALIZADO,
+                'user_id' => $userId,
+                'pedido_id' => $pedido->id,
+            ]);
+
+            $this->cobranza_saldo = bcsub(Pedido::comoMonto($this->cobranza_saldo), $monto, 2);
+            $this->save();
+
+            return $movimiento;
+        });
     }
 
     /**

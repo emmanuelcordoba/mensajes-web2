@@ -39,6 +39,31 @@ class Roles extends Migrador
         return ['rol', 'display_rol', 'created_at', 'updated_at'];
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public function problemas(): array
+    {
+        $veces = [];
+
+        foreach ($this->origen->documentos($this->coleccion(), [], ['rol']) as $documento) {
+            $rol = (string) ($documento['rol'] ?? '');
+            $veces[$rol] = ($veces[$rol] ?? 0) + 1;
+        }
+
+        $repetidos = array_keys(array_filter($veces, static fn (int $n): bool => $n > 1));
+
+        if ($repetidos === []) {
+            return [];
+        }
+
+        return [sprintf(
+            'roles.rol es UNIQUE y en el origen están repetidos: %s. Son un seeder corrido dos '
+            .'veces y los duplicados no tienen usuarios, así que se borran por script (DATA-6).',
+            implode(', ', $repetidos),
+        )];
+    }
+
     public function fila(array $documento): ?array
     {
         return [

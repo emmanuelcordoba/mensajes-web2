@@ -4,8 +4,24 @@ namespace App\Console\Commands;
 
 use App\Etl\MapaDeIds;
 use App\Etl\Migrador;
+use App\Etl\NudoCircular;
 use App\Etl\Origen;
+use App\Etl\Secuencias;
+use App\Etl\Tablas\ActividadesCadetes;
+use App\Etl\Tablas\Cadetes;
+use App\Etl\Tablas\Clientes;
+use App\Etl\Tablas\CobranzaSaldoMovimientos;
+use App\Etl\Tablas\Configuraciones;
+use App\Etl\Tablas\ErrorLogs;
+use App\Etl\Tablas\HorariosAtencion;
+use App\Etl\Tablas\LogsEstadosPedidos;
+use App\Etl\Tablas\Mensajes;
+use App\Etl\Tablas\MontosSemanales;
+use App\Etl\Tablas\Pedidos;
+use App\Etl\Tablas\Postulaciones;
+use App\Etl\Tablas\PublicidadesApp;
 use App\Etl\Tablas\Roles;
+use App\Etl\Tablas\Users;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -40,12 +56,28 @@ class EtlMigrar extends Command
      */
     private const TABLAS = [
         Roles::class,
+        Users::class,
+        Clientes::class,
+        Cadetes::class,
+        Postulaciones::class,
+        Pedidos::class,
+        CobranzaSaldoMovimientos::class,
+        Mensajes::class,
+        MontosSemanales::class,
+        PublicidadesApp::class,
+        Configuraciones::class,
+        HorariosAtencion::class,
+        ActividadesCadetes::class,
+        LogsEstadosPedidos::class,
+        ErrorLogs::class,
     ];
+
+    private Origen $origen;
 
     public function handle(): int
     {
         $base = $this->option('base') ?: config('etl.base');
-        $origen = new Origen($base);
+        $origen = $this->origen = new Origen($base);
 
         $this->newLine();
         $this->line('  Origen  : '.config('etl.origen').'/'.$base);
@@ -77,11 +109,74 @@ class EtlMigrar extends Command
             return $this->informar($migradores);
         }
 
+        if (! $this->revisar($migradores)) {
+            return self::FAILURE;
+        }
+
         if (! $this->destinoVacio($migradores)) {
             return self::FAILURE;
         }
 
         return $this->cargar($migradores);
+    }
+
+    /**
+     * Lo que cada migrador ve mal en el origen, antes de escribir nada.
+     *
+     * @param  array<int, Migrador>  $migradores
+     * @return array<string, array<int, string>>
+     */
+    private function problemas(array $migradores): array
+    {
+        $problemas = [];
+
+        foreach ($migradores as $m) {
+            $suyos = $m->problemas();
+
+            if ($suyos !== []) {
+                $problemas[$m->tabla()] = $suyos;
+            }
+        }
+
+        return $problemas;
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $problemas
+     */
+    private function listar(array $problemas): void
+    {
+        foreach ($problemas as $tabla => $lineas) {
+            $this->newLine();
+            $this->line("  <fg=yellow>{$tabla}</>");
+
+            foreach ($lineas as $linea) {
+                $this->line('    · '.$linea);
+            }
+        }
+    }
+
+    /**
+     * No se carga sobre datos que el esquema va a rechazar. Se corrigen en el
+     * sistema viejo, que es donde vive la gente que sabe cuál de dos cuentas
+     * repetidas es la buena.
+     *
+     * @param  array<int, Migrador>  $migradores
+     */
+    private function revisar(array $migradores): bool
+    {
+        $problemas = $this->problemas($migradores);
+
+        if ($problemas === []) {
+            return true;
+        }
+
+        $this->error('No se carga: el origen tiene datos que el esquema rechaza.');
+        $this->listar($problemas);
+        $this->newLine();
+        $this->line('  Se corrigen en el sistema viejo, antes del ETL. Ver DATA-6 y DATA-7.');
+
+        return false;
     }
 
     /**
@@ -95,6 +190,17 @@ class EtlMigrar extends Command
         }
 
         $this->table(['Colección', 'Tabla', 'En origen', 'Ya en destino'], $filas);
+
+        $problemas = $this->problemas($migradores);
+
+        if ($problemas === []) {
+            $this->info('El origen no tiene nada que el esquema vaya a rechazar.');
+        } else {
+            $this->error('El origen tiene datos que el esquema rechaza:');
+            $this->listar($problemas);
+            $this->newLine();
+        }
+
         $this->info('Modo informe: no se escribió nada. Para cargar: --aplicar');
 
         return self::SUCCESS;
@@ -182,8 +288,43 @@ class EtlMigrar extends Command
             return self::FAILURE;
         }
 
+        $this->cerrarNudo();
+        $this->moverSecuencias();
+
         $this->info('Listo. Todas las tablas coinciden con el origen.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Las dos secuencias de numeración del negocio, al final de todo.
+     * Ver App\Etl\Secuencias.
+     */
+    private function moverSecuencias(): void
+    {
+        foreach ((new Secuencias)->mover() as $secuencia => $maximo) {
+            $this->line(
+                "  {$secuencia}: el próximo número será el "
+                .number_format($maximo + 1, 0, ',', '.').'.'
+            );
+        }
+
+        $this->newLine();
+    }
+
+    /**
+     * El UPDATE que cierra el ciclo users ↔ clientes, una vez que las dos
+     * están cargadas. Ver App\Etl\NudoCircular.
+     */
+    private function cerrarNudo(): void
+    {
+        if (MapaDeIds::cuantos('users') === 0 || MapaDeIds::cuantos('clientes') === 0) {
+            return;
+        }
+
+        $cerrados = (new NudoCircular($this->origen))->cerrar();
+
+        $this->line("  Nudo circular: {$cerrados} usuario(s) quedaron con su cliente restringido.");
+        $this->newLine();
     }
 }

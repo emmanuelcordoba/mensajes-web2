@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Etl\Archivos;
 use App\Etl\MapaDeIds;
 use App\Etl\Migrador;
 use App\Etl\NudoCircular;
@@ -18,9 +19,12 @@ use App\Etl\Tablas\LogsEstadosPedidos;
 use App\Etl\Tablas\Mensajes;
 use App\Etl\Tablas\MontosSemanales;
 use App\Etl\Tablas\Pedidos;
+use App\Etl\Tablas\PostulacionDocumentos;
 use App\Etl\Tablas\Postulaciones;
+use App\Etl\Tablas\PublicidadAppImagenes;
 use App\Etl\Tablas\PublicidadesApp;
 use App\Etl\Tablas\Roles;
+use App\Etl\Tablas\UserFotos;
 use App\Etl\Tablas\Users;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -57,14 +61,17 @@ class EtlMigrar extends Command
     private const TABLAS = [
         Roles::class,
         Users::class,
+        UserFotos::class,
         Clientes::class,
         Cadetes::class,
         Postulaciones::class,
+        PostulacionDocumentos::class,
         Pedidos::class,
         CobranzaSaldoMovimientos::class,
         Mensajes::class,
         MontosSemanales::class,
         PublicidadesApp::class,
+        PublicidadAppImagenes::class,
         Configuraciones::class,
         HorariosAtencion::class,
         ActividadesCadetes::class,
@@ -240,6 +247,7 @@ class EtlMigrar extends Command
         }
 
         DB::table(MapaDeIds::TABLA)->truncate();
+        Archivos::vaciar();
 
         return true;
     }

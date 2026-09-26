@@ -1,5 +1,6 @@
 <?php
 
+use App\Etl\Archivos;
 use App\Etl\MapaDeIds;
 use App\Etl\Origen;
 use App\Etl\Tablas\Cadetes;
@@ -8,9 +9,13 @@ use App\Etl\Tablas\Configuraciones;
 use App\Etl\Tablas\ErrorLogs;
 use App\Etl\Tablas\HorariosAtencion;
 use App\Etl\Tablas\Pedidos;
+use App\Etl\Tablas\PostulacionDocumentos;
 use App\Etl\Tablas\Postulaciones;
+use App\Etl\Tablas\PublicidadAppImagenes;
+use App\Etl\Tablas\UserFotos;
 use App\Etl\Tablas\Users;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Storage;
 use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\UTCDateTime;
 
@@ -354,4 +359,176 @@ test('a user with no role is fine, but one whose role cannot be resolved stops t
         'email' => 'rol@perdido.test',
         'rol_id' => '64f2a1b2c3d4e5f6a7b8c9d9',
     ]))->toThrow(RuntimeException::class, 'no está en migracion_ids');
+});
+
+/*
+| Las imágenes son la única parte del ETL que escribe fuera de la base, así que
+| son la única que necesita un disco falso. `Storage::fake` reemplaza el disco
+| `local`, que es el que config('etl.disco') nombra por omisión.
+*/
+
+/** Un PNG de 1x1 real, para que los bytes escritos sean una imagen de verdad. */
+function pngDeUnPixel(): string
+{
+    return 'data:image/png;base64,'
+        .'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==';
+}
+
+test('the extension comes from the declared type, and only three types are accepted', function () {
+    Storage::fake('local');
+    $archivos = new Archivos;
+
+    // El esquema no tiene columna mime: el tipo del archivo ES su extensión.
+    expect($archivos->desdeDataUri(pngDeUnPixel(), 'user-fotos/7'))->toBe('user-fotos/7.png');
+    Storage::disk('local')->assertExists('user-fotos/7.png');
+    expect(Storage::disk('local')->get('user-fotos/7.png'))->toStartWith("\x89PNG");
+
+    // image/jpg no es un tipo válido, pero el sistema viejo lo guarda igual.
+    expect($archivos->desdeDataUri('data:image/jpg;base64,'.base64_encode('x'), 'user-fotos/8'))
+        ->toBe('user-fotos/8.jpg');
+
+    // Una extensión que sale de un valor del origen es una extensión que
+    // alguien puede elegir, y estas imágenes las suben los postulantes.
+    expect(fn () => $archivos->desdeDataUri('data:image/svg+xml;base64,'.base64_encode('<svg/>'), 'user-fotos/9'))
+        ->toThrow(RuntimeException::class, 'no es JPEG ni PNG')
+        ->and(fn () => $archivos->desdeDataUri('data:text/html;base64,'.base64_encode('<b>'), 'user-fotos/9'))
+        ->toThrow(RuntimeException::class, 'no es JPEG ni PNG')
+        ->and(fn () => $archivos->desdeDataUri('iVBORw0KGgo=', 'user-fotos/9'))
+        ->toThrow(RuntimeException::class, 'no es un data URI')
+        ->and(fn () => $archivos->desdeDataUri('data:image/png;base64,', 'user-fotos/9'))
+        ->toThrow(RuntimeException::class, 'no se pudo decodificar');
+
+    Storage::disk('local')->assertMissing('user-fotos/9.png');
+});
+
+test('a path that could climb out of the directory never reaches the disk', function () {
+    Storage::fake('local');
+    $archivos = new Archivos;
+
+    // La misma regla que el CHECK de las tres columnas. Se comprueba en PHP
+    // además de en la base porque el error de PostgreSQL no diría cuál era.
+    expect(fn () => $archivos->desdeDataUri(pngDeUnPixel(), 'user-fotos/../../../etc/passwd'))
+        ->toThrow(RuntimeException::class, 'no pasa el CHECK')
+        ->and(fn () => $archivos->copiando('../../etc/passwd', 'user-fotos/7'))
+        ->toThrow(RuntimeException::class, 'no es una ruta relativa segura');
+
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+test('a file the tar did not bring stops the load instead of leaving a path to nothing', function () {
+    Storage::fake('local');
+    $raiz = Storage::fake('etl-origen')->path('');
+    config(['etl.archivos' => $raiz]);
+
+    @mkdir($raiz.'/postulaciones/abc', 0777, true);
+    file_put_contents($raiz.'/postulaciones/abc/frente.jpg', 'unos bytes');
+
+    $archivos = new Archivos;
+
+    expect($archivos->copiando('postulaciones/abc/frente.jpg', 'postulacion-documentos/3/dni_frente'))
+        ->toBe('postulacion-documentos/3/dni_frente.jpg')
+        ->and(Storage::disk('local')->get('postulacion-documentos/3/dni_frente.jpg'))->toBe('unos bytes');
+
+    // DATA-9: los 1.749 archivos no están en ningún backup de la base. Cargar
+    // una fila cuya ruta apunta a la nada es reproducir el problema que DATA-9
+    // describe, así que si falta uno la carga entera se cae.
+    expect(fn () => $archivos->copiando('postulaciones/abc/no-existe.jpg', 'postulacion-documentos/3/dni_dorso'))
+        ->toThrow(RuntimeException::class, 'Falta el archivo');
+});
+
+test('the default avatar is nobody photo, so it is filtered out in mongo', function () {
+    // 27 de los 1.615 usuarios con algo en `foto` tienen el placeholder de la
+    // aplicación vieja. Descartarlos en el filtro y no en fila() es lo que hace
+    // que enOrigen() cuente 1.588: la verificación compara contra la cifra real.
+    expect((new UserFotos(origen()))->filtro()['foto']['$nin'])
+        ->toContain('assets/images/avatar.png')
+        ->toContain('')
+        ->toContain(null);
+});
+
+test('an image file is named after the new id, because the ObjectId is kept nowhere', function () {
+    Storage::fake('local');
+    MapaDeIds::crearSiFalta();
+    MapaDeIds::anotar('users', ['64f2a1b2c3d4e5f6a7b8c9d0' => 42]);
+    MapaDeIds::anotar('publicidades_app', ['64f2a1b2c3d4e5f6a7b8c9d1' => 7]);
+
+    $fila = (new UserFotos(origen()))->fila([
+        '_id' => new ObjectId('64f2a1b2c3d4e5f6a7b8c9d0'),
+        'foto' => pngDeUnPixel(),
+    ]);
+
+    expect($fila['user_id'])->toBe(42)
+        ->and($fila['ruta_archivo'])->toBe('user-fotos/42.png');
+
+    expect((new PublicidadAppImagenes(origen()))->fila([
+        '_id' => new ObjectId('64f2a1b2c3d4e5f6a7b8c9d1'),
+        'img_base64' => pngDeUnPixel(),
+    ])['ruta_archivo'])->toBe('publicidad-app-imagenes/7.png');
+
+    // Una imagen sin padre no puede quedar colgando: la columna es NOT NULL y
+    // tiene clave foránea.
+    expect(fn () => (new UserFotos(origen()))->fila([
+        '_id' => new ObjectId('64f2a1b2c3d4e5f6a7b8c9d9'),
+        'foto' => pngDeUnPixel(),
+    ]))->toThrow(RuntimeException::class, 'no está en migracion_ids');
+});
+
+test('one application gives up to four rows, and each one picks decoding or copying', function () {
+    Storage::fake('local');
+    $raiz = Storage::fake('etl-origen')->path('');
+    config(['etl.archivos' => $raiz]);
+
+    @mkdir($raiz.'/postulaciones/abc', 0777, true);
+    file_put_contents($raiz.'/postulaciones/abc/frente.jpg', 'el frente');
+
+    MapaDeIds::crearSiFalta();
+    MapaDeIds::anotar('postulaciones', ['64f2a1b2c3d4e5f6a7b8c9d0' => 3]);
+
+    // El origen tiene las dos formas mezcladas porque el sistema viejo convierte
+    // a archivo al contratar: una ruta se copia, un data URI se decodifica.
+    $filas = (new PostulacionDocumentos(origen()))->filas([
+        '_id' => new ObjectId('64f2a1b2c3d4e5f6a7b8c9d0'),
+        'dni_frente' => 'postulaciones/abc/frente.jpg',
+        'foto' => pngDeUnPixel(),
+        // Los campos vacíos no dan fila: 142 de las 725 no tienen boleta.
+        'dni_dorso' => '',
+        'boleta_de_servicio' => '   ',
+    ]);
+
+    expect($filas)->toHaveCount(2)
+        ->and(array_column($filas, 'tipo'))->toBe(['dni_frente', 'foto'])
+        ->and(array_column($filas, 'ruta_archivo'))->toBe([
+            'postulacion-documentos/3/dni_frente.jpg',
+            'postulacion-documentos/3/foto.png',
+        ])
+        ->and(array_column($filas, 'postulacion_id'))->toBe([3, 3]);
+
+    // El tipo va en el nombre del archivo, así que las cuatro imágenes de una
+    // misma postulación conviven en su carpeta sin pisarse.
+    expect(Storage::disk('local')->allFiles('postulacion-documentos/3'))->toHaveCount(2);
+
+    // Un migrador de varias filas no puede anotar ids —la clave del mapa es
+    // (tabla, legacy_id) y habría cuatro filas con el mismo legacy_id—, así que
+    // fila() no se usa y devuelve null.
+    expect((new PostulacionDocumentos(origen()))->fila([]))->toBeNull();
+});
+
+test('emptying the destination also removes the files, or the next load leaves orphans', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('user-fotos/5.png', 'x');
+    Storage::disk('local')->put('postulacion-documentos/3/dni_frente.jpg', 'x');
+    Storage::disk('local')->put('publicidad-app-imagenes/7.png', 'x');
+    // Lo que no escribió el ETL no se toca.
+    Storage::disk('local')->put('otra-cosa/importante.txt', 'x');
+
+    Archivos::vaciar();
+
+    // Los nombres salen del id nuevo y RESTART IDENTITY reusa los ids, así que
+    // un archivo de la corrida anterior podía quedar sin fila —o peor, con la
+    // extensión de otra imagen— sin que nada lo notara.
+    expect(Storage::disk('local')->allFiles('user-fotos'))->toBeEmpty()
+        ->and(Storage::disk('local')->allFiles('postulacion-documentos'))->toBeEmpty()
+        ->and(Storage::disk('local')->allFiles('publicidad-app-imagenes'))->toBeEmpty();
+
+    Storage::disk('local')->assertExists('otra-cosa/importante.txt');
 });

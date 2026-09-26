@@ -145,17 +145,35 @@ abstract class Migrador
         $legacy = [];
 
         foreach ($documentos as $documento) {
-            $fila = $this->fila($documento);
-
-            if ($fila === null) {
-                continue;
+            foreach ($this->filas($documento) as $fila) {
+                $lote[] = $fila;
+                $legacy[] = Origen::id($documento['_id'] ?? null);
             }
-
-            $lote[] = $fila;
-            $legacy[] = Origen::id($documento['_id'] ?? null);
         }
 
         return $this->escribir($lote, $legacy);
+    }
+
+    /**
+     * Las filas que salen de un documento. Casi siempre una, o ninguna.
+     *
+     * `postulacion_documentos` es la excepción: cada postulación tiene hasta
+     * cuatro imágenes y cada una es una fila. Por eso el punto de extensión es
+     * éste y no `fila()`.
+     *
+     * ⚠️ Un migrador que devuelva más de una fila por documento NO puede
+     * `anotaIds()`: la clave de `migracion_ids` es (tabla, legacy_id) y habría
+     * cuatro filas reclamando el mismo. Ninguna de las tres tablas de imágenes
+     * lo necesita, porque nadie las referencia.
+     *
+     * @param  array<string, mixed>  $documento
+     * @return array<int, array<string, mixed>>
+     */
+    public function filas(array $documento): array
+    {
+        $fila = $this->fila($documento);
+
+        return $fila === null ? [] : [$fila];
     }
 
     /**

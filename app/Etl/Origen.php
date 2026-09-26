@@ -71,6 +71,7 @@ class Origen
         // es lo que Origen::id() y Origen::fecha() prefieren.
         $cursor->setTypeMap(['root' => 'array', 'document' => 'array', 'array' => 'array']);
 
+        /** @var iterable<int, array<string, mixed>> $cursor */
         yield from $cursor;
     }
 

@@ -3,6 +3,7 @@
 namespace App\Etl;
 
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Una tabla del ETL. La subclase dice de qué colección sale, a qué tabla va y
@@ -239,15 +240,25 @@ abstract class Migrador
      */
     protected function reservarIds(int $cuantos): array
     {
-        $this->secuencia ??= DB::selectOne(
-            'select pg_get_serial_sequence(?, ?) as nombre',
-            [$this->tabla(), 'id'],
-        )->nombre;
+        if ($this->secuencia === null) {
+            /** @var object{nombre: string|null} $fila */
+            $fila = DB::selectOne(
+                'select pg_get_serial_sequence(?, ?) as nombre',
+                [$this->tabla(), 'id'],
+            );
 
-        return array_map(
-            static fn (object $fila): int => (int) $fila->id,
-            DB::select('select nextval(?) as id from generate_series(1, ?)', [$this->secuencia, $cuantos]),
+            $this->secuencia = $fila->nombre ?? throw new RuntimeException(
+                "La tabla «{$this->tabla()}» no tiene una secuencia para «id»."
+            );
+        }
+
+        /** @var list<object{id: int|string}> $filas */
+        $filas = DB::select(
+            'select nextval(?) as id from generate_series(1, ?)',
+            [$this->secuencia, $cuantos],
         );
+
+        return array_map(static fn (object $fila): int => (int) $fila->id, $filas);
     }
 
     /** Cuántos documentos hay en el origen: la cifra contra la que se verifica. */

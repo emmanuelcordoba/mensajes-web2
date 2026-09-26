@@ -21,6 +21,30 @@ use RuntimeException;
  * El disco es privado a propósito: la API sirve los bytes armando el data URI,
  * así que nada necesita estar en public/, y dos de cada cuatro documentos de
  * postulación son el DNI de una persona.
+ *
+ * ## El nombre del archivo sale del ObjectId viejo, no del id nuevo
+ *
+ * Es deliberado, y por dos razones distintas:
+ *
+ * - **Permite subir los archivos antes del corte.** El id nuevo no existe hasta
+ *   que corre la carga, así que con nombres derivados de él no se puede subir
+ *   nada por adelantado y los 2,2 GB caen dentro de la ventana. Con el ObjectId
+ *   las rutas se conocen de antemano: se suben días antes y en la ventana sólo
+ *   se sincroniza lo que cambió —medido sobre el origen: 68 archivos y 31 MB con
+ *   una semana de anticipación, contra 4.509 y 2,2 GB—.
+ * - **Un ObjectId es único para siempre; un id de secuencia, no.** `--reiniciar`
+ *   reinicia las secuencias, así que con el id nuevo un archivo de una corrida
+ *   anterior podía quedar apareado con una fila que no era la suya.
+ *
+ * Para `postulacion_documentos` hay un premio extra: el sistema viejo ya guarda
+ * sus archivos en `postulaciones/{oid}/{tipo}.jpg` —verificado, el oid es el
+ * `_id` en los 583 casos—, así que la ruta nueva es la misma cambiando el
+ * prefijo y subirlos es un `sync` de un directorio a otro.
+ *
+ * ⚠️ **`ruta_archivo` es una ruta opaca.** Nada debe deducir nada de su forma:
+ * las filas que escriba la aplicación después del corte no van a tener un
+ * ObjectId y usarán otro nombre. El `CHECK` de la columna valida la forma de una
+ * ruta, no de qué salió.
  */
 class Archivos
 {
@@ -108,6 +132,10 @@ class Archivos
 
         $puntero = fopen($completa, 'rb');
 
+        if ($puntero === false) {
+            throw new RuntimeException("No se pudo abrir «{$origen}» para leerlo.");
+        }
+
         try {
             Storage::disk(self::disco())->put($ruta, $puntero);
         } finally {
@@ -118,11 +146,10 @@ class Archivos
     }
 
     /**
-     * Borra lo escrito. Va con `--reiniciar`, porque vaciar las tablas y dejar
-     * los archivos deja huérfanos en disco: los nombres salen del id nuevo, y
-     * al reiniciar las secuencias los ids se reusan, así que un archivo de una
-     * corrida anterior puede quedar sin fila —o peor, con la extensión de otra
-     * imagen— sin que nada lo note.
+     * Borra lo escrito. Va con `--reiniciar`, y sigue haciendo falta aunque los
+     * nombres ya no dependan de la secuencia: si el origen dejó de tener una
+     * imagen, su archivo queda sin fila, y si una imagen pasó de PNG a JPEG
+     * quedan las dos —`{oid}.png` y `{oid}.jpg`— para una sola fila.
      */
     public static function vaciar(): void
     {

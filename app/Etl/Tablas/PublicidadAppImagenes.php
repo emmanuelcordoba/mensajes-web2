@@ -61,9 +61,10 @@ class PublicidadAppImagenes extends Migrador
 
         return [
             'publicidad_id' => $publicidad,
+            // El nombre sale del ObjectId, no del id nuevo. Ver Archivos.
             'ruta_archivo' => $this->archivos->desdeDataUri(
                 (string) $documento['img_base64'],
-                Archivos::PUBLICIDAD_IMAGENES."/{$publicidad}",
+                Archivos::PUBLICIDAD_IMAGENES."/{$legacy}",
             ),
             'created_at' => Origen::fecha($documento['created_at'] ?? null),
             'updated_at' => Origen::fecha($documento['updated_at'] ?? null),

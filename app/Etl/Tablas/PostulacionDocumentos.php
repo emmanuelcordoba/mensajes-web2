@@ -93,7 +93,10 @@ class PostulacionDocumentos extends Migrador
                 continue;
             }
 
-            $destino = Archivos::POSTULACION_DOCUMENTOS."/{$postulacion}/{$tipo}";
+            // `postulaciones/{oid}/{tipo}` en el origen, `postulacion-documentos/
+            // {oid}/{tipo}` acá: la misma ruta cambiando el prefijo, así que los
+            // 1.749 archivos se suben con un `sync` y sin renombrar nada.
+            $destino = Archivos::POSTULACION_DOCUMENTOS."/{$legacy}/{$tipo}";
 
             $filas[] = [
                 'postulacion_id' => $postulacion,

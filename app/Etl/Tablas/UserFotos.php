@@ -73,11 +73,11 @@ class UserFotos extends Migrador
 
         return [
             'user_id' => $user,
-            // El nombre sale del id nuevo, no del viejo: el ObjectId no se
-            // conserva en ninguna parte del sistema nuevo.
+            // El nombre sale del ObjectId, no del id nuevo: es lo que permite
+            // subir los archivos antes del corte. Ver Archivos.
             'ruta_archivo' => $this->archivos->desdeDataUri(
                 (string) $documento['foto'],
-                Archivos::USER_FOTOS."/{$user}",
+                Archivos::USER_FOTOS."/{$legacy}",
             ),
             'created_at' => Origen::fecha($documento['created_at'] ?? null),
             'updated_at' => Origen::fecha($documento['updated_at'] ?? null),

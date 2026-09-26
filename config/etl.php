@@ -22,23 +22,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Dónde escribe las imágenes
+    | Dónde viven las imágenes, y dónde las escribe la carga
     |--------------------------------------------------------------------------
     |
-    | Las tres tablas de imágenes guardan la RUTA de un archivo, relativa a este
-    | disco (PERF-2, ver «Las imágenes son archivos» en ESQUEMA.sql). El disco
-    | tiene que ser PRIVADO: dos de los cuatro documentos de cada postulación son
-    | el DNI de la persona, de frente y de dorso.
+    | Las tres tablas de imágenes guardan la RUTA de un archivo (PERF-2, ver «Las
+    | imágenes son archivos» en ESQUEMA.sql). Los dos discos tienen que ser
+    | PRIVADOS: dos de los cuatro documentos de cada postulación son el DNI de la
+    | persona, de frente y de dorso.
     |
-    | `local` es storage/app/private, que alcanza para el ensayo.
+    | **Decidido el 2026-09-26: van a un bucket.** No por volumen ni por costo
+    | —2,2 GB es poco y sale centavos— sino porque deja al servidor sin estado, y
+    | el motivo por el que hay servidor nuevo es que el viejo está comprometido
+    | (SEC-18). Con los archivos adentro no se puede reemplazar una máquina sin
+    | pensarlo; con un bucket, sí.
     |
-    | ⚠️ SIN RESOLVER para producción: disco del servidor con el backup extendido,
-    | o un bucket. A partir de esta decisión la base sola NO es un respaldo
-    | completo, y hay que resolverlo ANTES del corte. Ver ETL-1 y DATA-9.
+    | Son DOS discos a propósito:
+    |
+    | - `disco_carga` es donde ESCRIBE la carga. Local, porque tiene que ser
+    |   rápido: son 4.509 archivos y 2,2 GB.
+    | - `disco` es donde viven al final y de donde los lee la aplicación. El
+    |   bucket.
+    |
+    | Si fueran el mismo, la carga escribiría directo al bucket y los 2,2 GB
+    | caerían DENTRO de la ventana del corte, que es de unas pocas horas. Con los
+    | dos separados se suben antes con `etl:archivos` y en la ventana queda sólo
+    | lo que cambió: medido, 68 archivos y 31 MB con una semana de anticipación.
+    |
+    | Los dos en `local` es la configuración del ensayo, y entonces `etl:archivos`
+    | no tiene nada que hacer y lo dice.
     |
     */
 
     'disco' => env('ETL_DISCO', 'local'),
+
+    'disco_carga' => env('ETL_DISCO_CARGA', 'local'),
 
     /*
     |--------------------------------------------------------------------------

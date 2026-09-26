@@ -183,8 +183,12 @@ class Archivos
         }
     }
 
+    /**
+     * El disco de la CARGA, no el definitivo: la carga escribe local y después
+     * `etl:archivos` sube. Ver config/etl.php.
+     */
     private static function disco(): string
     {
-        return (string) config('etl.disco');
+        return (string) config('etl.disco_carga');
     }
 }

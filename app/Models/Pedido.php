@@ -256,6 +256,32 @@ class Pedido extends Model
     }
 
     /**
+     * Sólo los pedidos que ese usuario puede ver.
+     *
+     * Es la misma regla que `User::alcanzaPedido()` pero en la consulta, porque un
+     * listado no puede preguntar fila por fila. **Las dos tienen que responder lo
+     * mismo**, y hay una prueba que las compara pedido por pedido: si se separan,
+     * vuelve SEC-7 por el lado del listado.
+     *
+     * Un `restringido` sin comercio asignado no ve ninguno, no todos.
+     *
+     * @param  Builder<Pedido>  $query
+     * @return Builder<Pedido>
+     */
+    public function scopeAlcanzablesPor(Builder $query, User $user): Builder
+    {
+        if (! $user->tieneRol(Rol::RESTRINGIDO)) {
+            return $query;
+        }
+
+        if ($user->cliente_restringido_id === null) {
+            return $query->whereRaw('false');
+        }
+
+        return $query->where('cliente_id', $user->cliente_restringido_id);
+    }
+
+    /**
      * La cola del panel: los pedidos que esperan un cadete.
      *
      * El orden no es cosmético. Los que ya se resolvieron —cancelado, rechazado—

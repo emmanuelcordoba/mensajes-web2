@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Pedido;
 use App\Models\User;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -64,7 +67,28 @@ test('user can delete their account', function () {
         ->assertRedirect(route('home'));
 
     $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+
+    // ⚠️ Se borra con soft delete, y no es una preferencia: seis de las ocho claves
+    // foráneas que apuntan a `users` son NO ACTION —pedidos, cadetes, clientes,
+    // mensajes, logs y movimientos de cobranza—, así que borrar la fila de un usuario
+    // con cualquier historia falla en la base. La cuenta deja de existir para el
+    // sistema y su historia sigue en pie.
+    //
+    // `fresh()` no sirve para comprobarlo: usa newQueryWithoutScopes(), así que
+    // devuelve el modelo igual.
+    $this->assertSoftDeleted($user);
+
+    expect(User::query()->find($user->id))->toBeNull()
+        ->and(User::withTrashed()->find($user->id))->not->toBeNull();
+});
+
+test('a user with history cannot be removed from the table at all', function () {
+    // Es lo que hace que el soft delete sea obligatorio y no una elección.
+    $user = User::factory()->create();
+    Pedido::factory()->create(['user_id' => $user->id]);
+
+    expect(fn () => DB::transaction(fn () => DB::table('users')->where('id', $user->id)->delete()))
+        ->toThrow(QueryException::class);
 });
 
 test('correct password must be provided to delete account', function () {

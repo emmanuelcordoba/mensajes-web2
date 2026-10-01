@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Pedido;
 use App\Models\Rol;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 /**
  * Quién llega a qué pedido desde el panel.
@@ -25,9 +26,21 @@ class PedidoPolicy
         return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO, Rol::RESTRINGIDO]);
     }
 
-    public function view(User $user, Pedido $pedido): bool
+    /**
+     * ⚠️ NIEGA CON 404 Y NO CON 403, a propósito. Un comercio puede probar ids, y un
+     * 403 le confirma que ese pedido existe; un 404 no le dice nada. Es la decisión
+     * que ya tomó el sistema viejo —`abort_unless(..., 404)` en `PedidoController`—
+     * y se conserva. Para eso el método devuelve una `Response` y no un bool.
+     *
+     * Vale para los dos motivos: no tener rol de panel y no alcanzar la fila. Si
+     * distinguiera, la diferencia entre las dos respuestas volvería a ser la
+     * confirmación que se quiere evitar.
+     */
+    public function view(User $user, Pedido $pedido): Response
     {
-        return $this->viewAny($user) && $user->alcanzaPedido($pedido);
+        return $this->viewAny($user) && $user->alcanzaPedido($pedido)
+            ? Response::allow()
+            : Response::denyAsNotFound();
     }
 
     /** Un comercio no carga pedidos desde el panel: los carga desde la app. */

@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 
-import { Badge } from '@/components/ui/badge';
+import { EstadoBadge, Monto } from '@/components/pedido';
 import { Card } from '@/components/ui/card';
 
 /*
@@ -19,6 +19,7 @@ type PedidoEnLista = {
     direccion: string | null;
     destino: string | null;
     valor: string | null;
+    /** Ya en palabras y desde el servidor: «hace 40 min». */
     actualizado: string | null;
 };
 
@@ -29,54 +30,6 @@ type Paginado<T> = {
     from: number | null;
     to: number | null;
 };
-
-/** Los que ya no esperan a nadie se ven distinto de los que sí. */
-const RESUELTOS = ['Cancelado', 'Rechazado'];
-
-function EstadoBadge({ estado }: { estado: string }) {
-    return (
-        <Badge variant={RESUELTOS.includes(estado) ? 'secondary' : 'default'}>
-            {estado}
-        </Badge>
-    );
-}
-
-/** Hace cuánto, en palabras. Sin librería: es una sola cuenta. */
-function haceCuanto(iso: string | null): string {
-    if (iso === null) {
-        return '—';
-    }
-
-    const minutos = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-
-    if (minutos < 1) {
-        return 'ahora';
-    }
-    if (minutos < 60) {
-        return `hace ${minutos} min`;
-    }
-
-    const horas = Math.floor(minutos / 60);
-
-    if (horas < 24) {
-        return `hace ${horas} h`;
-    }
-
-    return `hace ${Math.floor(horas / 24)} d`;
-}
-
-function Monto({ valor }: { valor: string | null }) {
-    if (valor === null) {
-        return <span className="text-muted-foreground">—</span>;
-    }
-
-    // El valor llega como cadena a propósito, para no perder centavos: se formatea,
-    // no se convierte a número.
-    const [entera, decimal = '00'] = valor.split('.');
-    const conMiles = entera.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-    return <span className="tabular-nums">${conMiles},{decimal}</span>;
-}
 
 export default function PedidosIndex({ pedidos }: { pedidos: Paginado<PedidoEnLista> }) {
     return (
@@ -115,7 +68,15 @@ export default function PedidosIndex({ pedidos }: { pedidos: Paginado<PedidoEnLi
                                 {pedidos.data.map((pedido) => (
                                     <tr key={pedido.id} className="border-b last:border-0">
                                         <td className="px-4 py-3 tabular-nums">
-                                            {pedido.numero ?? '—'}
+                                            <Link
+                                                href={`/panel/pedidos/${pedido.id}`}
+                                                className="underline underline-offset-2"
+                                            >
+                                                {/* Por id y no por número: hay 11.295 números
+                                                    repetidos entre 23.524 pedidos (DATA-1), y 221
+                                                    pedidos sin número. */}
+                                                {pedido.numero ?? 'ver'}
+                                            </Link>
                                         </td>
                                         <td className="px-4 py-3">
                                             <EstadoBadge estado={pedido.estado} />
@@ -131,7 +92,7 @@ export default function PedidosIndex({ pedidos }: { pedidos: Paginado<PedidoEnLi
                                             <Monto valor={pedido.valor} />
                                         </td>
                                         <td className="text-muted-foreground px-4 py-3 whitespace-nowrap">
-                                            {haceCuanto(pedido.actualizado)}
+                                            {pedido.actualizado ?? '—'}
                                         </td>
                                     </tr>
                                 ))}

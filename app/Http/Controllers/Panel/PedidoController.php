@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Models\LogEstadoPedido;
 use App\Models\Pedido;
+use App\Support\Momento;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -44,12 +46,77 @@ class PedidoController extends Controller
                 'direccion' => $pedido->direccion,
                 'destino' => $pedido->destino,
                 'valor' => $pedido->valor,
-                'actualizado' => $pedido->updated_at?->toIso8601String(),
+                // Ya formateado: la zona horaria la sabe el servidor. Ver Momento.
+                'actualizado' => Momento::hace($pedido->updated_at),
             ]);
 
         return Inertia::render('pedidos/index', [
             'pedidos' => $pedidos,
             'estados' => Pedido::ESTADOS,
+        ]);
+    }
+
+    /**
+     * Un pedido, con su historia.
+     *
+     * Es la mitad de SEC-7 que el listado no cubre. El listado no trae lo que no
+     * corresponde; acá llega un id desde la URL y hay que preguntar por esa fila.
+     * Sin esto, un comercio veía el pedido de cualquier otro escribiendo el número.
+     *
+     * ⚠️ La negativa es 404 y no 403: ver `PedidoPolicy::view()`. Un pedido borrado
+     * también da 404, por el binding, y eso importa más de lo que parece: la oficina
+     * se deshace de los pedidos que no llegan al final borrándolos, así que la mayor
+     * parte de los estados intermedios está entre los borrados.
+     *
+     * Las cuatro relaciones se cargan de una. `logs` no se carga nunca sola —son
+     * 3.637.456 filas—, así que se pide acá y no en el modelo.
+     */
+    public function show(Pedido $pedido): Response
+    {
+        $this->authorize('view', $pedido);
+
+        $pedido->load(['cliente:id,numero,nombre_mostrado', 'cadete:id,numero_movil', 'user:id,name', 'logs']);
+
+        return Inertia::render('pedidos/show', [
+            'pedido' => [
+                'id' => $pedido->id,
+                'numero' => $pedido->numero,
+                'estado' => $pedido->estado,
+                'plataforma' => $pedido->plataforma_origen,
+                'creado' => Momento::fechaYHora($pedido->created_at),
+                'actualizado' => Momento::fechaYHora($pedido->updated_at),
+
+                'cliente' => $pedido->nombreDelCliente(),
+                'cliente_numero' => $pedido->cliente?->numero,
+                'telefono' => $pedido->telefono,
+                'responsable' => $pedido->responsable,
+
+                'direccion' => $pedido->direccion,
+                'destino' => $pedido->destino,
+                'detalle' => $pedido->detalle,
+                'retorno_origen' => $pedido->retorno_origen,
+                'gastronomia' => $pedido->gastronomia,
+
+                // Los montos viajan como cadena para no perder centavos: NUMERIC(12,2)
+                // no se convierte a float en ningún punto del camino.
+                'valor' => $pedido->valor,
+                'garantia' => $pedido->garantia,
+                'valor_declarado' => $pedido->valor_declarado,
+
+                'tipo_paquete' => $pedido->tipo_paquete,
+                'peso_paquete' => $pedido->peso_paquete,
+
+                'movil' => $pedido->cadete?->numero_movil,
+                'cargado_por' => $pedido->user?->name,
+
+                'logs' => $pedido->logs->map(fn (LogEstadoPedido $log): array => [
+                    'id' => $log->id,
+                    'estado' => $log->estado,
+                    'mensaje' => $log->mensaje,
+                    'plataforma' => $log->plataforma_origen,
+                    'cuando' => Momento::fechaYHora($log->created_at),
+                ])->all(),
+            ],
         ]);
     }
 }

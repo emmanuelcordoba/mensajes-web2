@@ -6,9 +6,11 @@ use App\Models\Concerns\LeeLoQueEscribeLaBase;
 use Database\Factories\PedidoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -64,6 +66,7 @@ use Illuminate\Support\Carbon;
  * @property-read Cliente|null $cliente
  * @property-read Cadete|null $cadete
  * @property-read User|null $user
+ * @property-read Collection<int, LogEstadoPedido> $logs
  */
 #[Fillable([
     'direccion',
@@ -199,6 +202,24 @@ class Pedido extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Su historia: cada cambio de estado, el más viejo primero.
+     *
+     * ⚠️ `logs_estados_pedidos` tiene 3.637.456 filas, así que esto no se carga
+     * nunca por omisión. El modelo viejo sí lo hacía —`$with = ['user','cadete']`
+     * sobre el log, además— y eso es justo lo que no se copia. La pantalla de un
+     * pedido lo pide explícitamente; el listado no.
+     *
+     * El orden va en la relación y no en quien la usa: un historial al revés no es
+     * una preferencia de pantalla, es un historial mal.
+     *
+     * @return HasMany<LogEstadoPedido, $this>
+     */
+    public function logs(): HasMany
+    {
+        return $this->hasMany(LogEstadoPedido::class)->oldest();
     }
 
     /**

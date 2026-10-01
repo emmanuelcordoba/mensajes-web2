@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Cliente;
+use App\Models\Rol;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +47,20 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Un usuario con ese rol. El rol se reutiliza si ya existe: `roles.rol` es UNIQUE, y
+ * dos usuarios del mismo rol comparten la fila, como en producción.
+ *
+ * Vive acá y no en un archivo de tests porque ya la necesitan dos. Una función
+ * declarada dentro de un archivo de tests es global igual, así que el segundo que la
+ * declarara reventaría por redeclaración.
+ */
+function usuarioCon(string $rol, ?Cliente $comercio = null): User
 {
-    // ..
+    $fila = Rol::query()->firstOrCreate(['rol' => $rol], ['display_rol' => ucfirst($rol)]);
+
+    return User::factory()->create([
+        'rol_id' => $fila->id,
+        'cliente_restringido_id' => $comercio?->id,
+    ]);
 }

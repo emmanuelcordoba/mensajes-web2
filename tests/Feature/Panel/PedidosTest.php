@@ -12,20 +12,6 @@ use App\Models\User;
 | tienen que coincidir.
 */
 
-/**
- * Un usuario con ese rol. El rol se reutiliza si ya existe: `roles.rol` es UNIQUE, y
- * dos usuarios del mismo rol comparten la fila, como en producción.
- */
-function usuarioCon(string $rol, ?Cliente $comercio = null): User
-{
-    $fila = Rol::query()->firstOrCreate(['rol' => $rol], ['display_rol' => ucfirst($rol)]);
-
-    return User::factory()->create([
-        'rol_id' => $fila->id,
-        'cliente_restringido_id' => $comercio?->id,
-    ]);
-}
-
 test('a user with no role gets 403, not a 500', function () {
     // Hay 20 usuarios activos sin rol_id en producción, y el middleware viejo leía una
     // propiedad de null hasta que se arregló.

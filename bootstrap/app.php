@@ -19,6 +19,17 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        /*
+        | A dónde va alguien que ya entró y vuelve a pedir /login o /register.
+        |
+        | ⚠️ Es un segundo lugar que decide lo mismo que config/fortify.php, y por eso
+        | lee de ahí en vez de repetir la ruta: Fortify manda a su `home` después de
+        | entrar, pero a quien YA está adentro lo redirige RedirectIfAuthenticated, que
+        | es de Laravel y no mira esa configuración. Sin esta línea, el que ya entró
+        | caía en /dashboard aunque el login mandara al panel.
+        */
+        $middleware->redirectUsersTo(fn () => config('fortify.home'));
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

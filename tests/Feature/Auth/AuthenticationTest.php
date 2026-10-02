@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
@@ -56,6 +57,15 @@ test('users with two factor enabled are redirected to two factor challenge', fun
     $response->assertRedirect(route('two-factor.login'));
     $response->assertSessionHas('login.id', $user->id);
     $this->assertGuest();
+});
+
+test('someone already signed in is sent to the panel, not to the dashboard', function () {
+    // ⚠️ Es otro camino y otro middleware: a quien ya entró lo redirige
+    // RedirectIfAuthenticated, que no mira config(fortify.home). Se configura en
+    // bootstrap/app.php y se comprueba acá porque es fácil arreglar uno y olvidar el otro.
+    $this->actingAs(usuarioCon(Rol::ADMIN))
+        ->get(route('login'))
+        ->assertRedirect(route('panel.inicio', absolute: false));
 });
 
 test('users can not authenticate with invalid password', function () {

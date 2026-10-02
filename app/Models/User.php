@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -76,7 +78,7 @@ use Laravel\Sanctum\HasApiTokens;
     'remember_token',
     'codigo_de_verificacion',
 ])]
-class User extends Authenticatable implements PasskeyUser
+class User extends Authenticatable implements FilamentUser, PasskeyUser
 {
     /** @use HasApiTokens<PersonalAccessToken> */
     use HasApiTokens;
@@ -207,6 +209,29 @@ class User extends Authenticatable implements PasskeyUser
         }
 
         return in_array($rol, is_array($roles) ? $roles : [$roles], true);
+    }
+
+    /**
+     * Si entra al panel de administración de Filament, el de /admin.
+     *
+     * ⚠️ ESTE MÉTODO ES LA PUERTA, y tiene que existir. Filament sólo lo consulta si el
+     * modelo implementa `FilamentUser`; si no lo implementa, su middleware deja pasar a
+     * **cualquier usuario autenticado** mientras `APP_ENV` sea `local`, y recién en otro
+     * entorno niega a todos. O sea: en desarrollo un cadete o un comercio entraba, y el
+     * día que se publique no entra nadie. Ver
+     * `vendor/filament/filament/src/Http/Middleware/Authenticate.php`.
+     *
+     * Esa es exactamente la forma de SEC-4: el acceso depende de que nadie se haya
+     * olvidado de recortarlo, en lugar de estar recortado.
+     *
+     * Sólo `admin`, que es lo más angosto que tiene sentido: /admin da de alta y baja
+     * sobre las tablas directamente, sin las reglas de negocio que aplican los
+     * controladores del panel. Un empleado hace su trabajo desde /panel. Si alguna vez
+     * hace falta abrirlo a `empleado`, se agrega acá y se agrega al test.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->tieneRol(Rol::ADMIN);
     }
 
     /**

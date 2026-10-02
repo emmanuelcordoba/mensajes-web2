@@ -75,7 +75,10 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read string $nombre_completo
- * @property-read User $user
+ * @property-read User|null $user ⚠️ Puede ser null aunque `cadetes.user_id` sea NOT
+ *                NULL: `User` usa SoftDeletes, así que si la cuenta está dada de
+ *                baja la relación no la devuelve. Decía `User` a secas y eso hacía
+ *                que cualquier `?->` sobre ella pareciera de más.
  * @property-read Collection<int, Pedido> $pedidos
  * @property-read Collection<int, ActividadCadete> $actividades
  * @property-read Collection<int, Mensaje> $mensajes

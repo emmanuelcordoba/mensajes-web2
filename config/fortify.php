@@ -73,7 +73,19 @@ return [
     |
     */
 
-    'home' => '/dashboard',
+    /*
+    | A dónde se cae después de entrar, de registrarse, de verificar el email y
+    | de restablecer la contraseña. Al panel, que es la pantalla con la que se
+    | trabaja — el sistema viejo hace lo mismo: sus cinco controladores de auth
+    | redirigen a RouteServiceProvider::PANEL.
+    |
+    | ⚠️ Quien no tenga rol de panel recibe un 403 apenas entra: una cuenta de
+    | cadete, las 20 que en producción no tienen rol_id, y también cualquier
+    | registro nuevo, porque el formulario de registro no asigna rol. El sistema
+    | viejo se comporta igual. Es una razón más para cerrar el registro antes de
+    | publicar, que ya está anotado.
+    */
+    'home' => '/panel',
 
     /*
     |--------------------------------------------------------------------------

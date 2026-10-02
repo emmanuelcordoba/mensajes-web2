@@ -19,7 +19,23 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('panel.inicio', absolute: false));
+});
+
+test('an account with no panel role lands on a 403, not on a broken page', function () {
+    // ⚠️ Es la consecuencia de caer en /panel después de entrar, y queda fijada acá para
+    // que sea una decisión y no un descubrimiento. La reciben las cuentas de cadete, las
+    // 20 que en producción no tienen rol_id, y también cualquier registro nuevo, porque
+    // el formulario de registro no asigna rol. El sistema viejo se comporta igual: sus
+    // cinco controladores de auth redirigen al panel, que exige rol.
+    $user = User::factory()->create(['rol_id' => null]);
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertRedirect(route('panel.inicio', absolute: false));
+
+    $this->get(route('panel.inicio'))->assertForbidden();
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

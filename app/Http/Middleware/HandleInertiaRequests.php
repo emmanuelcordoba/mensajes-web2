@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\Navegacion;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +43,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => self::usuario($request->user()),
             ],
+            // El menú del panel, ya recortado por rol: lo que un comercio no
+            // puede usar no viaja. Ver App\Support\Navegacion.
+            'navegacion' => Navegacion::para($request->user()),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

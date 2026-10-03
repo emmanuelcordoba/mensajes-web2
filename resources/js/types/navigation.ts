@@ -43,6 +43,13 @@ export type IconoDeMenu =
 export type EnlaceDeMenu = {
     titulo: string;
     href: string;
+    /**
+     * Si se abre en otra pestaña.
+     *
+     * Hoy lo es uno solo: la cola del mostrador, que vive en un monitor aparte y no
+     * tiene menú. Abrirla en la pestaña del panel dejaría a la oficina sin su panel.
+     */
+    nuevaPestania: boolean;
 };
 
 /** Un bloque de enlaces con su encabezado, dentro de un desplegable. */

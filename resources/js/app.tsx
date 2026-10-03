@@ -15,6 +15,11 @@ void createInertiaApp({
         switch (true) {
             case name === 'welcome':
                 return null;
+            // ⚠️ La cola del mostrador va sin menú y sin barra: se abre en otra pestaña,
+            // vive en un monitor aparte y se maneja con un teclado numérico. Es la única
+            // pantalla del panel que no es para la oficina sino para quien llega.
+            case name === 'cola/index':
+                return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
             case name.startsWith('settings/'):

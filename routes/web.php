@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Panel\CadeteController;
 use App\Http\Controllers\Panel\ClienteController;
+use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
 use App\Http\Controllers\Panel\PedidoController;
@@ -139,7 +140,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('cadetes/postulaciones/{postulacion}', [PostulacionController::class, 'show'])->name('cadetes.postulaciones.show');
                 Route::post('cadetes/postulaciones/{postulacion}/contratacion', [PostulacionController::class, 'contratar'])->name('cadetes.postulaciones.contratar');
                 Route::delete('cadetes/postulaciones/{postulacion}', [PostulacionController::class, 'destroy'])->name('cadetes.postulaciones.destroy');
-                Route::get('cadetes/cola', PendienteController::class)->name('cadetes.cola');
+                /*
+                | La cola, y el mostrador por donde se entra a ella.
+                |
+                | ⚠️ El POST lleva `throttle` porque es un formulario que prueba
+                | contraseñas. El sistema viejo no tenía ninguno, y muchas de esas
+                | contraseñas son PIN de 3 a 8 dígitos —así las pedía el panel viejo—, o
+                | sea que probarlas todas era cuestión de dejarlo corriendo. Veinte por
+                | minuto es de sobra para un mostrador: una persona tarda diez segundos.
+                */
+                Route::get('cadetes/cola', [ColaController::class, 'index'])->name('cadetes.cola');
+                Route::post('cadetes/cola', [ColaController::class, 'agregar'])
+                    ->middleware('throttle:20,1')
+                    ->name('cadetes.cola.agregar');
                 Route::get('cadetes/cobranzas/semanal', PendienteController::class)->name('cadetes.cobranzas.semanal.index');
                 Route::get('cadetes/cobranzas/saldo', PendienteController::class)->name('cadetes.cobranzas.saldo.index');
                 Route::get('cadetes', [CadeteController::class, 'index'])->name('cadetes.index');

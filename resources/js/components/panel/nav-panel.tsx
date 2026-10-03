@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
+import type { ComponentProps } from 'react';
 import { Fragment, useEffect, useState } from 'react';
 
 import { ICONOS } from '@/components/panel/iconos';
@@ -28,7 +29,7 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
-import type { ItemDeMenu } from '@/types';
+import type { EnlaceDeMenu, ItemDeMenu } from '@/types';
 
 /*
 | El menú lateral del panel.
@@ -178,9 +179,7 @@ function Desplegable({ item }: { item: Agrupada }) {
                                 </DropdownMenuLabel>
                                 {seccion.enlaces.map((enlace) => (
                                     <DropdownMenuItem key={enlace.href} asChild>
-                                        <Link href={enlace.href} prefetch>
-                                            {enlace.titulo}
-                                        </Link>
+                                        <EnlaceDelMenu enlace={enlace} />
                                     </DropdownMenuItem>
                                 ))}
                             </Fragment>
@@ -221,19 +220,12 @@ function Desplegable({ item }: { item: Agrupada }) {
                                     <SidebarMenuSubItem key={enlace.href}>
                                         <SidebarMenuSubButton
                                             asChild
-                                            isActive={isCurrentUrl(enlace.href)}
+                                            isActive={
+                                                !enlace.nuevaPestania &&
+                                                isCurrentUrl(enlace.href)
+                                            }
                                         >
-                                            {/* `title` porque la barra es angosta y
-                                                «Horario de Atención APP» no entra: se
-                                                corta con puntos suspensivos, y así al
-                                                menos se puede leer entero. */}
-                                            <Link
-                                                href={enlace.href}
-                                                title={enlace.titulo}
-                                                prefetch
-                                            >
-                                                <span>{enlace.titulo}</span>
-                                            </Link>
+                                            <EnlaceDelMenu enlace={enlace} />
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
                                 ))}
@@ -243,5 +235,49 @@ function Desplegable({ item }: { item: Agrupada }) {
                 </CollapsibleContent>
             </SidebarMenuItem>
         </Collapsible>
+    );
+}
+
+/**
+ * Un enlace del menú.
+ *
+ * ⚠️ El que abre en otra pestaña NO es un `Link` de Inertia sino un ancla de toda la
+ * vida: Inertia intercepta el clic para hacer una visita sin recargar, que es
+ * exactamente lo que no queremos acá. Hoy el único así es la cola del mostrador, que
+ * vive en un monitor aparte y no tiene menú.
+ *
+ * `title` porque la barra es angosta y «Horario de Atención APP» no entra: se corta con
+ * puntos suspensivos, y así al menos se puede leer entero.
+ */
+function EnlaceDelMenu({
+    enlace,
+    ...props
+}: { enlace: EnlaceDeMenu } & ComponentProps<'a'>) {
+    if (enlace.nuevaPestania) {
+        return (
+            <a
+                {...props}
+                href={enlace.href}
+                title={enlace.titulo}
+                target="_blank"
+                rel="noreferrer"
+            >
+                <span>{enlace.titulo}</span>
+            </a>
+        );
+    }
+
+    // El `as` es por el `onClick`: el de un ancla está tipado sobre HTMLAnchorElement y
+    // el de `Link` sobre Element, y TypeScript no los da por compatibles. Lo que llega
+    // acá son los props que el `asChild` de Radix le pasa a su hijo, que es un ancla.
+    return (
+        <Link
+            {...(props as ComponentProps<typeof Link>)}
+            href={enlace.href}
+            title={enlace.titulo}
+            prefetch
+        >
+            <span>{enlace.titulo}</span>
+        </Link>
     );
 }

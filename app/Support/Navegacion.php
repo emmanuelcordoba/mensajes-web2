@@ -37,11 +37,11 @@ use App\Models\User;
  *   2, en inglés, nunca se conectaron—. Acá ese lugar existe de verdad y es
  *   `/settings`, que ya lo pone el menú de usuario.
  *
- * @phpstan-type Enlace array{titulo: string, ruta: string}
+ * @phpstan-type Enlace array{titulo: string, ruta: string, nuevaPestania?: bool}
  * @phpstan-type Seccion array{titulo: string, enlaces: list<Enlace>}
  * @phpstan-type Item array{tipo: 'enlace', titulo: string, icono: string, roles: list<string>, ruta: string}|array{tipo: 'desplegable', titulo: string, icono: string, roles: list<string>, secciones: list<Seccion>}
  * @phpstan-type Grupo array{titulo: string|null, items: list<Item>}
- * @phpstan-type EnlaceVisible array{titulo: string, href: string}
+ * @phpstan-type EnlaceVisible array{titulo: string, href: string, nuevaPestania: bool}
  * @phpstan-type SeccionVisible array{titulo: string, enlaces: list<EnlaceVisible>}
  * @phpstan-type ItemVisible array{tipo: 'enlace', titulo: string, icono: string, href: string}|array{tipo: 'desplegable', titulo: string, icono: string, secciones: list<SeccionVisible>}
  * @phpstan-type GrupoVisible array{titulo: string|null, items: list<ItemVisible>}
@@ -103,7 +103,11 @@ class Navegacion
                                 ['titulo' => 'Nuevo cadete', 'ruta' => 'panel.cadetes.create'],
                                 ['titulo' => 'Cadetes', 'ruta' => 'panel.cadetes.index'],
                                 ['titulo' => 'Postulaciones', 'ruta' => 'panel.cadetes.postulaciones.index'],
-                                ['titulo' => 'Agregar cadete a cola', 'ruta' => 'panel.cadetes.cola'],
+                                // ⚠️ En otra pestaña, y es lo que la pantalla necesita: vive
+                                // en un monitor aparte del mostrador, sin menú y manejada
+                                // con un teclado numérico. Abrirla acá dejaría a la
+                                // oficina sin su panel.
+                                ['titulo' => 'Agregar cadete a cola', 'ruta' => 'panel.cadetes.cola', 'nuevaPestania' => true],
                             ]],
                             ['titulo' => 'Cobranzas', 'enlaces' => [
                                 ['titulo' => 'Semanal', 'ruta' => 'panel.cadetes.cobranzas.semanal.index'],
@@ -225,6 +229,9 @@ class Navegacion
             'enlaces' => array_map(fn (array $enlace): array => [
                 'titulo' => $enlace['titulo'],
                 'href' => self::href($enlace['ruta']),
+                // Siempre viaja, aunque sea false: un campo ausente es una lectura que
+                // falla en el frontend, no un enlace que se abre acá.
+                'nuevaPestania' => $enlace['nuevaPestania'] ?? false,
             ], $seccion['enlaces']),
         ], $secciones);
     }

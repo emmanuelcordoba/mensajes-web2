@@ -147,6 +147,41 @@ test('the menu sends only what the frontend reads', function () {
         ->and(array_keys($menu[1]['items'][0]))->toBe(['tipo', 'titulo', 'icono', 'secciones']);
 });
 
+test('the counter queue is the only link that opens in another tab', function () {
+    // ⚠️ Esa pantalla vive en un monitor aparte del mostrador, sin menú y manejada con un
+    // teclado numérico. Abrirla en la pestaña del panel dejaría a la oficina sin su panel.
+    //
+    // El campo viaja en TODOS los enlaces, aunque sea false: un campo ausente es una
+    // lectura que falla en el frontend, no un enlace que se abre acá.
+    $menu = Navegacion::para(usuarioCon(Rol::ADMIN));
+
+    $enOtraPestania = [];
+    $total = 0;
+
+    foreach ($menu as $grupo) {
+        foreach ($grupo['items'] as $item) {
+            if ($item['tipo'] !== 'desplegable') {
+                continue;
+            }
+
+            foreach ($item['secciones'] as $seccion) {
+                foreach ($seccion['enlaces'] as $enlace) {
+                    $total++;
+
+                    expect($enlace)->toHaveKey('nuevaPestania');
+
+                    if ($enlace['nuevaPestania']) {
+                        $enOtraPestania[] = $enlace['href'];
+                    }
+                }
+            }
+        }
+    }
+
+    expect($total)->toBeGreaterThan(5)
+        ->and($enOtraPestania)->toBe(['/panel/cadetes/cola']);
+});
+
 test('a screen that is not built yet says its own name', function () {
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
         ->get('/panel/cadetes/cobranzas/saldo')

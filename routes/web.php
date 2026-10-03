@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Panel\ClienteController;
 use App\Http\Controllers\Panel\ConfiguracionController;
+use App\Http\Controllers\Panel\HorarioAtencionController;
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
+use App\Http\Controllers\Panel\PublicidadAppController;
 use App\Http\Controllers\Panel\UserController;
 use App\Models\Rol;
 use Illuminate\Support\Facades\Route;
@@ -81,8 +83,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('clientes/{cliente}/edit', [ClienteController::class, 'edit'])->name('clientes.edit');
                 Route::patch('clientes/{cliente}', [ClienteController::class, 'update'])->name('clientes.update');
                 Route::delete('clientes/{cliente}', [ClienteController::class, 'destroy'])->name('clientes.destroy');
-                Route::get('publicidad-app', PendienteController::class)->name('publicidad-app.index');
-                Route::get('horario-de-atencion', PendienteController::class)->name('horario-de-atencion.index');
+                /*
+                | El carrusel de la app. Borrar suma `rol:admin` por la política, como en
+                | el sistema viejo, donde `ajax.publicidadapp.destroy` llevaba ese
+                | middleware junto con el borrado de usuarios.
+                |
+                | ⚠️ `create` antes de `{publicidadApp}`, o el parámetro la captura.
+                */
+                Route::get('publicidad-app/create', [PublicidadAppController::class, 'create'])->name('publicidad-app.create');
+                Route::get('publicidad-app', [PublicidadAppController::class, 'index'])->name('publicidad-app.index');
+                Route::post('publicidad-app', [PublicidadAppController::class, 'store'])->name('publicidad-app.store');
+                Route::get('publicidad-app/{publicidadApp}/edit', [PublicidadAppController::class, 'edit'])->name('publicidad-app.edit');
+                Route::patch('publicidad-app/{publicidadApp}', [PublicidadAppController::class, 'update'])->name('publicidad-app.update');
+                Route::patch('publicidad-app/{publicidadApp}/visibilidad', [PublicidadAppController::class, 'cambiarVisibilidad'])->name('publicidad-app.visibilidad');
+                Route::delete('publicidad-app/{publicidadApp}', [PublicidadAppController::class, 'destroy'])->name('publicidad-app.destroy');
+
+                /*
+                | El horario de atención es UNA fila: no hay listado ni alta, sólo la
+                | pantalla y su guardado. Ver HorarioAtencionController.
+                */
+                Route::get('horario-de-atencion', [HorarioAtencionController::class, 'edit'])->name('horario-de-atencion.index');
+                Route::patch('horario-de-atencion', [HorarioAtencionController::class, 'update'])->name('horario-de-atencion.update');
 
                 Route::get('cadetes/create', PendienteController::class)->name('cadetes.create');
                 Route::get('cadetes/postulaciones', PendienteController::class)->name('cadetes.postulaciones.index');

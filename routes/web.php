@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
+use App\Http\Controllers\Panel\UserController;
 use App\Models\Rol;
 use Illuminate\Support\Facades\Route;
 
@@ -75,8 +76,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('cadetes/cobranzas/saldo', PendienteController::class)->name('cadetes.cobranzas.saldo.index');
                 Route::get('cadetes', PendienteController::class)->name('cadetes.index');
 
-                Route::get('users/create', PendienteController::class)->name('users.create');
-                Route::get('users', PendienteController::class)->name('users.index');
+                /*
+                | Las cuentas del panel.
+                |
+                | ⚠️ `users/create` y `users/comercios` van antes de `users/{user}`, o el
+                | parámetro las captura. Quién puede qué lo decide UserPolicy: el grupo
+                | deja entrar a empleado y admin, y de ahí para adentro la cuenta de un
+                | administrador sólo la toca otro administrador (SEC-9).
+                */
+                Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+                Route::get('users/comercios', [UserController::class, 'comercios'])->name('users.comercios');
+                Route::get('users', [UserController::class, 'index'])->name('users.index');
+                Route::post('users', [UserController::class, 'store'])->name('users.store');
+                Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+                Route::patch('users/{user}', [UserController::class, 'update'])->name('users.update');
+                Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
                 Route::get('configuraciones', PendienteController::class)->name('configuraciones.index');
                 Route::get('mapa', PendienteController::class)->name('mapa');

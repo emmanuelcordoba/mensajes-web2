@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Panel\ClienteController;
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
 use App\Http\Controllers\Panel\UserController;
@@ -64,8 +65,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 // ⚠️ `create` antes de cualquier `{cliente}` que se agregue después, o
                 // lo captura. Vale para los cuatro recursos de acá abajo.
-                Route::get('clientes/create', PendienteController::class)->name('clientes.create');
-                Route::get('clientes', PendienteController::class)->name('clientes.index');
+                /*
+                | Los clientes.
+                |
+                | ⚠️ `clientes/create` antes de `clientes/{cliente}`, o el parámetro la
+                | captura. La baja suma `rol:admin` sobre el grupo, como en el sistema
+                | viejo: se lleva los pedidos del cliente y su cuenta de la app, y eso no
+                | queda al alcance de cualquier rol. Lo decide ClientePolicy, que además
+                | dice POR QUÉ no cuando el cliente está asignado a una cuenta de panel.
+                */
+                Route::get('clientes/create', [ClienteController::class, 'create'])->name('clientes.create');
+                Route::get('clientes', [ClienteController::class, 'index'])->name('clientes.index');
+                Route::post('clientes', [ClienteController::class, 'store'])->name('clientes.store');
+                Route::get('clientes/{cliente}/edit', [ClienteController::class, 'edit'])->name('clientes.edit');
+                Route::patch('clientes/{cliente}', [ClienteController::class, 'update'])->name('clientes.update');
+                Route::delete('clientes/{cliente}', [ClienteController::class, 'destroy'])->name('clientes.destroy');
                 Route::get('publicidad-app', PendienteController::class)->name('publicidad-app.index');
                 Route::get('horario-de-atencion', PendienteController::class)->name('horario-de-atencion.index');
 

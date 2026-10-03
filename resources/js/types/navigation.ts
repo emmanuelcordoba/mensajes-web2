@@ -65,3 +65,16 @@ export type GrupoDeMenu = {
     titulo: string | null;
     items: ItemDeMenu[];
 };
+
+/**
+ * El tiempo de demora que la barra de arriba deja cambiar.
+ *
+ * Llega en null para quien no puede cambiarlo —un comercio—, y entonces el selector no se
+ * dibuja. Ver HandleInertiaRequests::tiempoDeDemora().
+ */
+export type TiempoDeDemora = {
+    id: number;
+    /** null es «sin indicar», que es un estado válido. */
+    valor: string | null;
+    opciones: string[];
+};

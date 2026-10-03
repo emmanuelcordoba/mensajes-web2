@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Panel\ClienteController;
+use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
 use App\Http\Controllers\Panel\UserController;
@@ -106,7 +107,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::patch('users/{user}', [UserController::class, 'update'])->name('users.update');
                 Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
-                Route::get('configuraciones', PendienteController::class)->name('configuraciones.index');
+                /*
+                | Los parámetros del negocio. Se leen al cotizar un pedido y al cobrarle
+                | al cadete, así que el validador exige lo mismo que el CHECK de la
+                | columna: ver GuardarConfiguracionRequest.
+                |
+                | El `update` lo usa también el selector de demora de la barra de arriba,
+                | que es otra fila de la misma tabla.
+                */
+                Route::get('configuraciones', [ConfiguracionController::class, 'index'])->name('configuraciones.index');
+                Route::patch('configuraciones/{configuracion}', [ConfiguracionController::class, 'update'])->name('configuraciones.update');
                 Route::get('mapa', PendienteController::class)->name('mapa');
                 Route::get('estadisticas', PendienteController::class)->name('estadisticas.index');
             });

@@ -1,5 +1,5 @@
 import type { Auth } from '@/types/auth';
-import type { GrupoDeMenu } from '@/types/navigation';
+import type { GrupoDeMenu, TiempoDeDemora } from '@/types/navigation';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -13,6 +13,7 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             navegacion: GrupoDeMenu[];
+            tiempoDeDemora: TiempoDeDemora | null;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

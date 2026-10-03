@@ -3,9 +3,9 @@
 namespace App\Http\Requests\Panel;
 
 use App\Models\Cadete;
+use App\Support\PinDeCadete;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 /**
  * Lo que el panel acepta al crear o editar un cadete.
@@ -110,16 +110,15 @@ class GuardarCadeteRequest extends FormRequest
                 ]
                 : ['prohibited'],
 
-            // ⚠️ El panel viejo pedía un PIN numérico de 3 a 8 dígitos. Acá se pide una
-            // contraseña como la de cualquier cuenta: es la misma tabla `users` y el mismo
-            // login. Si la app necesita un PIN, eso es un mecanismo aparte y no una
-            // contraseña más corta para todos.
+            // ⚠️ Un PIN numérico, y no una contraseña como la de cualquier cuenta,
+            // porque el cadete la escribe en el mostrador con un teclado numérico. Ver
+            // App\Support\PinDeCadete, que es donde está la razón entera y el rango.
             //
             // Al editar, en blanco significa «no la toques», igual que en cuentas: sin eso,
             // corregir un teléfono le cambiaría la contraseña a la persona.
             'password' => match (true) {
-                $editando === null => ['required', 'string', Password::default(), 'confirmed'],
-                $conCuenta => ['nullable', 'string', Password::default(), 'confirmed'],
+                $editando === null => ['required', ...PinDeCadete::reglas(), 'confirmed'],
+                $conCuenta => ['nullable', ...PinDeCadete::reglas(), 'confirmed'],
                 default => ['prohibited'],
             },
         ];
@@ -139,6 +138,7 @@ class GuardarCadeteRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'password.digits_between' => PinDeCadete::mensaje(),
             'dni.regex' => 'El DNI tiene que tener 7 u 8 dígitos, sin puntos ni espacios.',
             'dni.unique' => 'Ese DNI ya lo tiene otro cadete, aunque esté dado de baja.',
             'numero_movil.unique' => 'Ese número de móvil ya lo tiene otro cadete, aunque esté dado de baja.',

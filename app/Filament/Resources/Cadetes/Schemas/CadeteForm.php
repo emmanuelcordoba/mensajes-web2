@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Cadetes\Schemas;
 
 use App\Models\Cadete;
+use App\Support\PinDeCadete;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -11,7 +12,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Illuminate\Validation\Rules\Password;
 
 /**
  * El formulario de un cadete.
@@ -165,14 +165,13 @@ class CadeteForm
                             ->password()
                             ->revealable()
                             ->required()
-                            ->rule(Password::default())
+                            // ⚠️ Un PIN numérico, y no una contraseña como la de cualquier
+                            // cuenta, porque el cadete la escribe en el mostrador con un
+                            // teclado numérico. Ver App\Support\PinDeCadete.
+                            ->rules(PinDeCadete::reglas())
+                            ->validationMessages(['digits_between' => PinDeCadete::mensaje()])
                             ->visibleOn('create')
-                            // ⚠️ El panel viejo pedía un PIN numérico de 3 a 8 dígitos.
-                            // Acá se pide una contraseña como la de cualquier cuenta: es
-                            // la misma tabla `users` y el mismo login. Si la app necesita
-                            // un PIN, eso es un mecanismo aparte y no una contraseña más
-                            // corta para todos.
-                            ->helperText('La misma exigencia que para cualquier cuenta.'),
+                            ->helperText('Un PIN de '.PinDeCadete::MINIMO.' a '.PinDeCadete::MAXIMO.' dígitos.'),
                     ])
                     ->visibleOn('create')
                     ->description('Se crea junto con el cadete. Para cambiarla después, se edita la cuenta desde Usuarios.'),

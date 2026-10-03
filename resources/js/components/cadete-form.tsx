@@ -273,14 +273,20 @@ export default function CadeteForm({
                                         id="password"
                                         name="password"
                                         type="password"
+                                        inputMode="numeric"
                                         required={cadete === undefined}
                                         autoComplete="new-password"
                                     />
-                                    {cadete !== undefined && (
-                                        <p className="text-muted-foreground text-xs">
-                                            Dejala en blanco para no cambiarla.
-                                        </p>
-                                    )}
+                                    {/* ⚠️ Es un PIN numérico y no una contraseña como la
+                                        de cualquier cuenta, porque el cadete la escribe
+                                        en el mostrador con un teclado numérico. Ver
+                                        App\Support\PinDeCadete. */}
+                                    <p className="text-muted-foreground text-xs">
+                                        Un PIN de 3 a 8 dígitos
+                                        {cadete !== undefined &&
+                                            '. Dejalo en blanco para no cambiarlo'}
+                                        .
+                                    </p>
                                     <InputError message={errors.password} />
                                 </div>
 
@@ -292,6 +298,7 @@ export default function CadeteForm({
                                         id="password_confirmation"
                                         name="password_confirmation"
                                         type="password"
+                                        inputMode="numeric"
                                         required={cadete === undefined}
                                         autoComplete="new-password"
                                     />

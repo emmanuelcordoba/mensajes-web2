@@ -51,7 +51,7 @@ test('creating a cadete creates the account it needs to enter the app', function
             'tipo_vehiculo' => Cadete::VEHICULO_MOTOCICLETA,
             'modalidad_cobranza' => Cadete::COBRANZA_SEMANAL,
             'email' => 'Rodrigo@Mensajes.Test',
-            'password' => 'una-contrasena-larga',
+            'password' => '4821',
         ])
         ->call('create')
         ->assertHasNoFormErrors();
@@ -85,7 +85,7 @@ test('the role of the new account does not come from the form', function () {
             'tipo_vehiculo' => Cadete::VEHICULO_BICICLETA,
             'modalidad_cobranza' => Cadete::COBRANZA_SEMANAL,
             'email' => 'intruso@mensajes.test',
-            'password' => 'una-contrasena-larga',
+            'password' => '4821',
             'rol_id' => $admin,
         ])
         ->call('create');
@@ -110,7 +110,7 @@ test('a mobile number taken by a cadete that was given up stays taken', function
             'tipo_vehiculo' => Cadete::VEHICULO_BICICLETA,
             'modalidad_cobranza' => Cadete::COBRANZA_SEMANAL,
             'email' => 'otro@mensajes.test',
-            'password' => 'una-contrasena-larga',
+            'password' => '4821',
         ])
         ->call('create')
         ->assertHasFormErrors(['numero_movil']);

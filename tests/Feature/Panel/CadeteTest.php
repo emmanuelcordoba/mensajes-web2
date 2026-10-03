@@ -57,8 +57,8 @@ function datosDeCadete(array $cambios = []): array
         'numero_movil' => 777,
         'tipo_vehiculo' => Cadete::VEHICULO_MOTOCICLETA,
         'email' => 'juan.perez@example.com',
-        'password' => 'una-contrasena-larga',
-        'password_confirmation' => 'una-contrasena-larga',
+        'password' => '4821',
+        'password_confirmation' => '4821',
         'observaciones' => 'Entra los martes.',
     ], $cambios);
 }
@@ -253,15 +253,15 @@ test('a new password is stored hashed', function () {
         ->patch("/panel/cadetes/{$cadete->id}", datosDeCadete([
             'numero_movil' => $cadete->numero_movil,
             'email' => $cadete->user?->email,
-            'password' => 'otra-contrasena-larga',
-            'password_confirmation' => 'otra-contrasena-larga',
+            'password' => '95130',
+            'password_confirmation' => '95130',
         ]))
         ->assertSessionHasNoErrors();
 
     $guardada = (string) $cadete->user?->fresh()?->password;
 
-    expect($guardada)->not->toBe('otra-contrasena-larga')
-        ->and(Hash::check('otra-contrasena-larga', $guardada))->toBeTrue();
+    expect($guardada)->not->toBe('95130')
+        ->and(Hash::check('95130', $guardada))->toBeTrue();
 });
 
 test('an email already taken by another account is rejected', function () {
@@ -521,3 +521,42 @@ test('the edit screen does not send the password of the account', function () {
             expect(array_keys($props))->not->toContain('password', 'fcm_token', 'monto_deuda');
         });
 });
+
+test('the password of a cadete is a numeric pin, because the counter is a numpad', function (string $password) {
+    // ⚠️ La pantalla de la cola vive en un monitor al lado del mostrador y se maneja con
+    // un teclado numérico: ahí el cadete escribe su móvil y su contraseña. Con un teclado
+    // así no hay forma de escribir una letra, así que una contraseña con letras es una
+    // cuenta que no puede ponerse en la cola. Ver App\Support\PinDeCadete.
+    elRolDeCadete();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->post('/panel/cadetes', datosDeCadete([
+            'password' => $password,
+            'password_confirmation' => $password,
+        ]))
+        ->assertSessionHasErrors('password');
+
+    expect(Cadete::query()->count())->toBe(0);
+})->with([
+    'con letras' => 'una-contrasena-larga',
+    'demasiado corta' => '12',
+    'demasiado larga' => '123456789',
+    'con un signo' => '+1234',
+]);
+
+test('a pin inside the range gets in', function (string $password) {
+    elRolDeCadete();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->post('/panel/cadetes', datosDeCadete([
+            'password' => $password,
+            'password_confirmation' => $password,
+        ]))
+        ->assertSessionHasNoErrors();
+
+    expect(Cadete::query()->count())->toBe(1);
+})->with([
+    'el mínimo' => '123',
+    'el máximo' => '12345678',
+    'con un cero adelante' => '0123',
+]);

@@ -7,6 +7,7 @@ use App\Models\Rol;
 use App\Models\User;
 use App\Services\DocumentosDePostulacion;
 use App\Services\ImagenesDeLaApp;
+use App\Support\PinDeCadete;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -252,7 +253,11 @@ test('hiring creates the cadete with its account, and leaves the application poi
         ])
         ->assertRedirect('/panel/cadetes/postulaciones')
         // La contraseña se muestra una sola vez, y es lo único que vuelve de ella.
-        ->assertSessionHas('success', fn (string $mensaje): bool => str_contains($mensaje, 'no se vuelve a mostrar'));
+        //
+        // ⚠️ Y es un PIN numérico de seis dígitos, no una contraseña cualquiera: el cadete
+        // la escribe en el mostrador con un teclado numérico. Ver App\Support\PinDeCadete.
+        ->assertSessionHas('success', fn (string $mensaje): bool => str_contains($mensaje, 'no se vuelve a mostrar')
+            && preg_match('/Contraseña de ingreso: [0-9]{'.PinDeCadete::DIGITOS_GENERADOS.'} /', $mensaje) === 1);
 
     $cadete = Cadete::query()->where('numero_movil', 310)->sole();
 

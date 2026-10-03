@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\Cadete;
 use App\Models\Postulacion;
 use App\Models\User;
+use App\Support\PinDeCadete;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -81,11 +81,9 @@ class ContratacionDePostulacion
      * Contrata, y devuelve la contraseña que hay que pasarle a la persona.
      *
      * ⚠️ La contraseña se muestra UNA vez y no se vuelve a ver: lo que queda guardado es
-     * su hash. Es lo mismo que hacía el panel viejo, salvo que allá era un PIN de seis
-     * dígitos —`random_int(100000, 999999)`— y acá son doce caracteres, la misma exigencia
-     * que para cualquier otra cuenta del sistema. Es la misma tabla `users` y el mismo
-     * login; si la app necesita un PIN, eso es un mecanismo aparte y no una contraseña más
-     * corta para todos.
+     * su hash. Es un PIN de seis dígitos, igual que en el panel viejo, y es numérico
+     * porque el cadete lo escribe en el mostrador con un teclado numérico: ver
+     * `App\Support\PinDeCadete`.
      *
      * ⚠️ Acá NO se mueve ningún archivo. El panel viejo, al contratar, decodificaba el
      * base64 de los tres documentos y recién entonces los escribía a disco. Ya son
@@ -100,7 +98,7 @@ class ContratacionDePostulacion
             throw new RuntimeException($motivo);
         }
 
-        $password = Str::password(12, symbols: false);
+        $password = PinDeCadete::generar();
 
         DB::transaction(function () use ($postulacion, $numeroMovil, $password): void {
             $cadete = (new AltaDeCadete)->alta([

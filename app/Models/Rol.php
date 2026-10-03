@@ -48,6 +48,29 @@ class Rol extends Model
 
     public const RESTRINGIDO = 'restringido';
 
+    public const CADETE = 'cadete';
+
+    public const CLIENTE_APP = 'cliente_app';
+
+    public const CLIENTE_API = 'cliente_api';
+
+    /**
+     * Los roles que usan el panel o la API; los otros dos son de las aplicaciones.
+     *
+     * ⚠️ Vive acá porque la preguntan tres pantallas —el listado de usuarios de /panel, el
+     * de /admin y el menú lateral— y una lista repetida es una lista que se desincroniza.
+     * Es el mismo recorte que hacía el listado viejo, que mostraba sólo estos cuatro de
+     * los seis roles.
+     *
+     * @var list<string>
+     */
+    public const DEL_PANEL = [
+        self::ADMIN,
+        self::EMPLEADO,
+        self::RESTRINGIDO,
+        self::CLIENTE_API,
+    ];
+
     /** @return HasMany<User, $this> */
     public function users(): HasMany
     {

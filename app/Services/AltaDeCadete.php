@@ -29,7 +29,7 @@ class AltaDeCadete
      */
     public function alta(array $datos): Cadete
     {
-        $rol = Rol::query()->where('rol', 'cadete')->first();
+        $rol = Rol::query()->where('rol', Rol::CADETE)->first();
 
         if ($rol === null) {
             throw new RuntimeException('No existe el rol de cadete: sin él la cuenta no podría entrar a la app.');

@@ -30,9 +30,6 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class UsersTable
 {
-    /** Los roles que usan el panel o la API; los otros dos son de las aplicaciones. */
-    protected const DEL_PANEL = [Rol::ADMIN, Rol::EMPLEADO, Rol::RESTRINGIDO, 'cliente_api'];
-
     public static function configure(Table $table): Table
     {
         return $table
@@ -89,7 +86,7 @@ class UsersTable
                     ->default()
                     ->query(fn (Builder $query): Builder => $query->whereHas(
                         'rol',
-                        fn (Builder $rol): Builder => $rol->whereIn('rol', self::DEL_PANEL),
+                        fn (Builder $rol): Builder => $rol->whereIn('rol', Rol::DEL_PANEL),
                     )),
 
                 SelectFilter::make('rol_id')

@@ -58,6 +58,17 @@ class Momento
      * cargado y devuelve «hace 40 minutos» o «40 minutes ago» según cómo esté el
      * proceso. Son cuatro casos y así dicen siempre lo mismo.
      */
+    /**
+     * Sólo la fecha, sin hora.
+     *
+     * Para una fecha de nacimiento, que es un día y no un instante: mostrarla con
+     * hora invita a preguntarse de qué zona es esa medianoche.
+     */
+    public static function fecha(?CarbonInterface $momento): ?string
+    {
+        return $momento?->copy()->setTimezone(config('app.timezone'))->format('d/m/Y');
+    }
+
     public static function hace(?CarbonInterface $momento): ?string
     {
         if ($momento === null) {

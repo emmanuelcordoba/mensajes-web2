@@ -82,6 +82,27 @@ class Postulacion extends Model
     /** @use HasFactory<PostulacionFactory> */
     use HasFactory, SoftDeletes;
 
+    public const SI = 'S';
+
+    public const NO = 'N';
+
+    /**
+     * El cuestionario, con la pregunta tal como se le hizo a quien se postuló.
+     *
+     * ⚠️ El panel viejo las guardaba y después **no las mostraba en ningún lado**: la
+     * pantalla donde se decide contratar no tenía las respuestas. Están acá y no en la
+     * vista porque son las cuatro columnas, y el orden es el del formulario.
+     *
+     * Las dos únicas respuestas son 'S' y 'N' —confirmado contra las 725 filas del
+     * origen—, aunque las columnas son nullable.
+     */
+    public const PREGUNTAS = [
+        'pregunta_experiencia_app' => '¿Trabajó alguna vez con alguna app?',
+        'pregunta_tiene_celular' => '¿Tiene teléfono celular?',
+        'pregunta_equipo_en_condiciones' => '¿Su equipo está en condiciones?',
+        'pregunta_tiene_datos' => '¿Siempre tiene datos?',
+    ];
+
     protected $table = 'postulaciones';
 
     /**

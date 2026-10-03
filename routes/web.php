@@ -6,6 +6,7 @@ use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
+use App\Http\Controllers\Panel\PostulacionController;
 use App\Http\Controllers\Panel\PublicidadAppController;
 use App\Http\Controllers\Panel\UserController;
 use App\Models\Rol;
@@ -120,7 +121,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 | además dice POR QUÉ no cuando la cobranza está abierta.
                 */
                 Route::get('cadetes/create', [CadeteController::class, 'create'])->name('cadetes.create');
-                Route::get('cadetes/postulaciones', PendienteController::class)->name('cadetes.postulaciones.index');
+                /*
+                | Las postulaciones.
+                |
+                | ⚠️ `postulaciones/create` antes de `postulaciones/{postulacion}`, o el
+                | parámetro la captura. Las tres rutas del legajo van antes que las del
+                | cadete por legibilidad, no por precedencia: tienen tres segmentos y no
+                | chocan con `cadetes/{cadete}`.
+                |
+                | Contratar es POST y no PATCH porque crea dos filas nuevas —el cadete y su
+                | cuenta—, y vive en su propio sub-recurso: el viejo mandaba las dos
+                | decisiones a un PUT y las separaba leyendo el `name` del botón apretado.
+                */
+                Route::get('cadetes/postulaciones/create', [PostulacionController::class, 'create'])->name('cadetes.postulaciones.create');
+                Route::get('cadetes/postulaciones', [PostulacionController::class, 'index'])->name('cadetes.postulaciones.index');
+                Route::post('cadetes/postulaciones', [PostulacionController::class, 'store'])->name('cadetes.postulaciones.store');
+                Route::get('cadetes/postulaciones/{postulacion}', [PostulacionController::class, 'show'])->name('cadetes.postulaciones.show');
+                Route::post('cadetes/postulaciones/{postulacion}/contratacion', [PostulacionController::class, 'contratar'])->name('cadetes.postulaciones.contratar');
+                Route::delete('cadetes/postulaciones/{postulacion}', [PostulacionController::class, 'destroy'])->name('cadetes.postulaciones.destroy');
                 Route::get('cadetes/cola', PendienteController::class)->name('cadetes.cola');
                 Route::get('cadetes/cobranzas/semanal', PendienteController::class)->name('cadetes.cobranzas.semanal.index');
                 Route::get('cadetes/cobranzas/saldo', PendienteController::class)->name('cadetes.cobranzas.saldo.index');

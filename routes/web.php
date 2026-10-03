@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Panel\CadeteController;
 use App\Http\Controllers\Panel\ClienteController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
@@ -105,12 +106,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('horario-de-atencion', [HorarioAtencionController::class, 'edit'])->name('horario-de-atencion.index');
                 Route::patch('horario-de-atencion', [HorarioAtencionController::class, 'update'])->name('horario-de-atencion.update');
 
-                Route::get('cadetes/create', PendienteController::class)->name('cadetes.create');
+                /*
+                | Los cadetes.
+                |
+                | ⚠️ Todo lo que empieza con un segmento literal va ANTES de
+                | `cadetes/{cadete}`, o el parámetro lo captura: valen las seis primeras,
+                | incluidas las cuatro pantallas que todavía no están.
+                |
+                | Las tres últimas no son CRUD y son del listado: ponerlo en la cola o
+                | sacarlo, y bloquearlo. El bloqueo se escribe en `users`, así que PATCH y
+                | DELETE sobre el mismo recurso —`cadetes/{cadete}/bloqueo`— son poner y
+                | quitar el motivo. La baja suma `rol:admin` por la política, y CadetePolicy
+                | además dice POR QUÉ no cuando la cobranza está abierta.
+                */
+                Route::get('cadetes/create', [CadeteController::class, 'create'])->name('cadetes.create');
                 Route::get('cadetes/postulaciones', PendienteController::class)->name('cadetes.postulaciones.index');
                 Route::get('cadetes/cola', PendienteController::class)->name('cadetes.cola');
                 Route::get('cadetes/cobranzas/semanal', PendienteController::class)->name('cadetes.cobranzas.semanal.index');
                 Route::get('cadetes/cobranzas/saldo', PendienteController::class)->name('cadetes.cobranzas.saldo.index');
-                Route::get('cadetes', PendienteController::class)->name('cadetes.index');
+                Route::get('cadetes', [CadeteController::class, 'index'])->name('cadetes.index');
+                Route::post('cadetes', [CadeteController::class, 'store'])->name('cadetes.store');
+                Route::get('cadetes/{cadete}/edit', [CadeteController::class, 'edit'])->name('cadetes.edit');
+                Route::patch('cadetes/{cadete}', [CadeteController::class, 'update'])->name('cadetes.update');
+                Route::delete('cadetes/{cadete}', [CadeteController::class, 'destroy'])->name('cadetes.destroy');
+                Route::patch('cadetes/{cadete}/estado', [CadeteController::class, 'cambiarEstado'])->name('cadetes.estado');
+                Route::patch('cadetes/{cadete}/bloqueo', [CadeteController::class, 'bloquear'])->name('cadetes.bloquear');
+                Route::delete('cadetes/{cadete}/bloqueo', [CadeteController::class, 'desbloquear'])->name('cadetes.desbloquear');
 
                 /*
                 | Las cuentas del panel.

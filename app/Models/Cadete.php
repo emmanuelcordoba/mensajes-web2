@@ -159,6 +159,20 @@ class Cadete extends Model
         self::ESTADO_ACTIVO_WEB,
     ];
 
+    /**
+     * Cómo el panel nombra cada estado.
+     *
+     * ⚠️ Los cinco, y el listado viejo nombraba tres: `con-pedido-app` y `postulado` caían
+     * en el `@default` del switch y se mostraban crudos, con el guión y todo.
+     */
+    public const ETIQUETAS_DE_ESTADO = [
+        self::ESTADO_ACTIVO_APP => 'Activo App',
+        self::ESTADO_ACTIVO_WEB => 'Activo Web',
+        self::ESTADO_INACTIVO => 'Inactivo',
+        self::ESTADO_CON_PEDIDO_APP => 'Con pedido',
+        self::ESTADO_POSTULADO => 'Postulado',
+    ];
+
     public const COBRANZA_SEMANAL = 'Semanal';
 
     public const COBRANZA_SALDO = 'Saldo';
@@ -294,6 +308,47 @@ class Cadete extends Model
     public function estaActivo(): bool
     {
         return in_array($this->estado, self::ESTADOS_ACTIVOS, true);
+    }
+
+    /**
+     * Si está trabajando: en la cola, o con un pedido en la mano.
+     *
+     * Es la condición con la que la central decide si el botón saca de la cola o pone en
+     * ella, y la misma que usa `alternarEstadoDesdeLaCentral()`. Los dos únicos estados que
+     * quedan afuera son `inactivo` y `postulado`.
+     */
+    public function estaTrabajando(): bool
+    {
+        return $this->estaActivo() || $this->estado === self::ESTADO_CON_PEDIDO_APP;
+    }
+
+    /**
+     * Lo pone en la cola de la web, o lo saca.
+     *
+     * Es el `cambiarEstado('web')` del panel viejo. **No guarda**: el que llama decide
+     * cuándo, y el cierre del tramo de actividad se dispara en el `saving` del modelo.
+     *
+     * ⚠️ Activar desde la web NO abre un tramo de actividad, y es lo que hacía el sistema
+     * viejo: el tramo lo abría sólo la app. O sea que las horas que un cadete trabaja
+     * puesto en la cola por la central no están en ningún informe de actividad. Se deja
+     * igual porque cambiarlo es cambiar qué miden esos informes, y eso no es una decisión
+     * de esta pantalla.
+     *
+     * ⚠️ Saca de la cola también a un cadete con un pedido en curso —`con-pedido-app`—,
+     * como hacía el panel viejo: es la forma que tiene la central de bajar a alguien que
+     * dejó el pedido colgado.
+     */
+    public function alternarEstadoDesdeLaCentral(): void
+    {
+        if ($this->estaTrabajando()) {
+            $this->estado = self::ESTADO_INACTIVO;
+
+            return;
+        }
+
+        $this->estado = self::ESTADO_ACTIVO_WEB;
+        // Es un timestamp Unix y no una posición: el orden de la cola es el de llegada.
+        $this->orden_cola = now()->getTimestamp();
     }
 
     public function cobraPorSaldo(): bool

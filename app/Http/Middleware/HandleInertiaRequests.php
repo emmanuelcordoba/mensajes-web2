@@ -50,6 +50,15 @@ class HandleInertiaRequests extends Middleware
             'navegacion' => Navegacion::para($request->user()),
             // El selector de la barra de arriba. Ver `tiempoDeDemora()`.
             'tiempoDeDemora' => self::tiempoDeDemora($request->user()),
+            // ⚠️ El mensaje que dejan los `->with('success', ...)` de los controladores.
+            // Hasta ahora no lo compartía nadie, así que se escribía en la sesión y no lo
+            // leía nadie: todas las pantallas del panel contestaban en silencio —el panel
+            // viejo mostraba estas dos alertas arriba de cada vista—. Se muestra con
+            // `sonner`, que ya estaba montado en app.tsx sin que nada le mandara nada.
+            'aviso' => [
+                'success' => $request->session()->get('success'),
+                'danger' => $request->session()->get('danger'),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

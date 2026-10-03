@@ -14,6 +14,8 @@ declare module '@inertiajs/core' {
             auth: Auth;
             navegacion: GrupoDeMenu[];
             tiempoDeDemora: TiempoDeDemora | null;
+            /** El mensaje que dejó el controlador en la sesión. Ver components/avisos. */
+            aviso: { success: string | null; danger: string | null };
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

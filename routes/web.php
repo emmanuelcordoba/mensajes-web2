@@ -7,6 +7,7 @@ use App\Http\Controllers\Panel\CobranzaSemanalController;
 use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
+use App\Http\Controllers\Panel\MensajeController;
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
 use App\Http\Controllers\Panel\PostulacionController;
@@ -69,7 +70,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         */
         Route::middleware('rol:'.implode(',', [Rol::ADMIN, Rol::EMPLEADO]))
             ->group(function () {
-                Route::get('mensajes', PendienteController::class)->name('mensajes.index');
+                /*
+                | El chat con los cadetes.
+                |
+                | ⚠️ `mensajes/cadetes` va ANTES de `mensajes/{cadete}`, o el parámetro la
+                | captura: es el buscador con el que se empieza una conversación nueva.
+                |
+                | El cadete es opcional en el listado, como en el sistema viejo
+                | —`/mensajes/{cadete_id?}`—: sin él la pantalla muestra las conversaciones
+                | y ninguna abierta.
+                */
+                Route::get('mensajes/cadetes', [MensajeController::class, 'cadetes'])->name('mensajes.cadetes');
+                Route::get('mensajes/{cadete?}', [MensajeController::class, 'index'])->name('mensajes.index');
+                Route::post('mensajes/{cadete}', [MensajeController::class, 'enviar'])->name('mensajes.enviar');
 
                 // ⚠️ `create` antes de cualquier `{cliente}` que se agregue después, o
                 // lo captura. Vale para los cuatro recursos de acá abajo.

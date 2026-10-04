@@ -32,8 +32,15 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
- * @property-read Cadete $cadete
- * @property-read User $user
+ * @property-read Cadete|null $cadete ⚠️ Puede ser null aunque `mensajes.cadete_id` sea
+ *                NOT NULL: `Cadete` usa SoftDeletes, así que si el cadete está dado de
+ *                baja la relación no lo devuelve. No es un caso raro —**407 de las 444
+ *                conversaciones** son de cadetes que ya no están—, y decía `Cadete` a
+ *                secas: con eso, el listado del chat respondía 500 al primer intento. Es
+ *                lo mismo que pasaba con `Cadete::$user`.
+ * @property-read User|null $user ⚠️ Lo mismo, por lo mismo: `User` también usa
+ *                SoftDeletes, así que un mensaje escrito por una cuenta dada de baja
+ *                tiene autor en la columna y no en la relación.
  */
 #[Fillable(['cadete_id', 'user_id', 'mensaje', 'leido_web', 'leido_app'])]
 class Mensaje extends Model
@@ -71,7 +78,12 @@ class Mensaje extends Model
     }
 
     /**
-     * Quién lo escribió desde la central.
+     * Quién lo escribió: la central, o la cuenta del propio cadete desde la app.
+     *
+     * ⚠️ Comparar `mensajes.user_id` con `cadetes.user_id` es cómo se sabe de qué lado
+     * viene un mensaje, y son dos columnas: no hace falta cargar esta relación ni la del
+     * cadete. La vista vieja preguntaba `$mensaje->cadete->user->id == $mensaje->user->id`
+     * y por eso reventaba cuando alguna de las dos cuentas estaba dada de baja.
      *
      * @return BelongsTo<User, $this>
      */

@@ -7,6 +7,7 @@ use App\Http\Controllers\Panel\CobranzaSemanalController;
 use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
+use App\Http\Controllers\Panel\MapaController;
 use App\Http\Controllers\Panel\MensajeController;
 use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
@@ -231,7 +232,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 */
                 Route::get('configuraciones', [ConfiguracionController::class, 'index'])->name('configuraciones.index');
                 Route::patch('configuraciones/{configuracion}', [ConfiguracionController::class, 'update'])->name('configuraciones.update');
-                Route::get('mapa', PendienteController::class)->name('mapa');
+                Route::get('mapa', MapaController::class)->name('mapa');
                 Route::get('estadisticas', PendienteController::class)->name('estadisticas.index');
             });
     });

@@ -202,12 +202,14 @@ test('the menu knows where each route lives, group included', function () {
 });
 
 test('a screen that is not inside a group has nothing above it', function () {
+    // ⚠️ Esto apuntaba al mapa hasta que el mapa se hizo. De las entradas del menú quedan
+    // dos sin pantalla —Inicio y Estadísticas—, las dos al primer nivel.
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->get('/panel/mapa')
+        ->get('/panel/estadisticas')
         ->assertSuccessful()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('panel/pendiente')
-            ->where('titulo', 'Mapa')
+            ->where('titulo', 'Estadísticas')
             ->where('dentroDe', null)
         );
 });

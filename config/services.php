@@ -18,6 +18,19 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    /*
+    | La clave de la API de Google Maps, que usa el mapa de cadetes del panel.
+    |
+    | ⚠️ Esta clave VIAJA AL NAVEGADOR y tiene que viajar: la API de Maps se carga desde el
+    | cliente y la clave va en la URL del script. No es un secreto que se pueda guardar
+    | —cualquiera que abra la pantalla la ve—, así que lo que la protege es la restricción
+    | por dominio en la consola de Google, no esconderla. En el sistema viejo vivía en
+    | `config/app.php`, que no es donde van las de terceros.
+    */
+    'google' => [
+        'maps_key' => env('GOOGLE_MAPS_KEY'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

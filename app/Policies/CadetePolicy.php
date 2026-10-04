@@ -6,6 +6,7 @@ use App\Models\Cadete;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\BajaDeCadete;
+use App\Services\CambioDeModalidadDeCobranza;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -77,6 +78,55 @@ class CadetePolicy
         return $cadete->user === null
             ? Response::deny('El móvil '.$cadete->numero_movil.' no tiene cuenta activa, y el bloqueo se guarda en la cuenta.')
             : Response::allow();
+    }
+
+    /** Mirar las pantallas de cobranzas. El mismo recorte que el resto del grupo. */
+    public function verCobranzas(User $user): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    /**
+     * Cargarle saldo.
+     *
+     * ⚠️ Sólo a quien cobra por saldo. Cargarle saldo a un cadete de modalidad semanal
+     * escribe un movimiento y un saldo que ninguna pantalla vuelve a mostrar, porque el
+     * listado de saldo no lo lista: plata que entra y desaparece.
+     */
+    public function cargarSaldo(User $user, Cadete $cadete): Response
+    {
+        if (! $this->viewAny($user)) {
+            return Response::deny();
+        }
+
+        if (! $cadete->cobraPorSaldo()) {
+            return Response::deny('El móvil '.$cadete->numero_movil.' cobra por semana: para cargarle saldo hay que pasarlo a esa modalidad.');
+        }
+
+        // Sin el porcentaje configurado no se sabe cuánto es una carga que sirva, así que
+        // no se ofrece ninguna. Es un sistema a medio configurar, no un caso de uso.
+        return Cadete::saldoMinimoSiSePuede() === null
+            ? Response::deny('Falta configurar el porcentaje de saldo, así que no se sabe cuál es la carga mínima.')
+            : Response::allow();
+    }
+
+    /**
+     * Pasarlo de una modalidad de cobranza a la otra.
+     *
+     * La regla —no con plata en el medio— vive en `CambioDeModalidadDeCobranza`, que es
+     * la que aplica el servicio antes de escribir. Acá se pregunta la misma.
+     */
+    public function cambiarModalidad(User $user, Cadete $cadete): Response
+    {
+        if (! $this->viewAny($user)) {
+            return Response::deny();
+        }
+
+        $motivo = CambioDeModalidadDeCobranza::porQueNo($cadete);
+
+        return $motivo === null
+            ? Response::allow()
+            : Response::deny($motivo);
     }
 
     /**

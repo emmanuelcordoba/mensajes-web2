@@ -459,6 +459,43 @@ class Cadete extends Model
     }
 
     /**
+     * Carga saldo: el movimiento que la oficina escribe cuando el cadete paga.
+     *
+     * Es el gemelo de `cobrarSaldoPedido()`, y por eso vive al lado: uno suma y el otro
+     * resta, los dos escriben un movimiento y el saldo nuevo, y los dos van en una
+     * transacción porque son dos escrituras que no pueden quedar a medias.
+     *
+     * ⚠️ `user_id` SE ESCRIBE SIEMPRE. En el sistema viejo la columna no estaba en el
+     * `$fillable` y la asignación masiva la descartaba en silencio: **ninguno de los
+     * 12.827 movimientos migrados dice quién lo hizo** (PANEL-13). Es plata que entra por
+     * el mostrador; que no quede sin firma es la mitad del punto de registrarla.
+     *
+     * ⚠️ `saldo_parcial` es el saldo ANTES del movimiento, que es como lo guarda la tabla.
+     *
+     * ⚠️ `bcadd` y no `+`: la columna es `NUMERIC(12,2)` y llega como string. Sumarla
+     * como float es donde se pierden los centavos.
+     *
+     * @param  numeric-string  $monto
+     */
+    public function cargarSaldo(string $monto, ?int $userId = null): MovimientoCobranzaSaldo
+    {
+        return DB::transaction(function () use ($monto, $userId): MovimientoCobranzaSaldo {
+            $movimiento = $this->movimientosCobranzaSaldo()->create([
+                'monto' => $monto,
+                'monto_positivo' => true,
+                'saldo_parcial' => $this->cobranza_saldo,
+                'tipo' => MovimientoCobranzaSaldo::CARGA_SALDO,
+                'user_id' => $userId,
+            ]);
+
+            $this->cobranza_saldo = bcadd(Pedido::comoMonto($this->cobranza_saldo), $monto, 2);
+            $this->save();
+
+            return $movimiento;
+        });
+    }
+
+    /**
      * El saldo mínimo con que un cadete puede seguir tomando pedidos, redondeado
      * hacia arriba al siguiente múltiplo de 100.
      *
@@ -466,6 +503,21 @@ class Cadete extends Model
      * redundante: `ceil()` de un valor que ya es múltiplo de 100 devuelve ese mismo
      * valor. Se saca porque hacía parecer que había dos casos, y hay uno.
      */
+    /**
+     * El mínimo, o null si falta alguna de las dos configuraciones con las que se calcula.
+     *
+     * ⚠️ `saldoMinimo()` lanza en ese caso, y está bien que lo haga donde se cobra. Pero
+     * la pantalla de cobranzas tiene que poder abrirse igual y decir qué falta, en vez de
+     * responder 500: es además la pantalla desde donde se arregla.
+     */
+    public static function saldoMinimoSiSePuede(): ?float
+    {
+        $sePuede = Configuracion::existe('COBRANZA_SALDO_PORCENTAJE')
+            && Configuracion::existe('COSTO_MINIMO');
+
+        return $sePuede ? self::saldoMinimo() : null;
+    }
+
     public static function saldoMinimo(): float
     {
         $porcentaje = Configuracion::numero('COBRANZA_SALDO_PORCENTAJE');

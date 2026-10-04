@@ -82,6 +82,19 @@ class Configuracion extends Model
         return $configuracion->valor;
     }
 
+    /**
+     * Si existe una configuración con ese nombre.
+     *
+     * ⚠️ `valor()` lanza cuando no está, y hace bien: una cotización a la que le falta un
+     * costo tiene que parar y decir cuál. Pero hay pantallas que pueden funcionar sin
+     * ella y mostrar qué falta —la de cobranza por saldo, sin el porcentaje—, y para eso
+     * hace falta poder preguntarlo sin que preguntarlo sea el error.
+     */
+    public static function existe(string $nombre): bool
+    {
+        return self::query()->where('nombre', $nombre)->exists();
+    }
+
     /** El número de una configuración numérica, que es el uso real de `valor()`. */
     public static function numero(string $nombre): float
     {

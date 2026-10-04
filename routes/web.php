@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Panel\CadeteController;
 use App\Http\Controllers\Panel\ClienteController;
+use App\Http\Controllers\Panel\CobranzaSaldoController;
 use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
@@ -154,7 +155,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ->middleware('throttle:20,1')
                     ->name('cadetes.cola.agregar');
                 Route::get('cadetes/cobranzas/semanal', PendienteController::class)->name('cadetes.cobranzas.semanal.index');
-                Route::get('cadetes/cobranzas/saldo', PendienteController::class)->name('cadetes.cobranzas.saldo.index');
+                /*
+                | Cobranzas por saldo.
+                |
+                | ⚠️ Las tres rutas con parámetro van DESPUÉS de la del listado, que es
+                | exacta. Cargar saldo es POST sobre su propio sub-recurso —escribe un
+                | movimiento nuevo—, y cambiar la modalidad es PATCH sobre el cadete.
+                */
+                Route::get('cadetes/cobranzas/saldo', [CobranzaSaldoController::class, 'index'])->name('cadetes.cobranzas.saldo.index');
+                Route::get('cadetes/cobranzas/saldo/{cadete}', [CobranzaSaldoController::class, 'show'])->name('cadetes.cobranzas.saldo.show');
+                Route::post('cadetes/cobranzas/saldo/{cadete}/cargas', [CobranzaSaldoController::class, 'cargar'])->name('cadetes.cobranzas.saldo.cargar');
+                Route::patch('cadetes/cobranzas/saldo/{cadete}/modalidad', [CobranzaSaldoController::class, 'cambiarModalidad'])->name('cadetes.cobranzas.modalidad');
                 Route::get('cadetes', [CadeteController::class, 'index'])->name('cadetes.index');
                 Route::post('cadetes', [CadeteController::class, 'store'])->name('cadetes.store');
                 Route::get('cadetes/{cadete}/edit', [CadeteController::class, 'edit'])->name('cadetes.edit');

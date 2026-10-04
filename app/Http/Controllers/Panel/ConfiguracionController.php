@@ -74,7 +74,13 @@ class ConfiguracionController extends Controller
     ): RedirectResponse {
         $this->authorize('update', $configuracion);
 
-        $configuracion->descripcion = $request->input('descripcion');
+        // ⚠️ Sólo si el formulario la manda. La pantalla de cobranza por saldo guarda el
+        // porcentaje desde su propio formulario, que no edita la descripción: sin esta
+        // guarda, guardar el porcentaje desde allá le borraba el texto que explica qué es.
+        if ($request->has('descripcion')) {
+            $configuracion->descripcion = $request->input('descripcion');
+        }
+
         // El valor vacío del tiempo de demora se guarda como null, no como cadena vacía:
         // el CHECK de la columna rechaza la cadena vacía en las numéricas, y para las de
         // texto «sin indicar» es la ausencia de valor.

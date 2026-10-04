@@ -184,12 +184,12 @@ test('the counter queue is the only link that opens in another tab', function ()
 
 test('a screen that is not built yet says its own name', function () {
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->get('/panel/cadetes/cobranzas/saldo')
+        ->get('/panel/cadetes/cobranzas/semanal')
         ->assertSuccessful()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('panel/pendiente')
             // El nombre sale del menú, así que está escrito en un solo lado.
-            ->where('titulo', 'Saldo')
+            ->where('titulo', 'Semanal')
             ->where('dentroDe', 'Cadetes')
         );
 });

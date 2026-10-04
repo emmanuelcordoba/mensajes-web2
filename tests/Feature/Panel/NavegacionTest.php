@@ -182,16 +182,23 @@ test('the counter queue is the only link that opens in another tab', function ()
         ->and($enOtraPestania)->toBe(['/panel/cadetes/cola']);
 });
 
-test('a screen that is not built yet says its own name', function () {
-    $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->get('/panel/cadetes/cobranzas/semanal')
-        ->assertSuccessful()
-        ->assertInertia(fn ($pagina) => $pagina
-            ->component('panel/pendiente')
-            // El nombre sale del menú, así que está escrito en un solo lado.
-            ->where('titulo', 'Semanal')
-            ->where('dentroDe', 'Cadetes')
-        );
+test('the menu knows where each route lives, group included', function () {
+    // El nombre de una pantalla sale del menú, así que está escrito en un solo lado: es lo
+    // que usa PendienteController para titularse.
+    //
+    // ⚠️ Esto se comprobaba pidiendo una pantalla pendiente que colgara de un desplegable,
+    // y YA NO QUEDA NINGUNA: las de Cadetes fueron las últimas en hacerse. Las cuatro que
+    // faltan —Inicio, Chat, Mapa y Estadísticas— están todas al primer nivel. Así que la
+    // parte de los grupos se comprueba contra la función que la resuelve, y la de HTTP
+    // sigue abajo con /panel/mapa.
+    expect(Navegacion::ubicar('panel.cadetes.cobranzas.semanal.index'))
+        ->toBe(['titulo' => 'Semanal', 'dentroDe' => 'Cadetes'])
+        ->and(Navegacion::ubicar('panel.clientes.index'))
+        ->toBe(['titulo' => 'Clientes', 'dentroDe' => 'Clientes'])
+        ->and(Navegacion::ubicar('panel.mapa'))
+        ->toBe(['titulo' => 'Mapa', 'dentroDe' => null])
+        // Una ruta que el menú no enlaza no está en ningún lado, y eso no es un error.
+        ->and(Navegacion::ubicar('panel.cadetes.cobranzas.saldo.show'))->toBeNull();
 });
 
 test('a screen that is not inside a group has nothing above it', function () {

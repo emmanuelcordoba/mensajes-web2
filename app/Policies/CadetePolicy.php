@@ -87,6 +87,19 @@ class CadetePolicy
     }
 
     /**
+     * Escribir en la cobranza: abrir un ciclo, registrar un pago, extender un vencimiento,
+     * cambiar las cuotas generales.
+     *
+     * ⚠️ El cadete es opcional porque las cuotas generales no son de nadie: son dos filas,
+     * una por vehículo. La habilidad es la misma —el mismo recorte que el resto del grupo—
+     * y tenerla dos veces sólo invitaría a que se separaran.
+     */
+    public function cobrar(User $user, ?Cadete $cadete = null): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    /**
      * Cargarle saldo.
      *
      * ⚠️ Sólo a quien cobra por saldo. Cargarle saldo a un cadete de modalidad semanal

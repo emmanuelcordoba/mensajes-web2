@@ -3,6 +3,7 @@
 use App\Http\Controllers\Panel\CadeteController;
 use App\Http\Controllers\Panel\ClienteController;
 use App\Http\Controllers\Panel\CobranzaSaldoController;
+use App\Http\Controllers\Panel\CobranzaSemanalController;
 use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
@@ -154,7 +155,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('cadetes/cola', [ColaController::class, 'agregar'])
                     ->middleware('throttle:20,1')
                     ->name('cadetes.cola.agregar');
-                Route::get('cadetes/cobranzas/semanal', PendienteController::class)->name('cadetes.cobranzas.semanal.index');
+                /*
+                | Cobranzas semanales.
+                |
+                | ⚠️ `cobranzas/semanal/cuotas` va ANTES de `cobranzas/semanal/{cadete}`, o
+                | el parámetro la captura: las cuotas generales no son de ningún cadete,
+                | son dos filas, una por vehículo.
+                |
+                | ⚠️ Esta modalidad está muerta —10 pagos en toda la historia, el último en
+                | 2022— y se porta igual, con su aritmética. Ver PANEL-21.
+                */
+                Route::patch('cadetes/cobranzas/semanal/cuotas', [CobranzaSemanalController::class, 'guardarMontos'])->name('cadetes.cobranzas.semanal.cuotas');
+                Route::get('cadetes/cobranzas/semanal', [CobranzaSemanalController::class, 'index'])->name('cadetes.cobranzas.semanal.index');
+                Route::get('cadetes/cobranzas/semanal/{cadete}', [CobranzaSemanalController::class, 'show'])->name('cadetes.cobranzas.semanal.show');
+                Route::get('cadetes/cobranzas/semanal/{cadete}/ciclo', [CobranzaSemanalController::class, 'ciclo'])->name('cadetes.cobranzas.semanal.ciclo');
+                Route::post('cadetes/cobranzas/semanal/{cadete}/ciclo', [CobranzaSemanalController::class, 'abrirCiclo'])->name('cadetes.cobranzas.semanal.abrir');
+                Route::post('cadetes/cobranzas/semanal/{cadete}/pagos', [CobranzaSemanalController::class, 'registrarPago'])->name('cadetes.cobranzas.semanal.pagos');
+                Route::patch('cadetes/cobranzas/semanal/{cadete}/vencimiento', [CobranzaSemanalController::class, 'extender'])->name('cadetes.cobranzas.semanal.extender');
                 /*
                 | Cobranzas por saldo.
                 |

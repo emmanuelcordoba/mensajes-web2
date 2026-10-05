@@ -30,6 +30,9 @@ use Carbon\CarbonInterface;
  */
 class Momento
 {
+    /** Empieza en domingo porque `dayOfWeek` devuelve 0 para el domingo. */
+    private const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
     /**
      * Fecha y hora completas, en 24 horas.
      *
@@ -52,13 +55,6 @@ class Momento
     }
 
     /**
-     * Hace cuánto, en palabras.
-     *
-     * A mano y no con `diffForHumans()`: ése depende de que el locale de Carbon esté
-     * cargado y devuelve «hace 40 minutos» o «40 minutes ago» según cómo esté el
-     * proceso. Son cuatro casos y así dicen siempre lo mismo.
-     */
-    /**
      * Sólo la fecha, sin hora.
      *
      * Para una fecha de nacimiento, que es un día y no un instante: mostrarla con
@@ -69,6 +65,26 @@ class Momento
         return $momento?->copy()->setTimezone(config('app.timezone'))->format('d/m/Y');
     }
 
+    /**
+     * El nombre corto del día de la semana: «lun», «mar».
+     *
+     * Escrito y no traducido, por lo mismo que `hace()`: `isoFormat('ddd')` devuelve
+     * «Tue» o «mar» según cómo esté cargado el locale de Carbon en el proceso, y eso
+     * no es algo que esta clase controle. Lo usa la tabla de estadísticas, donde el
+     * día de la semana es lo que explica los ceros.
+     */
+    public static function diaCorto(CarbonInterface $momento): string
+    {
+        return self::DIAS_CORTOS[$momento->dayOfWeek];
+    }
+
+    /**
+     * Hace cuánto, en palabras.
+     *
+     * A mano y no con `diffForHumans()`: ése depende de que el locale de Carbon esté
+     * cargado y devuelve «hace 40 minutos» o «40 minutes ago» según cómo esté el
+     * proceso. Son cuatro casos y así dicen siempre lo mismo.
+     */
     public static function hace(?CarbonInterface $momento): ?string
     {
         if ($momento === null) {

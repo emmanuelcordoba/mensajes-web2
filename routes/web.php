@@ -6,6 +6,7 @@ use App\Http\Controllers\Panel\CobranzaSaldoController;
 use App\Http\Controllers\Panel\CobranzaSemanalController;
 use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
+use App\Http\Controllers\Panel\EstadisticasController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
 use App\Http\Controllers\Panel\MapaController;
 use App\Http\Controllers\Panel\MensajeController;
@@ -233,7 +234,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('configuraciones', [ConfiguracionController::class, 'index'])->name('configuraciones.index');
                 Route::patch('configuraciones/{configuracion}', [ConfiguracionController::class, 'update'])->name('configuraciones.update');
                 Route::get('mapa', MapaController::class)->name('mapa');
-                Route::get('estadisticas', PendienteController::class)->name('estadisticas.index');
+                Route::get('estadisticas', EstadisticasController::class)->name('estadisticas.index');
             });
     });
 });

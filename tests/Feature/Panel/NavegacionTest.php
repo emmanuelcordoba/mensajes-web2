@@ -187,10 +187,9 @@ test('the menu knows where each route lives, group included', function () {
     // que usa PendienteController para titularse.
     //
     // ⚠️ Esto se comprobaba pidiendo una pantalla pendiente que colgara de un desplegable,
-    // y YA NO QUEDA NINGUNA: las de Cadetes fueron las últimas en hacerse. Las cuatro que
-    // faltan —Inicio, Chat, Mapa y Estadísticas— están todas al primer nivel. Así que la
-    // parte de los grupos se comprueba contra la función que la resuelve, y la de HTTP
-    // sigue abajo con /panel/mapa.
+    // y YA NO QUEDA NINGUNA: las de Cadetes fueron las últimas en hacerse. Y de las que
+    // faltan quedó una sola, Inicio, al primer nivel. Así que la parte de los grupos se
+    // comprueba contra la función que la resuelve, y la de HTTP sigue abajo con /panel.
     expect(Navegacion::ubicar('panel.cadetes.cobranzas.semanal.index'))
         ->toBe(['titulo' => 'Semanal', 'dentroDe' => 'Cadetes'])
         ->and(Navegacion::ubicar('panel.clientes.index'))
@@ -201,26 +200,22 @@ test('the menu knows where each route lives, group included', function () {
         ->and(Navegacion::ubicar('panel.cadetes.cobranzas.saldo.show'))->toBeNull();
 });
 
-test('a screen that is not inside a group has nothing above it', function () {
-    // ⚠️ Esto apuntaba al mapa hasta que el mapa se hizo. De las entradas del menú quedan
-    // dos sin pantalla —Inicio y Estadísticas—, las dos al primer nivel.
-    $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->get('/panel/estadisticas')
-        ->assertSuccessful()
-        ->assertInertia(fn ($pagina) => $pagina
-            ->component('panel/pendiente')
-            ->where('titulo', 'Estadísticas')
-            ->where('dentroDe', null)
-        );
-});
-
 test('the home screen of the panel is the one the old system opens on', function () {
     // `/panel`, la misma URL: es donde cae alguien que escribe la dirección a secas y
     // donde apunta la marca del menú.
+    //
+    // ⚠️ Y es además la última pantalla pendiente que queda, así que acá se comprueba de paso
+    // que una pantalla que no cuelga de ningún desplegable no se inventa un grupo arriba. Esto
+    // apuntó al mapa, después a estadísticas y ahora acá; cuando Inicio se haga, lo que
+    // comprueba lo sigue cubriendo el test de `Navegacion::ubicar()` de arriba.
     $this->actingAs(usuarioCon(Rol::RESTRINGIDO))
         ->get('/panel')
         ->assertSuccessful()
-        ->assertInertia(fn ($pagina) => $pagina->where('titulo', 'Inicio'));
+        ->assertInertia(fn ($pagina) => $pagina
+            ->component('panel/pendiente')
+            ->where('titulo', 'Inicio')
+            ->where('dentroDe', null)
+        );
 });
 
 test('every link is relative, so no page carries the host around', function () {

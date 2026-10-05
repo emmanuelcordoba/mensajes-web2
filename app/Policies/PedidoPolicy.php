@@ -43,6 +43,21 @@ class PedidoPolicy
             : Response::denyAsNotFound();
     }
 
+    /**
+     * Las estadísticas son de toda la empresa, así que no las ve un comercio.
+     *
+     * ⚠️ **No alcanza con `viewAny`.** Un comercio con rol `restringido` sí puede ver el
+     * listado de pedidos —los suyos—, y esta pantalla cuenta los de todos: son dos
+     * preguntas distintas y por eso son dos métodos. En el menú viejo la entrada estaba
+     * adentro del `@if` de oficina y no había ninguna regla del lado del servidor; acá la
+     * regla vive acá, el menú la repite con su lista de roles, y hay un test que compara
+     * las dos respuestas rol por rol.
+     */
+    public function verEstadisticas(User $user): bool
+    {
+        return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
+    }
+
     /** Un comercio no carga pedidos desde el panel: los carga desde la app. */
     public function create(User $user): bool
     {

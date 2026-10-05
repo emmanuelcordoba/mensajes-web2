@@ -42,6 +42,20 @@ class CadetePolicy
     }
 
     /**
+     * Mover la cola entera: mandar a uno al final, o vaciarla.
+     *
+     * ⚠️ Es otra pregunta que `cambiarEstado`, aunque vaciar la cola termine cambiando
+     * estados. `cambiarEstado` niega sobre un cadete bloqueado, porque de lo que habla es
+     * de **meterlo** en la cola; sacar de la cola a alguien bloqueado tiene que poder
+     * hacerse siempre. Las razones de verdad —que no haya nadie, que ese cadete no esté en
+     * la cola— no son de rol y viven en `ColaDeCadetes`.
+     */
+    public function ordenarCola(User $user): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    /**
      * Ponerlo en la cola o sacarlo.
      *
      * ⚠️ Un cadete bloqueado no entra a la cola, y es la condición que el panel viejo

@@ -8,6 +8,7 @@ use App\Http\Controllers\Panel\ColaController;
 use App\Http\Controllers\Panel\ConfiguracionController;
 use App\Http\Controllers\Panel\EstadisticasController;
 use App\Http\Controllers\Panel\HorarioAtencionController;
+use App\Http\Controllers\Panel\InicioController;
 use App\Http\Controllers\Panel\MapaController;
 use App\Http\Controllers\Panel\MensajeController;
 use App\Http\Controllers\Panel\PedidoController;
@@ -34,10 +35,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | porque son dos preguntas distintas: quién entra a la ruta y qué se le ofrece.
     | NavegacionTest compara las dos respuestas, entrada por entrada y rol por rol.
     |
-    | ⚠️ Muchas de estas pantallas todavía no están hechas y van a PendienteController,
-    | que no muestra más que su nombre. La ruta y su nombre definitivo existen desde
-    | ahora: cuando la pantalla esté, cambia el controlador y nada más. Ver el docblock
-    | de PendienteController.
+    | ⚠️ Durante el porteo, las pantallas que faltaban iban a PendienteController, que no
+    | mostraba más que su nombre: la ruta y su nombre definitivo existían desde el
+    | principio y al hacer la pantalla cambiaba el controlador y nada más. **Ya no queda
+    | ninguna**, así que PendienteController y `panel/pendiente.tsx` no los usa nadie y
+    | están para borrar. De Inicio falta contenido —dos de sus tres columnas—, pero eso lo
+    | dice la pantalla misma, no otro controlador.
     |
     */
     Route::prefix('panel')->name('panel.')->group(function () {
@@ -53,7 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->group(function () {
                 // La pantalla principal del sistema viejo: el alta de un pedido, con la
                 // lista de cadetes activos al costado. Es la más cargada de todas.
-                Route::get('/', PendienteController::class)->name('inicio');
+                Route::get('/', InicioController::class)->name('inicio');
 
                 Route::get('pedidos', [PedidoController::class, 'index'])->name('pedidos.index');
                 // Después del listado, que es una ruta exacta y no la captura.
@@ -170,6 +173,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('cadetes/cola', [ColaController::class, 'agregar'])
                     ->middleware('throttle:20,1')
                     ->name('cadetes.cola.agregar');
+
+                /*
+                | Y lo que la central le hace a la cola desde Inicio. No es el mostrador:
+                | el que las dispara es un usuario del panel, ya autenticado.
+                */
+                Route::post('cadetes/cola/{cadete}/al-final', [ColaController::class, 'alFinal'])->name('cadetes.cola.al-final');
+                Route::delete('cadetes/cola/{cadete}', [ColaController::class, 'sacar'])->name('cadetes.cola.sacar');
+
+                /*
+                | ⚠️ Va DESPUÉS de `cola/{cadete}`, o `cadetes/cola` entraría por el
+                | comodín con el id «cola».
+                */
+                Route::delete('cadetes/cola', [ColaController::class, 'limpiar'])->name('cadetes.cola.limpiar');
                 /*
                 | Cobranzas semanales.
                 |
@@ -204,6 +220,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::patch('cadetes/{cadete}', [CadeteController::class, 'update'])->name('cadetes.update');
                 Route::delete('cadetes/{cadete}', [CadeteController::class, 'destroy'])->name('cadetes.destroy');
                 Route::patch('cadetes/{cadete}/estado', [CadeteController::class, 'cambiarEstado'])->name('cadetes.estado');
+
+                /*
+                | ⚠️ La única ruta del panel que contesta JSON y no una pantalla de Inertia.
+                | La pide el diálogo de detalle de Inicio con un `fetch`, como el panel viejo
+                | pedía `ajax/cadetes/getcadete`: son datos de una persona y se traen recién
+                | cuando alguien los abre, no en cada refresco de la pantalla.
+                */
+                Route::get('cadetes/{cadete}/detalle', [CadeteController::class, 'detalle'])->name('cadetes.detalle');
                 Route::patch('cadetes/{cadete}/bloqueo', [CadeteController::class, 'bloquear'])->name('cadetes.bloquear');
                 Route::delete('cadetes/{cadete}/bloqueo', [CadeteController::class, 'desbloquear'])->name('cadetes.desbloquear');
 

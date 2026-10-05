@@ -9,6 +9,8 @@ use App\Models\Cadete;
 use App\Models\MotivoBloqueo;
 use App\Services\AltaDeCadete;
 use App\Services\BajaDeCadete;
+use App\Services\ColaDeCadetes;
+use App\Support\Momento;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -230,6 +232,57 @@ class CadeteController extends Controller
      * el controlador redirigía igual y el estado quedaba como estaba. Acá eso lo decide la
      * política, que además dice por qué, y el listado ni dibuja el botón.
      */
+    /**
+     * Los datos de un cadete, en JSON, para el diálogo de detalle de Inicio.
+     *
+     * ⚠️ **Es la única acción del panel que contesta JSON y no una pantalla de Inertia**, y
+     * es a propósito. Son el nombre, el teléfono y la dirección de una persona: se traen
+     * recién cuando alguien abre el detalle y no en cada refresco de una pantalla que está
+     * abierta todo el día en una oficina. Es lo mismo que hacía el panel viejo con
+     * `ajax/cadetes/getcadete`, y no pasarlo por las props además evita que el diálogo
+     * dependa de un parámetro en la URL. Ver el comentario de `inicio/index.tsx`.
+     *
+     * ⚠️ La ubicación sale **sólo si está en la app y tiene las dos coordenadas**, igual que
+     * el panel viejo: un cadete puesto en la cola desde la central no manda posición, y el
+     * mapa del diálogo dice «Cadete sin ubicación» en vez de dibujar un marcador inventado.
+     * Es la misma trampa de PANEL-18, que en el mapa grande llegó a producción.
+     *
+     * Los dos motivos van con los datos para que el diálogo no dibuje un botón que iba a
+     * fallar: son las mismas funciones que `ColaController` consulta antes de escribir.
+     *
+     * @return array<string, mixed>
+     */
+    public function detalle(Cadete $cadete): array
+    {
+        $this->authorize('viewAny', Cadete::class);
+
+        $enLaApp = $cadete->estaEnLaApp();
+        $tieneUbicacion = $cadete->ubicacion_lat !== null && $cadete->ubicacion_lon !== null;
+
+        return [
+            'id' => $cadete->id,
+            'movil' => $cadete->numero_movil,
+            'apellidos' => $cadete->apellidos,
+            'nombres' => $cadete->nombres,
+            'email' => $cadete->user?->email,
+            'direccion' => $cadete->direccion,
+            'telefono' => $cadete->telefono,
+            'nacimiento' => Momento::fecha($cadete->fecha_nacimiento),
+            'vehiculo' => Cadete::VEHICULOS[$cadete->tipo_vehiculo] ?? $cadete->tipo_vehiculo,
+            'estado' => Cadete::ETIQUETAS_DE_ESTADO[$cadete->estado] ?? $cadete->estado,
+            'posicion' => $cadete->posicionEnCola(),
+            'ubicacion' => $enLaApp && $tieneUbicacion ? [
+                'movil' => $cadete->numero_movil,
+                'lat' => $cadete->ubicacion_lat,
+                'lon' => $cadete->ubicacion_lon,
+                'vehiculo' => $cadete->tipo_vehiculo,
+                'con_pedido' => $cadete->estado === Cadete::ESTADO_CON_PEDIDO_APP,
+            ] : null,
+            'por_que_no_al_final' => ColaDeCadetes::porQueNoMandarAlFinal($cadete),
+            'por_que_no_sacar' => ColaDeCadetes::porQueNoSacar($cadete),
+        ];
+    }
+
     public function cambiarEstado(Cadete $cadete): RedirectResponse
     {
         $this->authorize('cambiarEstado', $cadete);

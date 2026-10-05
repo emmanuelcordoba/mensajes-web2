@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Panel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Panel\AgregarAColaRequest;
 use App\Models\Cadete;
+use App\Services\ColaDeCadetes;
 use App\Services\IngresoALaCola;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -66,6 +67,63 @@ class ColaController extends Controller
         return back()->with('success',
             'Móvil '.$cadete->numero_movil.' agregado a la cola, en el puesto '
             .$cadete->posicionEnCola().'.');
+    }
+
+    /**
+     * Mandar un cadete al final de la cola.
+     *
+     * Se dispara desde la columna «Cadetes activos» de Inicio, no desde el mostrador: el
+     * que la aprieta es la oficina. Vive acá porque esta clase es la dueña de la cola.
+     */
+    public function alFinal(Cadete $cadete): RedirectResponse
+    {
+        $this->authorize('ordenarCola', Cadete::class);
+
+        $motivo = ColaDeCadetes::porQueNoMandarAlFinal($cadete);
+
+        if ($motivo !== null) {
+            return back()->with('danger', $motivo);
+        }
+
+        (new ColaDeCadetes)->mandarAlFinal($cadete);
+
+        return back()->with('success',
+            'El móvil '.$cadete->numero_movil.' pasó al final de la cola.');
+    }
+
+    /** Sacar un cadete de la cola: queda inactivo. Es el botón «Quitar» del detalle. */
+    public function sacar(Cadete $cadete): RedirectResponse
+    {
+        $this->authorize('ordenarCola', Cadete::class);
+
+        $motivo = ColaDeCadetes::porQueNoSacar($cadete);
+
+        if ($motivo !== null) {
+            return back()->with('danger', $motivo);
+        }
+
+        (new ColaDeCadetes)->sacar($cadete);
+
+        return back()->with('success',
+            'El móvil '.$cadete->numero_movil.' salió de la cola.');
+    }
+
+    /** Vaciar la cola: todos los que están en ella quedan inactivos. */
+    public function limpiar(): RedirectResponse
+    {
+        $this->authorize('ordenarCola', Cadete::class);
+
+        $motivo = ColaDeCadetes::porQueNoLimpiar();
+
+        if ($motivo !== null) {
+            return back()->with('danger', $motivo);
+        }
+
+        $cuantos = (new ColaDeCadetes)->limpiar();
+
+        return back()->with('success', $cuantos === 1
+            ? 'Salió 1 cadete de la cola.'
+            : 'Salieron '.$cuantos.' cadetes de la cola.');
     }
 
     /**

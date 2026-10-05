@@ -204,18 +204,14 @@ test('the home screen of the panel is the one the old system opens on', function
     // `/panel`, la misma URL: es donde cae alguien que escribe la dirección a secas y
     // donde apunta la marca del menú.
     //
-    // ⚠️ Y es además la última pantalla pendiente que queda, así que acá se comprueba de paso
-    // que una pantalla que no cuelga de ningún desplegable no se inventa un grupo arriba. Esto
-    // apuntó al mapa, después a estadísticas y ahora acá; cuando Inicio se haga, lo que
-    // comprueba lo sigue cubriendo el test de `Navegacion::ubicar()` de arriba.
+    // ⚠️ Esto comprobaba además que una pantalla pendiente no se inventa un grupo arriba, y
+    // apuntó al mapa, después a estadísticas y después acá. **Ya no queda ninguna pendiente**:
+    // eso lo sigue cubriendo el test de `Navegacion::ubicar()` de arriba, que no necesita una
+    // pantalla sin hacer para preguntarlo.
     $this->actingAs(usuarioCon(Rol::RESTRINGIDO))
         ->get('/panel')
         ->assertSuccessful()
-        ->assertInertia(fn ($pagina) => $pagina
-            ->component('panel/pendiente')
-            ->where('titulo', 'Inicio')
-            ->where('dentroDe', null)
-        );
+        ->assertInertia(fn ($pagina) => $pagina->component('inicio/index'));
 });
 
 test('every link is relative, so no page carries the host around', function () {

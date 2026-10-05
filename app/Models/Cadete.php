@@ -188,6 +188,20 @@ class Cadete extends Model
     ];
 
     /**
+     * Los mismos dos, para una columna angosta.
+     *
+     * ⚠️ Existe por la columna «Cadetes activos» de Inicio, que en el panel viejo tiene dos
+     * doceavos de ancho. Allá entraba porque la celda imprime `tipo_vehiculo` **crudo**, o
+     * sea la letra: la tabla dice «M» y «B» y hay que saberlo de memoria. Con el nombre
+     * entero no entran los botones de la fila, así que acá se acorta en vez de ensanchar la
+     * columna o dejar la letra sola. El nombre completo va en el `title`.
+     */
+    public const VEHICULOS_CORTOS = [
+        self::VEHICULO_BICICLETA => 'Bici',
+        self::VEHICULO_MOTOCICLETA => 'Moto',
+    ];
+
+    /**
      * ⚠️ Los montos —`monto_semanal`, `monto_deuda`, `cobranza_saldo` y los dos
      * pagados— NO se castean. Son `NUMERIC(12,2)` y llegan como string: castearlos
      * a `float` es donde se pierden los centavos de una deuda.

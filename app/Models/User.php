@@ -298,6 +298,36 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     }
 
     /**
+     * Cómo se lo reconoce de un vistazo en una pantalla compartida: sus iniciales sobre su
+     * color.
+     *
+     * ⚠️ Esto no es decoración. La lista de espera la miran varias personas a la vez y cada
+     * una necesita ver cuáles son sus pedidos sin leer nada: el distintivo es lo que hace
+     * posible esa gestión simultánea. Por eso vive acá y no en una pantalla: lo dibujan la
+     * fila de la lista y la cabecera del modal, y tienen que decir lo mismo.
+     *
+     * ⚠️ Hacen falta las dos cosas, iniciales **y** color, como el `@if` del panel viejo:
+     * unas iniciales sin color no se distinguen de las de al lado, que es justamente para lo
+     * que sirven. Medido sobre la base de desarrollo: 35 cuentas tienen iniciales y 32
+     * tienen color, y son las que cargan pedidos desde el panel.
+     *
+     * @return array{nombre: string, iniciales: string, color: string, contraste: string|null}|null
+     */
+    public function distintivo(): ?array
+    {
+        if ($this->iniciales === null || $this->iniciales === '' || $this->color === null) {
+            return null;
+        }
+
+        return [
+            'nombre' => $this->name,
+            'iniciales' => $this->iniciales,
+            'color' => $this->color,
+            'contraste' => $this->color_contraste,
+        ];
+    }
+
+    /**
      * Negro o blanco, el que se lea mejor sobre `color`.
      *
      * Lo usa el avatar de la topbar del panel, que son 32 cuentas. Devuelve null si

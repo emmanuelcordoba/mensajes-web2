@@ -71,12 +71,53 @@ class PedidoPolicy
     }
 
     /**
+     * Ver la lista de espera de Inicio: sólo la oficina.
+     *
+     * ⚠️ Es una regla de pedidos y por eso vive acá. La primera versión de Inicio dibujaba
+     * esta columna cuando el usuario podía ver **cadetes** —`viewAny` de CadetePolicy—, que
+     * da la misma respuesta pero por el motivo equivocado: el día que cambie quién puede ver
+     * cadetes, cambiaría también quién ve los pedidos de la oficina, y nadie lo habría
+     * decidido.
+     *
+     * En el panel viejo la columna está adentro del `@if(tieneRol(['admin','empleado']))` de
+     * `panel.blade.php:273` y no hay ninguna regla del lado del servidor. Esta es esa misma
+     * lista de roles, escrita donde se puede preguntar.
+     */
+    public function verListaDeEspera(User $user): bool
+    {
+        return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
+    }
+
+    /**
+     * Darle el cadete a un pedido, desde la lista de espera: sólo la oficina.
+     *
+     * ⚠️ **En el sistema viejo esto no lo preguntaba nadie.** `ajax/pedidos/actualizar`
+     * vivía en el grupo `rol:empleado,restringido,admin` y adentro no comprobaba nada: ni
+     * el rol ni `alcanzaPedido`. O sea que una cuenta de comercio podía editar CUALQUIER
+     * pedido —ni siquiera los suyos— y asignarle un cadete mandando el id. Es el mismo
+     * patrón de SEC-6 y SEC-7, en el único endpoint de los tres que había quedado.
+     *
+     * La pantalla nunca se lo ofreció a un comercio: la lista de espera es de oficina. Lo
+     * que faltaba era que el servidor lo dijera.
+     */
+    public function asignarCadete(User $user, Pedido $pedido): bool
+    {
+        return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
+    }
+
+    /**
      * ⚠️ Borrar sí lo puede un comercio, sobre sus propios pedidos: es lo que hace
      * hoy el sistema viejo y no se cambia sin decidirlo. Lo que no podía es borrar
      * los de otro, que era el agujero.
      */
-    public function delete(User $user, Pedido $pedido): bool
+    public function delete(User $user, Pedido $pedido): Response
     {
-        return $this->update($user, $pedido);
+        // ⚠️ 404 y no 403, por lo mismo que `view()`: un comercio puede probar ids, y un 403
+        // le confirma que ese pedido existe. Es además lo que contesta el sistema viejo
+        // —`errorResponse('No se encontró el pedido solicitado.', 404)`—, que para borrar sí
+        // comprobaba el alcance, al revés que para asignar.
+        return $this->update($user, $pedido)
+            ? Response::allow()
+            : Response::denyAsNotFound();
     }
 }

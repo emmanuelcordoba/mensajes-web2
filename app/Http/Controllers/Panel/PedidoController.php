@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Panel\AsignarCadeteRequest;
 use App\Models\LogEstadoPedido;
 use App\Models\Pedido;
+use App\Services\AsignacionDeCadete;
 use App\Support\Momento;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -54,6 +57,101 @@ class PedidoController extends Controller
             'pedidos' => $pedidos,
             'estados' => Pedido::ESTADOS,
         ]);
+    }
+
+    /**
+     * Un pedido en JSON, para el modal de la lista de espera.
+     *
+     * ⚠️ Es lo mismo que hacía `ajax/pedidos/getById`, y por la misma razón que el detalle
+     * de un cadete: el teléfono y el nombre del responsable de un pedido no tienen por qué
+     * viajar en cada refresco de una pantalla que está abierta todo el día. El listado manda
+     * lo que se ve en la fila; el resto sale cuando alguien abre el modal.
+     *
+     * `editable` dice si los campos se pueden tocar: los pedidos de la app tienen el precio
+     * puesto por el cliente y se cotizan por otra rama. Ver `AsignacionDeCadete`.
+     *
+     * @return array<string, mixed>
+     */
+    public function detalle(Pedido $pedido): array
+    {
+        $this->authorize('view', $pedido);
+
+        $pedido->load(['cliente:id,numero,nombre_mostrado', 'user:id,name,iniciales,color']);
+
+        return [
+            'id' => $pedido->id,
+            'numero' => $pedido->numero,
+            'estado' => $pedido->estado,
+            'plataforma' => $pedido->plataforma_origen,
+            'cliente_numero' => $pedido->cliente?->numero,
+            'cliente' => $pedido->nombreDelCliente(),
+            'cargado_por' => $pedido->user?->name,
+            // El mismo distintivo que la fila de la lista, para que la cabecera del modal
+            // diga lo mismo que la lista de la que se abrió. Ver `User::distintivo()`.
+            'distintivo' => $pedido->user?->distintivo(),
+
+            'direccion' => $pedido->direccion,
+            'destino' => $pedido->destino,
+            'responsable' => $pedido->responsable,
+            'telefono' => $pedido->telefono,
+            'detalle' => $pedido->detalle,
+            'valor' => $pedido->valor,
+            'garantia' => $pedido->garantia,
+            'retorno_origen' => $pedido->retorno_origen,
+
+            // Los tres que el modal muestra y no deja editar.
+            'tipo_paquete' => $pedido->tipo_paquete,
+            'peso_paquete' => $pedido->peso_paquete,
+            'valor_declarado' => $pedido->valor_declarado,
+
+            'editable' => in_array(
+                $pedido->plataforma_origen,
+                AsignacionDeCadete::PLATAFORMAS_EDITABLES,
+                true,
+            ),
+            'cadete_id' => $pedido->cadete_id,
+        ];
+    }
+
+    /**
+     * Guardar el pedido y, si eligieron uno, darle el cadete.
+     *
+     * Las dos cosas van juntas porque el modal tiene un solo botón. La regla entera —a qué
+     * estado va el pedido, quién cobra, quién tiene cinco minutos para confirmar— vive en
+     * `AsignacionDeCadete`.
+     */
+    public function asignar(AsignarCadeteRequest $request, Pedido $pedido): RedirectResponse
+    {
+        $this->authorize('asignarCadete', $pedido);
+
+        $cadete = $request->cadete();
+
+        (new AsignacionDeCadete)->guardar(
+            $pedido,
+            $cadete,
+            $request->safe()->except('cadete_id'),
+            $request->user()?->id,
+        );
+
+        return back()->with('success', $cadete === null
+            ? 'Pedido guardado.'
+            : 'Pedido '.$pedido->numero.' asignado al móvil '.$cadete->numero_movil.'.');
+    }
+
+    /**
+     * Borrar un pedido.
+     *
+     * ⚠️ Borrado lógico, que es lo que hace el sistema viejo, y no es un detalle: la oficina
+     * se deshace así de los pedidos que no llegan al final, de modo que entre los borrados
+     * está la mayor parte de los estados intermedios. Ver `show()`.
+     */
+    public function destroy(Pedido $pedido): RedirectResponse
+    {
+        $this->authorize('delete', $pedido);
+
+        $pedido->delete();
+
+        return back()->with('success', 'Pedido '.$pedido->numero.' eliminado.');
     }
 
     /**

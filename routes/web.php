@@ -61,6 +61,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('pedidos', [PedidoController::class, 'index'])->name('pedidos.index');
                 // Después del listado, que es una ruta exacta y no la captura.
                 Route::get('pedidos/{pedido}', [PedidoController::class, 'show'])->name('pedidos.show');
+
+                /*
+                | Borrar un pedido está en el grupo compartido porque un comercio puede
+                | borrar los suyos: en el sistema viejo `ajax/pedidos/eliminar` vive en el
+                | grupo que incluye a `restringido` y comprueba la pertenencia adentro,
+                | contestando 404. Acá eso lo dice `PedidoPolicy::delete()`.
+                |
+                | Las dos del modal de la lista de espera NO están acá: ver más abajo.
+                */
+                Route::delete('pedidos/{pedido}', [PedidoController::class, 'destroy'])->name('pedidos.destroy');
             });
 
         /*
@@ -85,6 +95,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 | —`/mensajes/{cadete_id?}`—: sin él la pantalla muestra las conversaciones
                 | y ninguna abierta.
                 */
+                /*
+                | Las dos del modal de la lista de espera, que es una pantalla de oficina.
+                |
+                | ⚠️ Acá y no en el grupo compartido, que es donde están en el sistema viejo:
+                | `ajax/pedidos/getById` y `ajax/pedidos/actualizar` viven en el grupo
+                | `rol:empleado,admin`. Adentro no comprueban la pertenencia **y no hace
+                | falta**: la oficina alcanza todos los pedidos. El control de pertenencia es
+                | lo que necesitan las rutas del grupo compartido, no éstas.
+                |
+                | `detalle` contesta JSON, como el del cadete: el modal lo pide al abrirse.
+                */
+                Route::get('pedidos/{pedido}/detalle', [PedidoController::class, 'detalle'])->name('pedidos.detalle');
+                Route::patch('pedidos/{pedido}/asignacion', [PedidoController::class, 'asignar'])->name('pedidos.asignar');
+
                 Route::get('mensajes/cadetes', [MensajeController::class, 'cadetes'])->name('mensajes.cadetes');
                 Route::get('mensajes/{cadete?}', [MensajeController::class, 'index'])->name('mensajes.index');
                 Route::post('mensajes/{cadete}', [MensajeController::class, 'enviar'])->name('mensajes.enviar');

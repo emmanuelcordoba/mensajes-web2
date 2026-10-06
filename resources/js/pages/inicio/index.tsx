@@ -3,6 +3,11 @@ import { ArrowDown, Info, MessageSquare, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { MapaDeCadetes, type EnElMapa, type Punto } from '@/components/mapa-de-cadetes';
+import {
+    ListaDeEspera,
+    type EnEspera,
+    type ParaAsignar,
+} from '@/pages/inicio/lista-de-espera';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -21,8 +26,8 @@ import {
 | carga de un pedido y la lista de espera. Las proporciones también son las de allá —2, 5 y 5
 | de doce—, porque es la pantalla que la gente tiene memorizada.
 |
-| ⚠️ SE ESTÁ PORTANDO POR PARTES. Hecha la primera columna; las otras dos dicen que faltan en
-| vez de no estar, así que la pantalla es la de verdad en cada paso.
+| ⚠️ SE ESTÁ PORTANDO POR PARTES. Hechas la primera y la tercera; la del medio dice que falta
+| en vez de no estar, así que la pantalla es la de verdad en cada paso.
 |
 | ⚠️ La primera y la tercera columna son de oficina. Un comercio entra acá sólo por la del
 | medio, y entonces no se le dibuja un hueco donde no va nada: se le da el ancho a lo que sí
@@ -60,11 +65,15 @@ type ConfigDelMapa = { centro: Punto; zoom: number; clave: string | null };
 export default function InicioIndex({
     cola,
     porQueNoLimpiar,
+    espera,
+    paraAsignar,
     mapa,
     refresco,
 }: {
     cola: EnLaCola[] | null;
     porQueNoLimpiar: string | null;
+    espera: EnEspera[] | null;
+    paraAsignar: ParaAsignar[] | null;
     mapa: ConfigDelMapa | null;
     refresco: number;
 }) {
@@ -106,7 +115,9 @@ export default function InicioIndex({
         }
     };
 
-    usePoll(refresco, { only: ['cola', 'porQueNoLimpiar'] });
+    usePoll(refresco, {
+        only: ['cola', 'porQueNoLimpiar', 'espera', 'paraAsignar'],
+    });
 
     return (
         <>
@@ -130,11 +141,11 @@ export default function InicioIndex({
                     />
                 </div>
 
-                {cola !== null && (
+                {espera !== null && (
                     <div className="lg:col-span-5">
-                        <Pendiente
-                            titulo="Lista de espera"
-                            detalle="Los pedidos que esperan cadete. Es la tercera parte."
+                        <ListaDeEspera
+                            espera={espera}
+                            paraAsignar={paraAsignar ?? []}
                         />
                     </div>
                 )}

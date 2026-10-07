@@ -14,6 +14,16 @@ test('an open stretch is one with no end', function () {
 });
 
 test('closing a stretch records how long it lasted, in seconds', function () {
+    // ⚠️ **El reloj se congela, y sin eso este test fallaba cada tanto.** Acá hay dos
+    // llamadas a `now()` separadas: la de `inicio`, noventa minutos atrás, y la que
+    // `cerrar()` hace para el final. Si el segundo cambia entre una y otra —que con la
+    // suite cargada pasa—, el tramo dura 5.401 y la igualdad falla. No era un defecto del
+    // modelo: era el test midiendo con una regla que se movía.
+    //
+    // Se congela en vez de aflojar la comparación a un «más de 5.300», porque lo que este
+    // test fija es que la duración sea EXACTA. Es el número que después se suma para pagar.
+    $this->freezeTime();
+
     $actividad = ActividadCadete::factory()->abierta()->create(['inicio' => now()->subMinutes(90)]);
 
     $actividad->cerrar();
@@ -26,6 +36,13 @@ test('leaving the app closes the open stretch, by any path', function () {
     // PANEL-17: el fin se escribía sólo en cambiarEstado() y sólo desde
     // `activo-app`, así que con un pedido en curso, al cerrar sesión o al sacarlo la
     // central de la cola, el tramo quedaba abierto para siempre.
+    //
+    // ⚠️ El reloj congelado por lo mismo que el test de arriba, y acá además para poder
+    // exigir la hora exacta: esto decía «más de 3.500 segundos», que es un parche contra el
+    // mismo reloj que se movía y deja pasar cualquier duración mal calculada de ahí para
+    // arriba. Un tramo de una hora dura 3.600.
+    $this->freezeTime();
+
     foreach ([Cadete::ESTADO_ACTIVO_APP, Cadete::ESTADO_CON_PEDIDO_APP] as $desde) {
         $cadete = Cadete::factory()->enEstado($desde)->create();
         $actividad = $cadete->actividades()->create(['inicio' => now()->subHour()]);
@@ -34,7 +51,7 @@ test('leaving the app closes the open stretch, by any path', function () {
         $cadete->save();
 
         expect($actividad->fresh()->estaAbierta())->toBeFalse()
-            ->and($actividad->fresh()->duracion)->toBeGreaterThan(3_500);
+            ->and($actividad->fresh()->duracion)->toBe(3_600);
     }
 });
 

@@ -139,44 +139,74 @@ class AsignacionDeCadete
                 return false;
             }
 
-            // ⚠️ El estado de ANTES, guardado antes de tocarlo: abajo hay que distinguir
-            // al cadete que vino de la cola web del que ya estaba inactivo, y para cuando
-            // se decide el cobro los dos dirían `inactivo`.
-            $comoLlego = $cadete->estado;
-            $deLaColaWeb = $comoLlego === Cadete::ESTADO_ACTIVO_WEB;
-
-            $pedido->cadete()->associate($cadete);
-            $enLaApp = $cadete->estaEnLaApp();
-            $pedido->estado = $enLaApp ? Pedido::ESTADO_ASIGNADO : Pedido::ESTADO_FINALIZADO;
-
-            if ($deLaColaWeb) {
-                // Se lo lleva del mostrador: sale de la cola.
-                $cadete->estado = Cadete::ESTADO_INACTIVO;
-                $cadete->save();
-            }
-
-            $pedido->save();
-            LogEstadoPedido::registrar($pedido, LogEstadoPedido::WEB, userId: $userId);
-
-            if ($deLaColaWeb) {
-                // ⚠️ SÓLO el que vino de la cola web, como el sistema viejo: el de la app
-                // todavía no terminó nada, y a uno que ya estaba inactivo el switch viejo
-                // le daba el pedido por su rama `default`, sin cobrar.
-                //
-                // ⚠️ Y después de guardar el pedido: el movimiento guarda `pedido_id`, que
-                // es lo que impide el cobro doble (COB-1). `user_id` siempre (PANEL-13).
-                $cadete->cobrarSaldoPedido($pedido, $userId);
-            }
-
-            return $enLaApp;
+            return $this->darleElPedido($pedido, $cadete, $userId);
         });
 
         if ($aConfirmar) {
-            // ⚠️ Fuera de la transacción: el trabajo diferido lee el pedido de la base, así
-            // que no puede encolarse antes de que la fila esté escrita.
-            CancelarPedidoSinConfirmar::dispatch($pedido)
-                ->delay(now()->addMinutes(self::MINUTOS_PARA_CONFIRMAR));
+            self::ponerElRelojDeConfirmacion($pedido);
         }
+    }
+
+    /**
+     * Darle el pedido al cadete: a qué estado va, quién sale de la cola y a quién se le cobra.
+     *
+     * **Es el corazón de las dos pantallas y por eso está acá y no en cada una.** El alta de
+     * Inicio y el modal de la lista de espera hacen exactamente esto, y en el sistema viejo
+     * son dos copias del mismo `switch` —`PedidoController@store` y
+     * `Ajax\PedidoController@actualizar`— que ya se separaron entre sí: la del modal cobra
+     * el saldo y la de la API v1 no, y nadie decidió esa diferencia. Una regla, dos lectores.
+     *
+     * ⚠️ **Tiene que correr dentro de una transacción**, y la abre quien llama: el cobro del
+     * saldo, el estado del cadete y el del pedido son una sola decisión. Si el índice que
+     * impide el cobro doble rechaza el movimiento, no puede quedar un pedido finalizado sin
+     * cobrar.
+     *
+     * ⚠️ **No encola el reloj de los cinco minutos**: eso va fuera de la transacción, porque
+     * el trabajo diferido lee el pedido de la base y no puede encolarse antes de que la fila
+     * esté escrita. Por eso devuelve si hace falta, y quien llama lo pone con
+     * `ponerElRelojDeConfirmacion()`.
+     *
+     * @return bool Si el cadete tiene cinco minutos para confirmar.
+     */
+    public function darleElPedido(Pedido $pedido, Cadete $cadete, ?int $userId = null): bool
+    {
+        // ⚠️ El estado de ANTES, guardado antes de tocarlo: abajo hay que distinguir
+        // al cadete que vino de la cola web del que ya estaba inactivo, y para cuando
+        // se decide el cobro los dos dirían `inactivo`.
+        $comoLlego = $cadete->estado;
+        $deLaColaWeb = $comoLlego === Cadete::ESTADO_ACTIVO_WEB;
+
+        $pedido->cadete()->associate($cadete);
+        $enLaApp = $cadete->estaEnLaApp();
+        $pedido->estado = $enLaApp ? Pedido::ESTADO_ASIGNADO : Pedido::ESTADO_FINALIZADO;
+
+        if ($deLaColaWeb) {
+            // Se lo lleva del mostrador: sale de la cola.
+            $cadete->estado = Cadete::ESTADO_INACTIVO;
+            $cadete->save();
+        }
+
+        $pedido->save();
+        LogEstadoPedido::registrar($pedido, LogEstadoPedido::WEB, userId: $userId);
+
+        if ($deLaColaWeb) {
+            // ⚠️ SÓLO el que vino de la cola web, como el sistema viejo: el de la app
+            // todavía no terminó nada, y a uno que ya estaba inactivo el switch viejo
+            // le daba el pedido por su rama `default`, sin cobrar.
+            //
+            // ⚠️ Y después de guardar el pedido: el movimiento guarda `pedido_id`, que
+            // es lo que impide el cobro doble (COB-1). `user_id` siempre (PANEL-13).
+            $cadete->cobrarSaldoPedido($pedido, $userId);
+        }
+
+        return $enLaApp;
+    }
+
+    /** El reloj que cancela el pedido si el cadete de la app no lo confirma. */
+    public static function ponerElRelojDeConfirmacion(Pedido $pedido): void
+    {
+        CancelarPedidoSinConfirmar::dispatch($pedido)
+            ->delay(now()->addMinutes(self::MINUTOS_PARA_CONFIRMAR));
     }
 
     /**

@@ -30,6 +30,9 @@ use Inertia\Response;
  */
 class ClienteController extends Controller
 {
+    /** Cuántos comercios contesta el buscador del alta de pedidos. */
+    public const CUANTOS_AL_BUSCAR = 20;
+
     /** Los campos sobre los que se puede buscar, como en el listado viejo. */
     public const CAMPOS_DE_BUSQUEDA = ['nombre', 'numero', 'direccion', 'telefono'];
 
@@ -83,6 +86,64 @@ class ClienteController extends Controller
         ]);
     }
 
+    /**
+     * Los comercios que el alta de pedidos ofrece, buscados contra el servidor.
+     *
+     * ⚠️ **El panel viejo se trae la lista entera.** `ajax/clientes/getAllNombres` manda
+     * los 11.057 clientes en cada carga de la pantalla de Inicio —679 KB— y el filtrado lo
+     * hace jQuery en el navegador. Acá se busca contra la base, que es donde están.
+     *
+     * ⚠️ **Se busca también por número, y es lo que la oficina usa.** El campo «Cliente»
+     * del alta vieja es el número, y el nombre se completa solo: `cargarClienteByNumero`.
+     *
+     * ⚠️ Viajan los cinco campos que el formulario completa y ninguno más. El endpoint
+     * viejo contestaba `Cliente::where(...)->first()` sin lista de columnas, o sea el
+     * documento completo del comercio —token de la app incluido— a cualquiera que supiera
+     * un número. Ver SEC-5.
+     *
+     * @return array<int, array{id: int, numero: int, nombre: string, direccion: string, telefono: string, responsable: string|null}>
+     */
+    public function buscar(Request $request): array
+    {
+        $this->authorize('viewAny', Cliente::class);
+
+        $buscado = trim($request->string('q')->value());
+
+        if ($buscado === '') {
+            return [];
+        }
+
+        return Cliente::query()
+            ->where(function (Builder $w) use ($buscado): void {
+                // `nombre_mostrado` es la columna generada que ya usa el listado: sirve
+                // para los comercios y para las personas, que guardan nombre y apellido
+                // por separado.
+                $w->where('nombre_mostrado', 'ilike', '%'.$buscado.'%');
+
+                if (ctype_digit($buscado)) {
+                    $w->orWhere('numero', (int) $buscado);
+                }
+            })
+            // El número exacto primero: si alguien escribe «820» quiere el comercio 820,
+            // no el primero que tenga un 820 en el nombre.
+            ->orderByRaw('case when numero = ? then 0 else 1 end', [ctype_digit($buscado) ? (int) $buscado : -1])
+            ->orderBy('nombre_mostrado')
+            ->orderBy('numero')
+            ->limit(self::CUANTOS_AL_BUSCAR)
+            ->get(['id', 'numero', 'nombre_mostrado', 'direccion', 'telefono', 'nombre_empleado'])
+            ->values()
+            ->map(fn (Cliente $cliente): array => [
+                'id' => $cliente->id,
+                'numero' => $cliente->numero,
+                'nombre' => $cliente->nombre_mostrado,
+                'direccion' => $cliente->direccion,
+                'telefono' => $cliente->telefono,
+                // El alta vieja lo pone en «Nombre de Responsable», que es quien atiende.
+                'responsable' => $cliente->nombre_empleado,
+            ])
+            ->all();
+    }
+
     public function create(): Response
     {
         $this->authorize('create', Cliente::class);
@@ -104,6 +165,48 @@ class ClienteController extends Controller
 
         return to_route('panel.clientes.index')
             ->with('success', 'Cliente creado con el N° '.$cliente->numero.'.');
+    }
+
+    /**
+     * Dar de alta un comercio sin salir del alta de pedidos.
+     *
+     * Es el `modalAltaCliente` del panel viejo, y existe por un motivo concreto: si para
+     * cargar un comercio nuevo hay que irse de la pantalla, el pedido que se estaba
+     * tipeando se pierde. Por eso contesta el comercio creado y no una redirección: el
+     * formulario completa con él los campos de cliente y sigue donde estaba.
+     *
+     * ⚠️ **La validación y el guardado son los mismos que el alta de la pantalla de
+     * Clientes** —`GuardarClienteRequest` y `guardar()`—. Lo único distinto es la forma de
+     * la respuesta. En el sistema viejo son dos altas separadas, `ajax/clientes/store` y
+     * `ClienteController@store`, cada una con su validación: la del modal pide cuatro
+     * campos obligatorios y la de la pantalla cinco reglas, y el número lo controlaba sólo
+     * una de las dos.
+     *
+     * ⚠️ **El número no se pide**, acá tampoco: lo asigna `clientes_numero_seq`. El modal
+     * viejo lo precargaba con una sugerencia de `ajax/clientes/getNuevoNumero` que el
+     * empleado podía reescribir, y entonces la secuencia no avanzaba. Ver
+     * `GuardarClienteRequest`.
+     *
+     * @return array{id: int, numero: int, nombre: string, direccion: string, telefono: string, responsable: string|null}
+     */
+    public function crearRapido(GuardarClienteRequest $request): array
+    {
+        $this->authorize('create', Cliente::class);
+
+        $cliente = new Cliente;
+        $this->guardar($cliente, $request);
+
+        // `numero` y `nombre_mostrado` los escribe PostgreSQL. Ver LeeLoQueEscribeLaBase.
+        $cliente->refresh();
+
+        return [
+            'id' => $cliente->id,
+            'numero' => $cliente->numero,
+            'nombre' => $cliente->nombre_mostrado,
+            'direccion' => $cliente->direccion,
+            'telefono' => $cliente->telefono,
+            'responsable' => $cliente->nombre_empleado,
+        ];
     }
 
     public function edit(Cliente $cliente): Response

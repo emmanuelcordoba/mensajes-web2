@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Panel\AsignarCadeteRequest;
+use App\Http\Requests\Panel\GuardarPedidoRequest;
 use App\Models\LogEstadoPedido;
 use App\Models\Pedido;
+use App\Services\AltaDePedido;
 use App\Services\AsignacionDeCadete;
 use App\Support\Momento;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -136,6 +139,76 @@ class PedidoController extends Controller
         return back()->with('success', $cadete === null
             ? 'Pedido guardado.'
             : 'Pedido '.$pedido->numero.' asignado al móvil '.$cadete->numero_movil.'.');
+    }
+
+    /**
+     * Cargar un pedido: el botón «Enviar» de la columna del medio de Inicio.
+     *
+     * La regla entera —de quién es, a qué estado va, quién cobra, quién tiene cinco minutos
+     * para confirmar— vive en `AltaDePedido`, que comparte con el modal de la lista de espera
+     * la parte que decide el estado del cadete.
+     *
+     * ⚠️ **El comercio no elige a nombre de quién.** Su pedido es de su propio comercio, que
+     * sale de la relación de la cuenta y no de lo que mande el formulario. El panel viejo
+     * hace lo mismo con un `merge()`; acá los campos que no le corresponden ya los negó la
+     * validación, así que esto no pisa nada: lo completa.
+     */
+    public function store(GuardarPedidoRequest $request, AltaDePedido $alta): RedirectResponse
+    {
+        $this->authorize('create', Pedido::class);
+
+        $usuario = $request->user();
+
+        if ($usuario === null) {
+            abort(403);
+        }
+
+        $campos = $request->safe()->except('cadete_id');
+
+        if ($request->esDeUnComercio()) {
+            // La validación ya comprobó que el comercio existe; sin él no se llega acá.
+            $campos['cliente_id'] = $request->comercioPropio()?->id;
+            $campos['cliente'] = null;
+        }
+
+        $pedido = $alta->guardar($campos, $request->cadete(), $usuario);
+
+        return back()->with([
+            'success' => 'Pedido '.$pedido->numero.' cargado.',
+            // Para el botón de imprimir, que el panel viejo también muestra recién cargado
+            // el pedido y sólo entonces: es el comprobante que se le da al cadete.
+            'ultimoPedido' => ['id' => $pedido->id, 'numero' => $pedido->numero],
+        ]);
+    }
+
+    /**
+     * El comprobante para imprimir: el cupón que se le entrega al cadete.
+     *
+     * ⚠️ **No es un PDF, y en el sistema viejo tampoco lo es.** `PdfController@pedido`
+     * devuelve una vista HTML con un `window.print()` al cargar, pese al nombre de la ruta
+     * y del controlador —el único que de verdad arma un PDF con Dompdf es el listado de
+     * cadetes—. Se replica así: abre una pestaña, sale el diálogo de impresión, y el papel
+     * queda igual.
+     *
+     * ⚠️ **Las medidas son las de allá, en centímetros, y no se tocan.** Se imprime sobre
+     * un cupón preimpreso: la fecha va corrida 7,5 cm porque ahí está el recuadro. Lo que sí
+     * cambia es de dónde sale el CSS: el sistema viejo trae Bootstrap 3 de un CDN, así que
+     * sin internet el cupón sale desarmado. Acá las reglas que usaba están escritas en la
+     * vista, con los tamaños que Bootstrap 3 les daba.
+     *
+     * ⚠️ Es una vista Blade y no una pantalla de Inertia, y es la única del panel: una
+     * página que se imprime y se cierra no es parte de la aplicación, no lleva su menú y
+     * tiene que poder abrirse en otra pestaña.
+     */
+    public function cupon(Pedido $pedido): View
+    {
+        // La negativa es 404 y no 403, como el resto: un 403 le confirmaría a un comercio
+        // que el pedido de otro existe. Ver `PedidoPolicy::view()`.
+        $this->authorize('view', $pedido);
+
+        $pedido->load(['cliente:id,numero,nombre_mostrado', 'cadete:id,numero_movil,apellidos,nombres']);
+
+        return view('cupon', ['pedido' => $pedido]);
     }
 
     /**

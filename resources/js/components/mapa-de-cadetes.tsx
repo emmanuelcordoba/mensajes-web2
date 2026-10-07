@@ -1,12 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+
+import {
+    Aviso,
+    FaltaLaClave,
+    useApiDeGoogleMaps,
+    type MapaDeGoogle,
+    type MarcadorDeGoogle,
+    type Punto,
+} from '@/components/google-maps';
 
 /*
 | El mapa de Google con cadetes encima.
 |
 | Lo usan dos pantallas: el Mapa del menú y el detalle de un cadete de la cola, en Inicio. Es
-| un componente y no dos copias porque lo que se repetiría es el cargador de la API —el
-| `<script>` que hay que meter una sola vez en el documento aunque haya dos mapas—, y dos
-| cargadores compitiendo por `window.google` es justo el error difícil de encontrar.
+| un componente y no dos copias porque lo que se repetiría es el dibujado de los marcadores.
+|
+| ⚠️ El cargador de la API no está acá: vive en `components/google-maps`, porque el alta de
+| pedidos también la necesita —para el autocompletado de direcciones— y el `<script>` tiene
+| que ir una sola vez en el documento.
 |
 | ⚠️ Los marcadores son símbolos y no las tres imágenes PNG del panel viejo. Mismos tres
 | colores y mismo significado; lo que se gana es que escalan y que no hay que arrastrar
@@ -21,50 +32,8 @@ export type EnElMapa = {
     con_pedido: boolean;
 };
 
-export type Punto = { lat: number; lng: number };
-
-/*
-| ⚠️ Lo poco de la API de Google Maps que esto usa, declarado acá.
-|
-| La alternativa es `@types/google.maps`, que son 7.000 líneas de tipos para un mapa, unos
-| marcadores y un círculo. Si algún día el mapa hace más que esto, ese paquete es el camino.
-*/
-type MapaDeGoogle = {
-    setCenter(punto: Punto): void;
-    setZoom(zoom: number): void;
-};
-
-type MarcadorDeGoogle = { setMap(mapa: MapaDeGoogle | null): void };
-
-type ApiDeGoogleMaps = {
-    maps: {
-        Map: new (
-            elemento: HTMLElement,
-            opciones: { zoom: number; center: Punto; mapTypeControl: boolean },
-        ) => MapaDeGoogle;
-        Marker: new (opciones: {
-            position: Punto;
-            map: MapaDeGoogle;
-            title: string;
-            label: { text: string; color: string; fontSize: string };
-            icon: {
-                path: number;
-                scale: number;
-                fillColor: string;
-                fillOpacity: number;
-                strokeColor: string;
-                strokeWeight: number;
-            };
-        }) => MarcadorDeGoogle;
-        SymbolPath: { CIRCLE: number };
-    };
-};
-
-declare global {
-    interface Window {
-        google?: ApiDeGoogleMaps;
-    }
-}
+export { Aviso };
+export type { Punto };
 
 /** Los mismos tres del cartel del panel viejo: gris, azul y rojo. */
 export const COLORES = {
@@ -100,51 +69,13 @@ export function MapaDeCadetes({
     const division = useRef<HTMLDivElement>(null);
     const mapa = useRef<MapaDeGoogle | null>(null);
     const marcadores = useRef<MarcadorDeGoogle[]>([]);
-    const [listo, setListo] = useState(false);
-    const [falló, setFalló] = useState(false);
+    const { listo, falló, api } = useApiDeGoogleMaps(clave);
 
-    // 1. Cargar la API, una sola vez en todo el documento.
-    useEffect(() => {
-        if (clave === null || clave === '') {
-            return;
-        }
-
-        if (window.google?.maps !== undefined) {
-            setListo(true);
-
-            return;
-        }
-
-        const id = 'google-maps';
-        const yaEstá = document.getElementById(id) as HTMLScriptElement | null;
-        const script = yaEstá ?? document.createElement('script');
-
-        if (yaEstá === null) {
-            script.id = id;
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(clave)}`;
-            script.async = true;
-            document.head.appendChild(script);
-        }
-
-        const alCargar = () => setListo(true);
-        const alFallar = () => setFalló(true);
-
-        script.addEventListener('load', alCargar);
-        script.addEventListener('error', alFallar);
-
-        return () => {
-            script.removeEventListener('load', alCargar);
-            script.removeEventListener('error', alFallar);
-        };
-    }, [clave]);
-
-    // 2. Crear el mapa cuando la API esté y el div exista.
+    // 1. Crear el mapa cuando la API esté y el div exista.
     useEffect(() => {
         if (!listo || division.current === null || mapa.current !== null) {
             return;
         }
-
-        const api = window.google;
 
         if (api === undefined) {
             return;
@@ -155,9 +86,9 @@ export function MapaDeCadetes({
             center: centro,
             mapTypeControl: false,
         });
-    }, [listo, centro, zoom]);
+    }, [listo, api, centro, zoom]);
 
-    // 3. Recentrar cuando el que llama cambia de centro.
+    // 2. Recentrar cuando el que llama cambia de centro.
     //
     // Hace falta para el detalle de un cadete: el mismo mapa pasa de un cadete a otro sin
     // volver a crearse, y sin esto se quedaría mirando al primero.
@@ -170,14 +101,12 @@ export function MapaDeCadetes({
         mapa.current.setZoom(zoom);
     }, [centro, zoom]);
 
-    // 4. Redibujar los marcadores cada vez que cambian las posiciones.
+    // 3. Redibujar los marcadores cada vez que cambian las posiciones.
     //
     // Se borran todos y se vuelven a crear, como hacía `deleteMarkers()` en el panel viejo.
     // Con nueve marcadores no hay nada que optimizar, y mover los existentes sería más
     // código para que un cadete que deja la app desaparezca.
     useEffect(() => {
-        const api = window.google;
-
         if (!listo || mapa.current === null || api === undefined) {
             return;
         }
@@ -205,17 +134,10 @@ export function MapaDeCadetes({
                     },
                 }),
         );
-    }, [cadetes, listo]);
+    }, [cadetes, listo, api]);
 
     if (clave === null || clave === '') {
-        return (
-            <Aviso>
-                <span>
-                    Falta configurar <code>GOOGLE_MAPS_KEY</code> en el entorno. Sin esa
-                    clave la API de Google Maps no carga, y el mapa no se puede dibujar.
-                </span>
-            </Aviso>
-        );
+        return <FaltaLaClave />;
     }
 
     if (falló) {
@@ -237,14 +159,6 @@ export function MapaDeCadetes({
             />
             {!listo && <Aviso>Cargando el mapa…</Aviso>}
         </>
-    );
-}
-
-export function Aviso({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="bg-card text-muted-foreground absolute inset-0 flex items-center justify-center p-8 text-center text-sm">
-            {children}
-        </div>
     );
 }
 

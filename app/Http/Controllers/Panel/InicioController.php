@@ -21,14 +21,14 @@ use Inertia\Response;
  *   2. **Nuevo pedido** — el formulario de carga.
  *   3. **Lista de espera** — los pedidos que esperan cadete.
  *
- * ⚠️ **Se está portando por partes y faltan la del medio.** La columna que falta dice en
- * pantalla que falta, en vez de no estar: así la pantalla es la de verdad en cada paso y se
- * puede mirar lo que ya anda sin inventar una pantalla intermedia.
- *
  * ⚠️ **Quién ve qué, igual que el sistema viejo.** La primera y la tercera columna son de
  * oficina —`@if(tieneRol(['admin','empleado']))` en `panel.blade.php:15` y `:273`—, y la
  * del medio la ve también un comercio: es la única razón por la que un `restringido` entra
  * a esta pantalla. Acá eso no se pregunta por rol sino por la policy, que es donde ya vive.
+ *
+ * ⚠️ Y la del medio además **cambia** según quién mire: un comercio no pone precio, no
+ * elige cadete y no tiene el autocompletado de direcciones ni el mapa, porque en el panel
+ * viejo todo eso está dentro del mismo `@if`. Ver `PedidoPolicy::ponerElPrecio()`.
  *
  * ⚠️ **El detalle de un cadete no sale de acá.** Lo pide la pantalla con un `fetch` a
  * `CadeteController@detalle`, que devuelve JSON. Ver el comentario de `inicio/index.tsx`:
@@ -62,6 +62,10 @@ class InicioController extends Controller
         // el recorte del panel viejo, pero si mañana una cambia, la otra no tiene por qué.
         $laCola = Gate::allows('viewAny', Cadete::class);
         $laEspera = Gate::allows('verListaDeEspera', Pedido::class);
+        // Y la tercera: si el que mira es de la central. Es lo que decide qué tiene el
+        // formulario del medio —precio, cadete, mapa, autocompletado— y es la misma
+        // pregunta que el `@if` del panel viejo. Ver `PedidoPolicy::ponerElPrecio()`.
+        $deLaOficina = Gate::allows('ponerElPrecio', Pedido::class);
 
         return Inertia::render('inicio/index', [
             // null y no un arreglo vacío: «no te corresponde» y «no hay nadie» son dos
@@ -74,13 +78,26 @@ class InicioController extends Controller
             'paraAsignar' => $laCola ? $this->paraAsignar() : null,
             // Lo que el mapa del detalle necesita para dibujarse. Las constantes son las de
             // la pantalla de Mapa: el centro de la ciudad está escrito en un solo lado.
-            'mapa' => $laCola ? [
+            'mapa' => $deLaOficina ? [
                 'centro' => MapaController::CENTRO,
                 'zoom' => MapaController::ZOOM,
                 // ⚠️ Viaja al navegador porque tiene que viajar: la API de Maps se carga
                 // desde el cliente. Lo que la protege es la restricción por dominio.
                 'clave' => config('services.google.maps_key'),
             ] : null,
+            // Lo usan los dos mapas de esta pantalla —el del detalle de un cadete y el del
+            // viaje del alta— y el autocompletado de direcciones, así que cuelga de la
+            // puerta de la central y no de la de la cola.
+            'deLaOficina' => $deLaOficina,
+            /*
+             * El pedido que se acaba de cargar, para poder imprimir su comprobante.
+             *
+             * ⚠️ Sale de la sesión y no de las props de siempre: el botón aparece **sólo**
+             * después de cargar uno, que es lo que hace el panel viejo con su
+             * `@if(session('pedido'))`. Vive acá y no en las props compartidas porque es de
+             * esta pantalla: ninguna otra imprime un cupón.
+             */
+            'ultimoPedido' => $request->session()->get('ultimoPedido'),
             'refresco' => self::REFRESCO,
         ]);
     }
@@ -144,14 +161,20 @@ class InicioController extends Controller
     }
 
     /**
-     * Los cadetes que el modal ofrece para asignar.
+     * Los cadetes que el alta y el modal ofrecen primero: la cola.
      *
-     * ⚠️ **Los que están en la cola, y el panel viejo se contradecía solo.** Allá el primer
-     * dibujado de la pantalla llena el selector con TODOS los cadetes no bloqueados —1.768—
-     * y cinco segundos después `recargarCadetesActivos()` lo reemplaza por los activos. O
-     * sea que durante los primeros cinco segundos se podía asignar un pedido a alguien que
-     * no estaba trabajando, y después no. Acá es siempre la cola, que es lo que la pantalla
-     * muestra el 99% del tiempo y lo único que tiene sentido.
+     * ⚠️ **En la página viaja la cola, y al resto se llega buscando.** El panel viejo manda
+     * los otros dos extremos y ninguno está bien: al cargar la pantalla el selector tiene
+     * los 134 cadetes no bloqueados, y cinco segundos después `recargarCadetesActivos()` lo
+     * reemplaza por `Cadete::all()` —**220, con los 86 que tienen el usuario bloqueado
+     * adentro**—, y manda los documentos completos de los 220 en cada refresco: 186 KB cada
+     * cinco segundos, en una pantalla abierta todo el día. O sea que el selector se
+     * ensancha al primer refresco y deja elegir a alguien bloqueado.
+     *
+     * Acá la cola va en la página porque es de donde sale el 97,1% de los pedidos web, y
+     * cualquier otro cadete se busca contra el servidor con `CadeteController@buscar`, que
+     * deja afuera a los bloqueados. Se puede asignar fuera de la cola, como allá, sin
+     * mandar el padrón.
      *
      * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool}>
      */

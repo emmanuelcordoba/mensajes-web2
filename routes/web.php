@@ -15,6 +15,7 @@ use App\Http\Controllers\Panel\PedidoController;
 use App\Http\Controllers\Panel\PendienteController;
 use App\Http\Controllers\Panel\PostulacionController;
 use App\Http\Controllers\Panel\PublicidadAppController;
+use App\Http\Controllers\Panel\TarifaController;
 use App\Http\Controllers\Panel\UserController;
 use App\Models\Rol;
 use Illuminate\Support\Facades\Route;
@@ -59,7 +60,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('/', InicioController::class)->name('inicio');
 
                 Route::get('pedidos', [PedidoController::class, 'index'])->name('pedidos.index');
-                // Después del listado, que es una ruta exacta y no la captura.
+
+                /*
+                | El alta, que es la columna del medio de Inicio.
+                |
+                | ⚠️ Acá y no en el grupo de oficina, que es donde uno esperaría: en el
+                | sistema viejo `Route::resource('pedidos')` vive en el grupo compartido y
+                | el formulario tiene su rama de `restringido`. Medido: 19.431 pedidos
+                | cargados por una cuenta de comercio desde la web, 310 en los últimos 180
+                | días. Lo que el comercio no puede es poner el precio ni elegir cadete, y
+                | eso lo niega `GuardarPedidoRequest`, no el middleware.
+                */
+                Route::post('pedidos', [PedidoController::class, 'store'])->name('pedidos.store');
+
+                /*
+                | Cuánto sale un viaje. Es `ajax/pedidos/cotizar` del sistema viejo, que
+                | también está al alcance de un comercio.
+                |
+                | ⚠️ **Fuera de `pedidos/`**: no es de ningún pedido —se pregunta antes de
+                | que exista— y además `pedidos/{pedido}`, que se registra abajo, la
+                | capturaría con el id «cotizacion».
+                */
+                Route::get('tarifa', TarifaController::class)->name('tarifa');
+
+                /*
+                | El comprobante para imprimir. Es `pdf/pedido` del sistema viejo, que
+                | tampoco arma un PDF: es una página que se imprime sola.
+                |
+                | Contesta 404 cuando el pedido es de otro comercio, por la política.
+                */
+                Route::get('pedidos/{pedido}/cupon', [PedidoController::class, 'cupon'])->name('pedidos.cupon');
+
+                // Después del listado y de las rutas exactas, que no las captura.
                 Route::get('pedidos/{pedido}', [PedidoController::class, 'show'])->name('pedidos.show');
 
                 /*
@@ -112,6 +144,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('mensajes/cadetes', [MensajeController::class, 'cadetes'])->name('mensajes.cadetes');
                 Route::get('mensajes/{cadete?}', [MensajeController::class, 'index'])->name('mensajes.index');
                 Route::post('mensajes/{cadete}', [MensajeController::class, 'enviar'])->name('mensajes.enviar');
+
+                /*
+                | El buscador de comercios del alta de pedidos, y el alta rápida del modal.
+                |
+                | ⚠️ Van en el grupo de oficina porque el formulario viejo esconde las dos
+                | cosas detrás de `@if(tieneRol(['admin','empleado']))`: un comercio no
+                | elige a nombre de quién carga el pedido —es él— ni da de alta clientes.
+                |
+                | Las dos contestan JSON: el formulario las pide con un `fetch` sin salir
+                | de la pantalla, que es el punto del atajo.
+                */
+                Route::get('clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
+                Route::post('clientes/rapido', [ClienteController::class, 'crearRapido'])->name('clientes.rapido');
 
                 // ⚠️ `create` antes de cualquier `{cliente}` que se agregue después, o
                 // lo captura. Vale para los cuatro recursos de acá abajo.
@@ -246,10 +291,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::patch('cadetes/{cadete}/estado', [CadeteController::class, 'cambiarEstado'])->name('cadetes.estado');
 
                 /*
-                | ⚠️ La única ruta del panel que contesta JSON y no una pantalla de Inertia.
-                | La pide el diálogo de detalle de Inicio con un `fetch`, como el panel viejo
-                | pedía `ajax/cadetes/getcadete`: son datos de una persona y se traen recién
+                | El buscador de cadetes del selector de Inicio: la cola la tiene la
+                | pantalla, y esto es para el resto.
+                |
+                | ⚠️ Contesta JSON como `detalle`, y por el mismo motivo: son nombres de
+                | personas y no tienen que viajar en cada refresco de una pantalla que está
+                | abierta todo el día en una oficina.
+                */
+                Route::get('cadetes/buscar', [CadeteController::class, 'buscar'])->name('cadetes.buscar');
+
+                /*
+                | ⚠️ Contesta JSON y no una pantalla de Inertia. La pide el diálogo de
+                | detalle de Inicio con un `fetch`, como el panel viejo pedía
+                | `ajax/cadetes/getcadete`: son datos de una persona y se traen recién
                 | cuando alguien los abre, no en cada refresco de la pantalla.
+                |
+                | (Hasta el alta de pedidos ésta era la única que contestaba JSON. Ahora son
+                | seis, y todas por el mismo motivo: lo que no se mira no viaja.)
                 */
                 Route::get('cadetes/{cadete}/detalle', [CadeteController::class, 'detalle'])->name('cadetes.detalle');
                 Route::patch('cadetes/{cadete}/bloqueo', [CadeteController::class, 'bloquear'])->name('cadetes.bloquear');

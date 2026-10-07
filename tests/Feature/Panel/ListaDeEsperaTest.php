@@ -183,9 +183,17 @@ test('an order nobody signed carries no badge, and does not pretend otherwise', 
         ->assertJsonPath('distintivo', null);
 });
 
-test('only the cadetes in the queue are offered to assign', function () {
-    // ⚠️ El panel viejo se contradecía solo: el primer dibujado ofrecía los 1.768 cadetes no
-    // bloqueados y cinco segundos después el ajax lo reemplazaba por los activos.
+test('the queue is what travels in the page; the rest is searched', function () {
+    // ⚠️ **Esto es lo que hay que no romper, y acá el sistema viejo hace otra cosa.** Allá
+    // el primer dibujado del selector trae los 134 cadetes no bloqueados y cinco segundos
+    // después `recargarCadetesActivos()` lo reemplaza por `Cadete::all()`: 220 cadetes, con
+    // los 86 que tienen el usuario bloqueado adentro, y los documentos completos de los 220
+    // viajando cada cinco segundos —186 KB por refresco—.
+    //
+    // Acá en la página viaja SÓLO la cola, que es de donde sale el 97% de los pedidos, y a
+    // cualquier otro cadete se llega con el buscador —`cadetes/buscar`, que además deja
+    // afuera a los bloqueados—. O sea que se puede asignar fuera de la cola, como allá,
+    // pero no se mandan 220 cadetes a una pantalla abierta todo el día.
     unCadeteParaAsignar(Cadete::ESTADO_ACTIVO_WEB);
     Cadete::factory()->create(['numero_movil' => 22, 'estado' => Cadete::ESTADO_INACTIVO]);
     Cadete::factory()->create(['numero_movil' => 33, 'estado' => Cadete::ESTADO_CON_PEDIDO_APP, 'orden_cola' => 1]);
@@ -195,6 +203,38 @@ test('only the cadetes in the queue are offered to assign', function () {
         ->assertInertia(fn ($pagina) => expect(
             array_column($pagina->toArray()['props']['paraAsignar'], 'movil'),
         )->toBe([11]));
+});
+
+test('a cadete found outside the queue can be given the order', function () {
+    // El camino nuevo del selector, de punta a punta: se lo encuentra con el buscador y se
+    // le asigna. Es la rama `default` del switch viejo —queda Finalizado y no se le cobra—,
+    // y en el sistema viejo era alcanzable porque el selector ofrecía a todos.
+    $pedido = unPedidoEnEspera();
+    $afuera = Cadete::factory()->create([
+        'numero_movil' => 77,
+        'apellidos' => 'Quiroga',
+        'estado' => Cadete::ESTADO_INACTIVO,
+    ]);
+
+    $empleado = usuarioCon(Rol::EMPLEADO);
+
+    $encontrados = $this->actingAs($empleado)
+        ->getJson('/panel/cadetes/buscar?q=quiroga')
+        ->assertOk()
+        ->json();
+
+    expect(array_column($encontrados, 'id'))->toBe([$afuera->id]);
+
+    $this->actingAs($empleado)
+        ->patch("/panel/pedidos/{$pedido->id}/asignacion", loQueMandaElModal([
+            'cadete_id' => $afuera->id,
+        ]))
+        ->assertRedirect();
+
+    expect($pedido->fresh()->estado)->toBe(Pedido::ESTADO_FINALIZADO)
+        ->and($pedido->fresh()->cadete_id)->toBe($afuera->id)
+        // No pasó por el mostrador, así que no sale de ninguna cola ni se le cobra.
+        ->and($afuera->fresh()->estado)->toBe(Cadete::ESTADO_INACTIVO);
 });
 
 test('a cadete taken from the counter finishes the order and leaves the queue', function () {

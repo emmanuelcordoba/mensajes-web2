@@ -8,6 +8,10 @@ import {
     type EnEspera,
     type ParaAsignar,
 } from '@/pages/inicio/lista-de-espera';
+import {
+    NuevoPedido,
+    type ParaImprimir,
+} from '@/pages/inicio/nuevo-pedido';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,12 +30,13 @@ import {
 | carga de un pedido y la lista de espera. Las proporciones también son las de allá —2, 5 y 5
 | de doce—, porque es la pantalla que la gente tiene memorizada.
 |
-| ⚠️ SE ESTÁ PORTANDO POR PARTES. Hechas la primera y la tercera; la del medio dice que falta
-| en vez de no estar, así que la pantalla es la de verdad en cada paso.
-|
 | ⚠️ La primera y la tercera columna son de oficina. Un comercio entra acá sólo por la del
 | medio, y entonces no se le dibuja un hueco donde no va nada: se le da el ancho a lo que sí
 | puede usar.
+|
+| ⚠️ Las columnas se hablan entre sí, y eso es del panel viejo: el doble clic en un cadete de
+| la cola lo elige en el formulario del medio, que es cómo la central asigna sin buscar en el
+| selector. Por eso cuál está elegido vive acá y no adentro del formulario.
 */
 
 type EnLaCola = {
@@ -68,6 +73,8 @@ export default function InicioIndex({
     espera,
     paraAsignar,
     mapa,
+    deLaOficina,
+    ultimoPedido,
     refresco,
 }: {
     cola: EnLaCola[] | null;
@@ -75,6 +82,8 @@ export default function InicioIndex({
     espera: EnEspera[] | null;
     paraAsignar: ParaAsignar[] | null;
     mapa: ConfigDelMapa | null;
+    deLaOficina: boolean;
+    ultimoPedido: ParaImprimir | null;
     refresco: number;
 }) {
     /*
@@ -94,6 +103,15 @@ export default function InicioIndex({
     const [abierto, setAbierto] = useState(false);
     const [detalle, setDetalle] = useState<Detalle | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    /*
+    | A qué cadete va el pedido que se está cargando.
+    |
+    | Vive en la pantalla y no en el formulario porque lo eligen dos lugares: el selector
+    | del formulario y el doble clic en una fila de la cola, que es el `seleccionarCadete()`
+    | del panel viejo. La fila elegida se marca, como allá.
+    */
+    const [cadeteElegido, setCadeteElegido] = useState<number | null>(null);
 
     const verDetalle = async (id: number) => {
         setAbierto(true);
@@ -130,14 +148,20 @@ export default function InicioIndex({
                             cola={cola}
                             porQueNoLimpiar={porQueNoLimpiar}
                             verDetalle={verDetalle}
+                            elegido={cadeteElegido}
+                            elegir={setCadeteElegido}
                         />
                     </div>
                 )}
 
                 <div className={cola === null ? 'lg:col-span-7' : 'lg:col-span-5'}>
-                    <Pendiente
-                        titulo="Nuevo pedido"
-                        detalle="El formulario de carga. Es la segunda parte de la pantalla."
+                    <NuevoPedido
+                        deLaOficina={deLaOficina}
+                        cola={paraAsignar}
+                        mapa={mapa}
+                        ultimoPedido={ultimoPedido}
+                        cadeteElegido={cadeteElegido}
+                        alElegirCadete={setCadeteElegido}
                     />
                 </div>
 
@@ -166,10 +190,14 @@ function LaCola({
     cola,
     porQueNoLimpiar,
     verDetalle,
+    elegido,
+    elegir,
 }: {
     cola: EnLaCola[];
     porQueNoLimpiar: string | null;
     verDetalle: (id: number) => void;
+    elegido: number | null;
+    elegir: (id: number | null) => void;
 }) {
     return (
         <Card className="gap-0 overflow-hidden p-0">
@@ -200,6 +228,8 @@ function LaCola({
                             key={cadete.id}
                             cadete={cadete}
                             verDetalle={verDetalle}
+                            elegido={cadete.id === elegido}
+                            elegir={elegir}
                         />
                     ))}
 
@@ -222,12 +252,31 @@ function LaCola({
 function Fila({
     cadete,
     verDetalle,
+    elegido,
+    elegir,
 }: {
     cadete: EnLaCola;
     verDetalle: (id: number) => void;
+    elegido: boolean;
+    elegir: (id: number | null) => void;
 }) {
     return (
-        <tr className="hover:bg-muted/40 border-t">
+        /* El doble clic elige el cadete para el pedido que se está cargando, como el
+           `ondblclick` del panel viejo. Un doble clic no se descubre ni se alcanza con el
+           teclado, así que la fila además es enfocable y la barra espaciadora hace lo mismo. */
+        <tr
+            className={`border-t ${elegido ? 'bg-accent' : 'hover:bg-muted/40'}`}
+            tabIndex={0}
+            aria-selected={elegido}
+            title={`Doble clic para darle el pedido al móvil ${cadete.movil}`}
+            onDoubleClick={() => elegir(elegido ? null : cadete.id)}
+            onKeyDown={(evento) => {
+                if (evento.key === ' ' || evento.key === 'Enter') {
+                    evento.preventDefault();
+                    elegir(elegido ? null : cadete.id);
+                }
+            }}
+        >
             <td className="px-2 py-1.5 font-medium tabular-nums">{cadete.movil}</td>
             <td className="px-2 py-1.5">
                 <div className="flex items-center justify-between gap-1">
@@ -508,15 +557,6 @@ function Dato({ titulo, valor }: { titulo: string; valor?: string | null }) {
                 )}
             </dd>
         </>
-    );
-}
-
-function Pendiente({ titulo, detalle }: { titulo: string; detalle: string }) {
-    return (
-        <Card className="text-muted-foreground h-full items-center justify-center border-dashed p-6 text-center text-sm">
-            <span className="text-foreground font-medium">{titulo}</span>
-            <span>{detalle}</span>
-        </Card>
     );
 }
 

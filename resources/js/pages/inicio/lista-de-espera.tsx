@@ -10,8 +10,9 @@
 
 import { Form, router } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { SelectorDeCadete } from '@/components/selector-de-cadete';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -269,6 +270,18 @@ function ElModalDelPedido({
     error: string | null;
     paraAsignar: ParaAsignar[];
 }) {
+    /*
+    | A quién se le asigna, mientras el modal está abierto.
+    |
+    | Vive acá y se vacía al cambiar de pedido: el modal viejo reusaba un solo `<select>`
+    | para todos, así que al abrir el siguiente seguía marcado el cadete del anterior.
+    */
+    const [cadete, setCadete] = useState<number | null>(null);
+
+    useEffect(() => {
+        setCadete(null);
+    }, [pedido?.id]);
+
     return (
         <Dialog open={abierto} onOpenChange={(abre) => !abre && cerrar()}>
             <DialogContent className="sm:max-w-[57.6rem]">
@@ -402,32 +415,26 @@ function ElModalDelPedido({
                                         soloLectura={!pedido.editable}
                                     />
 
-                                    <label className="grid gap-1 text-sm">
+                                    {/* ⚠️ La cola arriba y el resto buscando contra el
+                                        servidor. El panel viejo ofrece acá los 220 cadetes
+                                        vivos —bloqueados incluidos— y los manda enteros
+                                        cada cinco segundos. El selector es el mismo que el
+                                        del alta, porque la regla de a quién se le puede dar
+                                        un pedido es una sola. */}
+                                    <label
+                                        className="grid gap-1 text-sm"
+                                        htmlFor="asignar-cadete"
+                                    >
                                         <span className="text-muted-foreground">
                                             Asignar cadete
                                         </span>
-                                        <select
-                                            name="cadete_id"
-                                            defaultValue=""
-                                            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-                                        >
-                                            <option value="">Ninguno</option>
-                                            {paraAsignar.map((cadete) => (
-                                                <option
-                                                    key={cadete.id}
-                                                    value={cadete.id}
-                                                >
-                                                    {cadete.movil} — {cadete.nombre}{' '}
-                                                    {cadete.en_la_app ? '(APP)' : '(WEB)'}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <SelectorDeCadete
+                                            id="asignar-cadete"
+                                            cola={paraAsignar}
+                                            elegido={cadete}
+                                            alElegir={setCadete}
+                                        />
                                         <InputError message={errors.cadete_id} />
-                                        {paraAsignar.length === 0 && (
-                                            <span className="text-muted-foreground text-xs">
-                                                No hay nadie en la cola.
-                                            </span>
-                                        )}
                                     </label>
                                 </div>
 

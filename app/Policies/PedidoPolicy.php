@@ -58,8 +58,39 @@ class PedidoPolicy
         return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
     }
 
-    /** Un comercio no carga pedidos desde el panel: los carga desde la app. */
+    /**
+     * Quién puede cargar un pedido desde el panel.
+     *
+     * ⚠️ **Un comercio también, y esto decía lo contrario.** La primera versión de esta
+     * política daba sólo admin y empleado, con un comentario que afirmaba que un comercio
+     * carga desde la app. Es falso: `POST /pedidos` del sistema viejo vive en el grupo
+     * `rol:empleado,restringido,admin`, el formulario de Inicio tiene su rama de
+     * `restringido` —con los campos de cliente en readonly— y `store()` arranca con un
+     * `if(tieneRol('restringido'))`. Medido contra la base de desarrollo: **19.431 pedidos
+     * cargados por una cuenta de comercio desde la web**, 310 en los últimos 180 días, el
+     * más reciente el 2026-09-23. Es un camino vivo.
+     *
+     * Lo que el comercio no puede es poner el precio ni elegir el cadete: eso lo decide la
+     * central, y lo niega `GuardarPedidoRequest`.
+     */
     public function create(User $user): bool
+    {
+        return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO, Rol::RESTRINGIDO]);
+    }
+
+    /**
+     * Si puede ponerle precio a un pedido, y con eso usar las herramientas de la central.
+     *
+     * Es el `@if(Auth::user()->tieneRol(['admin','empleado']))` que en el panel viejo
+     * envuelve, en la misma pantalla: el campo «Valor», el selector de cadete, el botón
+     * «Nuevo cliente», el mapa y **toda la sección de JavaScript** —o sea el autocompletado
+     * de direcciones y la cotización automática—. Un comercio carga el pedido escribiendo
+     * las direcciones a mano y el precio lo pone la central.
+     *
+     * Es una pregunta sola porque allá es un `@if` solo: si alguna vez se separan, se
+     * separan acá.
+     */
+    public function ponerElPrecio(User $user): bool
     {
         return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
     }

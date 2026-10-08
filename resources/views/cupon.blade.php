@@ -19,16 +19,13 @@
     que salir igual.
 --}}
 @php
-    /** El monto como lo escribía el sistema viejo: sin los decimales que no dicen nada. */
-    $plata = static function (?string $monto): string {
-        if ($monto === null || ! is_numeric($monto)) {
-            return '';
-        }
-
-        return str_contains($monto, '.')
-            ? rtrim(rtrim($monto, '0'), '.')
-            : $monto;
-    };
+    /**
+     * El monto como lo escribía el sistema viejo: sin los decimales que no dicen nada.
+     *
+     * Vive en el modelo porque la API de la app del cadete muestra los mismos montos en la
+     * pantalla del teléfono, y el formato tiene que ser uno solo.
+     */
+    $plata = static fn (?string $monto): string => \App\Models\Pedido::montoParaMostrar($monto) ?? '';
 @endphp
 <!doctype html>
 <html lang="es">

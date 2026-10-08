@@ -259,6 +259,28 @@ class Pedido extends Model
     }
 
     /**
+     * Un monto como lo escribía el sistema viejo, para mostrarlo.
+     *
+     * ⚠️ **Esto es lo que lee una persona, y por eso importa.** En MongoDB los montos son
+     * floats y PHP los escribe «3000»; acá la columna es `NUMERIC(12,2)` y llega
+     * «3000.00». Sin esto, el cadete ve «$ 3000.00» en el teléfono donde antes veía
+     * «$ 3000», y el comprobante impreso cambia igual.
+     *
+     * Se recortan sólo los ceros que no dicen nada: 3150.50 sigue siendo «3150.5», que es
+     * exactamente lo que escribía el float.
+     */
+    public static function montoParaMostrar(?string $monto): ?string
+    {
+        if ($monto === null || ! is_numeric($monto)) {
+            return null;
+        }
+
+        return str_contains($monto, '.')
+            ? rtrim(rtrim($monto, '0'), '.')
+            : $monto;
+    }
+
+    /**
      * Un monto que salió de una columna NUMERIC, listo para bcmath.
      *
      * La columna es nullable, y un pedido sin valor vale 0 para estas cuentas.

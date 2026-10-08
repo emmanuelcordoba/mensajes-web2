@@ -1,11 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\CadeteApp\V1;
 
-use App\Http\Controllers\Controller;
-use App\Http\Resources\Api\CadeteDeLaApp;
-use App\Http\Resources\Api\UsuarioDeLaApp;
-use App\Models\Cadete;
+use App\Http\Resources\Api\CadeteApp\V1\CadeteDeLaApp;
+use App\Http\Resources\Api\CadeteApp\V1\UsuarioDeLaApp;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\IngresoALaColaDesdeLaApp;
@@ -13,7 +11,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\ValidationException;
 
 /**
  * La API de la app del cadete.
@@ -29,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  *
  * ⚠️ **Las notificaciones push no se portan**: no hay Firebase en el sistema nuevo.
  */
-class CadeteController extends Controller
+class CadeteController extends ControladorDeLaApp
 {
     /**
      * Cuántas contraseñas erradas se aguantan por cuenta Y POR IP, y por cuánto.
@@ -70,11 +67,10 @@ class CadeteController extends Controller
         if (RateLimiter::tooManyAttempts($clave, self::MAXIMO_DE_INTENTOS)) {
             $segundos = RateLimiter::availableIn($clave);
 
-            return response()->json([
-                'error' => 'Demasiados intentos. Probá de nuevo en '
-                    .ceil($segundos / 60).' minutos.',
-                'code' => 429,
-            ], 429)->header('Retry-After', (string) $segundos);
+            return self::error(
+                'Demasiados intentos. Probá de nuevo en '.ceil($segundos / 60).' minutos.',
+                429,
+            )->header('Retry-After', (string) $segundos);
         }
 
         $usuario = User::query()
@@ -86,10 +82,7 @@ class CadeteController extends Controller
         if ($usuario === null || ! $usuario->tieneRol(Rol::CADETE) || $usuario->cadete === null) {
             RateLimiter::hit($clave, self::MINUTOS_DE_BLOQUEO * 60);
 
-            return response()->json([
-                'error' => 'El email y/o contraseña son incorrectos.',
-                'code' => 400,
-            ], 400);
+            return self::error('El email y/o contraseña son incorrectos.', 400);
         }
 
         RateLimiter::clear($clave);
@@ -132,7 +125,7 @@ class CadeteController extends Controller
         $motivo = IngresoALaColaDesdeLaApp::porQueNo($cadete);
 
         if ($motivo !== null) {
-            return response()->json(['error' => $motivo, 'code' => 400], 400);
+            return self::error($motivo, 400);
         }
 
         $ingreso->alternar($cadete);
@@ -169,25 +162,5 @@ class CadeteController extends Controller
             'ok' => true,
             'cadete' => new CadeteDeLaApp($cadete),
         ]);
-    }
-
-    /**
-     * El cadete de quien está autenticado.
-     *
-     * ⚠️ Una cuenta con rol de cadete pero sin fila de cadete no existe en la práctica, pero
-     * el tipo lo permite y el sistema viejo hacía `Auth::user()->cadete->algo` sin mirar:
-     * eso es un 500 con «Attempt to read property on null» en la cara del cadete.
-     */
-    protected static function elCadete(Request $request): Cadete
-    {
-        $cadete = $request->user()?->cadete;
-
-        if ($cadete === null) {
-            throw ValidationException::withMessages([
-                'cadete' => 'Esta cuenta no tiene un cadete asociado.',
-            ]);
-        }
-
-        return $cadete;
     }
 }

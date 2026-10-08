@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources\Api;
+namespace App\Http\Resources\Api\CadeteApp\V1;
 
 use App\Models\User;
 use App\Services\FotosDePerfil;

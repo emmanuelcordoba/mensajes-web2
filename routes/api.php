@@ -1,39 +1,38 @@
 <?php
 
-use App\Http\Controllers\Api\CadeteController;
-use Illuminate\Support\Facades\Route;
-
 /*
 |--------------------------------------------------------------------------
-| La API de las apps
+| La API, repartida por quién la consume
 |--------------------------------------------------------------------------
 |
-| ⚠️ **Las URL las manda la app, no este archivo.** La app del cadete está publicada en los
-| teléfonos y pide `/api/getcadete`, `/api/cambiarestado` y `/api/actualizarubicacion`, sin
-| prefijo de versión y con esos nombres. No se pueden acomodar sin republicar la app y
-| esperar a que todos la actualicen, y mientras tanto el que no actualizó no puede trabajar.
+| Son cuatro consumidores distintos y cada uno es una aplicación aparte, con su propio
+| contrato y su propio ritmo de cambio:
 |
-| ⚠️ **Se está portando por partes.** Lo que hay son los cuatro endpoints con los que un
-| cadete entra a la cola y aparece en el mapa. Faltan los pedidos, el perfil, el historial,
-| los mensajes, la cobranza, la postulación y el reseteo de contraseña, más las dos apps de
-| clientes y la API de integración.
+|   routes/api/cadete-app-v1.php    La app de los cadetes.
+|   routes/api/cliente-app-v1.php   La app de los clientes. (falta)
+|   routes/api/cliente-app-v2.php   La misma app, contrato nuevo. (falta)
+|   routes/api/user-api-v1.php      La integración de terceros, DEP-3. (falta)
 |
-| ⚠️ `getAsignados` y `getAceptados` del sistema viejo **no se portan**: buscados en toda la
-| historia del repositorio de la app, nunca se llamaron.
+| ⚠️ **El consumidor va primero y la versión adentro, al revés que en el sistema viejo.**
+| Allá la carpeta de más afuera es la versión —`Api/v1/ClientesApp` y `Api/v2/ClientesApp`—,
+| así que el código de UNA app queda partido en dos árboles que no se tocan, y para entender
+| qué ve esa app hay que leer los dos. Acá cada consumidor es una carpeta y sus versiones
+| cuelgan de él, que es como de verdad evolucionan: una app se actualiza entera.
+|
+| ⚠️ **Y el consumidor está siempre, aunque el sistema viejo no lo pusiera.** Allá
+| `Api/v1/PedidoController` es el de los cadetes y `Api/v1/ClientesApp/PedidoController` el
+| de los clientes: dos clases con el mismo nombre, una con dueño y la otra sin. Acá el dueño
+| se nombra siempre.
+|
+| ⚠️ **La versión de la carpeta no siempre está en la URL, y eso es un hecho del sistema
+| viejo que conviene tener a la vista.** De los cuatro, sólo la app de clientes lleva `v2/`
+| en la dirección; las rutas del cadete y las de la integración no dicen ninguna versión. La
+| carpeta dice qué contrato implementa el código. El día que el cadete necesite un `V2`, sus
+| URL van a tener que empezar a decirlo, y hasta que todos los teléfonos actualicen van a
+| convivir las dos.
+|
+| ⚠️ Lo que entra acá ya viene con el prefijo `/api` y el grupo de middleware `api`, que los
+| pone `bootstrap/app.php`.
 */
 
-// Pública: es por donde se entra.
-Route::post('cadetes/login', [CadeteController::class, 'login'])->name('api.cadetes.login');
-
-/*
-| Y lo que necesita un token.
-|
-| ⚠️ El rol se exige además del token, y no es redundante: el mismo guard lo usan las apps
-| de clientes, que se registran solas. Sin esto, el token de un cliente entraba a los
-| endpoints del cadete. Ver SEC-13.
-*/
-Route::middleware(['auth:sanctum', 'rol:cadete'])->group(function () {
-    Route::get('getcadete', [CadeteController::class, 'getCadete'])->name('api.cadetes.getcadete');
-    Route::get('cambiarestado', [CadeteController::class, 'cambiarEstado'])->name('api.cadetes.cambiarestado');
-    Route::post('actualizarubicacion', [CadeteController::class, 'actualizarUbicacion'])->name('api.cadetes.ubicacion');
-});
+require __DIR__.'/api/cadete-app-v1.php';

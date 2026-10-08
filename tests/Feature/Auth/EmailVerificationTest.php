@@ -59,10 +59,23 @@ test('email is not verified with invalid user id', function () {
 
     Event::fake();
 
+    /*
+    | ⚠️ **El id tiene que ser uno que no exista, y acá decía `123`.**
+    |
+    | Que 123 sea inválido depende de dónde quedó `users_id_seq` cuando este test corre, y
+    | eso depende de cuántos usuarios creó TODO lo que corrió antes. El día que la suite
+    | creciera lo justo, al usuario de este test le tocaba el id 123, el enlace pasaba a ser
+    | válido, el email se verificaba y el test fallaba —sólo con la suite completa, nunca
+    | corriéndolo solo—. Pasó: lo destapó la tanda de tests de la API de la app.
+    |
+    | `max('id') + 1` es libre por construcción, mire el test desde donde lo mire.
+    */
+    $idQueNoExiste = User::query()->max('id') + 1;
+
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => 123, 'hash' => sha1($user->email)],
+        ['id' => $idQueNoExiste, 'hash' => sha1($user->email)],
     );
 
     $this->actingAs($user)->get($verificationUrl);

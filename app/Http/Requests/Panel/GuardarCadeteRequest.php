@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Panel;
 
 use App\Models\Cadete;
+use App\Support\FechaDeNacimiento;
 use App\Support\PinDeCadete;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -68,16 +69,10 @@ class GuardarCadeteRequest extends FormRequest
             'direccion' => ['required', 'string', 'max:255'],
             'telefono' => ['required', 'string', 'max:20'],
 
-            // ⚠️ La columna es DATE NOT NULL **sin CHECK de rango**, así que la base acepta
-            // el año 190: hay 32 cadetes con fechas imposibles, 41 personas contando las
-            // postulaciones (DATA-10). El rango se exige acá para que no entren más, y de
-            // paso esta pantalla es por donde se arreglan las que ya están.
-            'fecha_nacimiento' => [
-                'required',
-                'date',
-                'after_or_equal:'.now()->subYears(90)->toDateString(),
-                'before_or_equal:'.now()->subYears(16)->toDateString(),
-            ],
+            // El rango vive en `FechaDeNacimiento`, que lo comparte con las otras tres
+            // pantallas por donde se escribe. De paso, ésta es por donde se arreglan las
+            // fechas imposibles que ya están guardadas (DATA-10).
+            'fecha_nacimiento' => ['required', ...FechaDeNacimiento::reglas()],
 
             'dni' => [
                 'nullable',
@@ -138,12 +133,11 @@ class GuardarCadeteRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...FechaDeNacimiento::mensajes(),
             'password.digits_between' => PinDeCadete::mensaje(),
             'dni.regex' => 'El DNI tiene que tener 7 u 8 dígitos, sin puntos ni espacios.',
             'dni.unique' => 'Ese DNI ya lo tiene otro cadete, aunque esté dado de baja.',
             'numero_movil.unique' => 'Ese número de móvil ya lo tiene otro cadete, aunque esté dado de baja.',
-            'fecha_nacimiento.after_or_equal' => 'La fecha de nacimiento no puede ser de hace más de 90 años.',
-            'fecha_nacimiento.before_or_equal' => 'El cadete tiene que tener al menos 16 años.',
             'email.prohibited' => 'Este cadete no tiene cuenta activa, así que no hay email que cambiar.',
             'password.prohibited' => 'Este cadete no tiene cuenta activa, así que no hay contraseña que cambiar.',
         ];

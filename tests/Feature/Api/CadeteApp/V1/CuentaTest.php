@@ -380,3 +380,29 @@ test('without a photo the field is null, and the app draws its own avatar', func
     // La app hace `usuario.foto || 'assets/images/avatar.png'`.
     expect($foto)->toBeNull();
 });
+
+test('a 422 comes in the shape the app reads, and not in Laravel default one', function () {
+    // ⚠️ La app hace `if (err.error.code == 422) { this.respuesta_messages = err.error.error }`
+    // y después recorre `respuesta_messages.<campo>`. El 422 que Laravel manda por omisión
+    // es `{message, errors}`: con ése la app muestra «Hubo un error» y el cadete no se
+    // entera de qué campo está mal. Son los tres endpoints con validación de este
+    // consumidor, y el formato vive en un solo lugar: `PeticionDeLaApp`.
+    $cadete = unCadeteDeLaApp();
+
+    $respuestas = [
+        'login' => $this->postJson('/api/cadetes/login', ['email' => 'no-es-un-email']),
+        'ubicacion' => $this->actingAs($cadete->user, 'sanctum')
+            ->postJson('/api/actualizarubicacion', ['lat' => 999, 'lon' => 'por ahí']),
+    ];
+
+    foreach ($respuestas as $cual => $respuesta) {
+        $respuesta->assertStatus(422);
+
+        expect($respuesta->json('code'))->toBe(422, $cual)
+            ->and($respuesta->json('error'))->toBeArray()
+            ->and($respuesta->json())->not->toHaveKey('errors')
+            ->and($respuesta->json())->not->toHaveKey('message');
+    }
+
+    expect($respuestas['ubicacion']->json('error.lon.0'))->toBeString();
+});

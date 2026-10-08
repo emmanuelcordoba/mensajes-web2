@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Cadetes\Schemas;
 
 use App\Models\Cadete;
+use App\Support\FechaDeNacimiento;
 use App\Support\PinDeCadete;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -66,14 +67,12 @@ class CadeteForm
                             ->required()
                             ->native(false)
                             ->displayFormat('d/m/Y')
-                            // ⚠️ La columna es DATE NOT NULL **sin CHECK de rango**, así
-                            // que la base acepta el año 190: hay 32 cadetes con fechas
-                            // imposibles, 41 personas contando las postulaciones
-                            // (DATA-10). El rango se pone acá para que no entren más
-                            // mientras tanto.
-                            ->minDate(now()->subYears(90))
-                            ->maxDate(now()->subYears(16))
-                            ->helperText('Entre 16 y 90 años.'),
+                            // El mismo rango que las otras tres pantallas por donde se
+                            // escribe una fecha de nacimiento, y por qué hace falta, en
+                            // `FechaDeNacimiento`.
+                            ->minDate(FechaDeNacimiento::masVieja())
+                            ->maxDate(FechaDeNacimiento::masNueva())
+                            ->helperText(FechaDeNacimiento::ayuda()),
 
                         TextInput::make('telefono')
                             ->label('Teléfono')

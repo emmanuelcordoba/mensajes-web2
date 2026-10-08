@@ -68,6 +68,33 @@ class FotosDePerfil
     }
 
     /**
+     * Qué tiene de malo la foto que llegó, o null si se puede guardar.
+     *
+     * ⚠️ **Es la misma pregunta que contesta `guardar()`, hecha antes.** La validación del
+     * perfil la usa para que un `data:` roto sea un 422 con el motivo en la pantalla del
+     * cadete y no un 500: `interpretar()` frena con una excepción, que es lo correcto para
+     * el que escribe —si llegó ahí, ya está validado— y lo inútil para el que valida. Una
+     * regla, dos lectores; hay un test que los compara.
+     *
+     * Lo que no es una foto nueva no se revisa: es la URL que emitimos nosotros, que la app
+     * devuelve tal como la recibió, y se ignora al guardar.
+     */
+    public static function porQueNoSirve(mixed $valor): ?string
+    {
+        if (! self::esFotoNueva($valor)) {
+            return null;
+        }
+
+        try {
+            self::interpretar((string) $valor);
+        } catch (RuntimeException $e) {
+            return $e->getMessage();
+        }
+
+        return null;
+    }
+
+    /**
      * Guarda la foto que mandó la app y deja la fila apuntando al archivo nuevo.
      *
      * ⚠️ El nombre lo pone el servidor. Un nombre que venga del cliente es por donde se

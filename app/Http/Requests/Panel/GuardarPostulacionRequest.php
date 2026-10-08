@@ -5,6 +5,7 @@ namespace App\Http\Requests\Panel;
 use App\Models\Cadete;
 use App\Models\Postulacion;
 use App\Models\PostulacionDocumento;
+use App\Support\FechaDeNacimiento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -54,12 +55,7 @@ class GuardarPostulacionRequest extends FormRequest
             // El mismo rango que en cadetes: la columna no tiene CHECK y hay 21
             // postulaciones con fechas imposibles, todas con forma de fecha de carga
             // (DATA-10).
-            'fecha_nacimiento' => [
-                'required',
-                'date',
-                'after_or_equal:'.now()->subYears(90)->toDateString(),
-                'before_or_equal:'.now()->subYears(16)->toDateString(),
-            ],
+            'fecha_nacimiento' => ['required', ...FechaDeNacimiento::reglas()],
 
             // ⚠️ Contra las dos tablas, como en el sistema viejo: no sirve de nada
             // aceptar una postulación con un DNI que después no va a poder contratarse.
@@ -106,11 +102,10 @@ class GuardarPostulacionRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...FechaDeNacimiento::mensajes(),
             'dni.regex' => 'El DNI tiene que tener 7 u 8 dígitos, sin puntos ni espacios.',
             'dni.unique' => 'Ese DNI ya está cargado, en otra postulación o en un cadete.',
             'email.unique' => 'Ese email ya está cargado, en otra postulación o en una cuenta.',
-            'fecha_nacimiento.after_or_equal' => 'La fecha de nacimiento no puede ser de hace más de 90 años.',
-            'fecha_nacimiento.before_or_equal' => 'Tiene que tener al menos 16 años.',
         ];
     }
 

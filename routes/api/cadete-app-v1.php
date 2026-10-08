@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Route;
 | actualicen, y mientras tanto el que no actualizó no puede trabajar. Lo que lee está
 | declarado en `mensajes-cadeteria-cadete-app/src/app/interfaces/interfaces.ts`.
 |
-| ⚠️ **Se está portando por partes.** Lo que hay es con qué un cadete entra a la cola y qué
-| hace con sus pedidos. Faltan el perfil, el historial, los mensajes, la cobranza, la
+| ⚠️ **Se está portando por partes.** Lo que hay es con qué un cadete entra a la cola, qué
+| hace con sus pedidos y su perfil con el historial. Faltan los mensajes, la cobranza, la
 | postulación, el reseteo de contraseña, `guardarfcmtoken` y `cerrarsesion`.
 |
 | ⚠️ `getAsignados` y `getAceptados` del sistema viejo **no se portan**: buscados en toda la
@@ -44,6 +44,17 @@ Route::middleware(['auth:sanctum', 'rol:cadete'])->group(function () {
     Route::get('getcadete', [CadeteController::class, 'getCadete'])->name('api.cadete-app.v1.cadete');
     Route::get('cambiarestado', [CadeteController::class, 'cambiarEstado'])->name('api.cadete-app.v1.estado');
     Route::post('actualizarubicacion', [CadeteController::class, 'actualizarUbicacion'])->name('api.cadete-app.v1.ubicacion');
+
+    /*
+    | El perfil y el historial.
+    |
+    | ⚠️ `getperfil` y `getcadete` se parecen y no son lo mismo: el primero devuelve la
+    | CUENTA con el cadete adentro —es la pantalla de datos personales— y el segundo el
+    | cadete con su lugar en la cola, que es lo que la pantalla principal refresca.
+    */
+    Route::get('getperfil', [CadeteController::class, 'getPerfil'])->name('api.cadete-app.v1.perfil');
+    Route::post('editarperfil', [CadeteController::class, 'editarPerfil'])->name('api.cadete-app.v1.perfil.guardar');
+    Route::get('historial', [CadeteController::class, 'historial'])->name('api.cadete-app.v1.historial');
 
     /*
     | Los pedidos.

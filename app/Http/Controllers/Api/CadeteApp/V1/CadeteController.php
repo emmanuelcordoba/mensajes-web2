@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers\Api\CadeteApp\V1;
 
+use App\Http\Requests\Api\CadeteApp\V1\GuardarPerfilRequest;
+use App\Http\Requests\Api\CadeteApp\V1\LoginDeLaAppRequest;
+use App\Http\Requests\Api\CadeteApp\V1\UbicacionDelCadeteRequest;
 use App\Http\Resources\Api\CadeteApp\V1\CadeteDeLaApp;
 use App\Http\Resources\Api\CadeteApp\V1\UsuarioDeLaApp;
 use App\Models\Rol;
 use App\Models\User;
+use App\Services\HistorialDelCadete;
 use App\Services\IngresoALaColaDesdeLaApp;
+use App\Services\PerfilDelCadete;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -55,12 +60,9 @@ class CadeteController extends ControladorDeLaApp
      * ⚠️ **El mismo mensaje para «no existe» y «contraseña equivocada»**, y también para
      * «no es un cadete»: decir cuál de las tres es sirve para averiguar qué emails existen.
      */
-    public function login(Request $request): JsonResponse
+    public function login(LoginDeLaAppRequest $request): JsonResponse
     {
-        $datos = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        $datos = $request->validated();
 
         $clave = 'login-cadete|'.mb_strtolower(trim($datos['email'])).'|'.$request->ip();
 
@@ -143,16 +145,13 @@ class CadeteController extends ControladorDeLaApp
      *
      * ⚠️ El sistema viejo acepta esto por `form-data` o por JSON, con dos caminos distintos
      * y dos validaciones distintas —una de ellas devolvía 400 en vez de 422—. Acá es uno
-     * solo: `$request->validate()` lee los dos formatos.
+     * solo: un `FormRequest` lee los dos formatos igual.
      */
-    public function actualizarUbicacion(Request $request): JsonResponse
+    public function actualizarUbicacion(UbicacionDelCadeteRequest $request): JsonResponse
     {
         $cadete = self::elCadete($request);
 
-        $datos = $request->validate([
-            'lat' => ['required', 'numeric', 'between:-90,90'],
-            'lon' => ['required', 'numeric', 'between:-180,180'],
-        ]);
+        $datos = $request->validated();
 
         $cadete->ubicacion_lat = (float) $datos['lat'];
         $cadete->ubicacion_lon = (float) $datos['lon'];
@@ -161,6 +160,60 @@ class CadeteController extends ControladorDeLaApp
         return response()->json([
             'ok' => true,
             'cadete' => new CadeteDeLaApp($cadete),
+        ]);
+    }
+
+    /**
+     * El perfil: la cuenta del cadete con sus datos adentro.
+     *
+     * ⚠️ **No devuelve `reporte_semanal`, y el sistema viejo sí.** Allá la respuesta trae
+     * `['cant_viajes' => 0, 'dinero' => 0]` escrito a mano, con ceros fijos, y la app no lo
+     * lee en ninguna pantalla: `perfil.page.ts` y `perfil-editar.page.ts` toman
+     * `resp['usuario']` y nada más. Era un campo que prometía un informe que nunca se hizo.
+     * Los números de verdad están en el historial.
+     */
+    public function getPerfil(Request $request): JsonResponse
+    {
+        self::elCadete($request);
+
+        return response()->json([
+            'usuario' => new UsuarioDeLaApp(self::laCuenta($request)->load(['foto', 'cadete'])),
+        ]);
+    }
+
+    /**
+     * Guardar el perfil, con la foto si cambió.
+     *
+     * Qué se puede cambiar y qué no está en `GuardarPerfilRequest`; cómo se escribe, en
+     * `PerfilDelCadete`.
+     *
+     * ⚠️ **La respuesta tiene que traer el `cadete` adentro del usuario.** La app hace
+     * `this.usuario = res['usuario']` y la pantalla de perfil lee `usuario.cadete?.nombres`:
+     * si el cadete no viaja, el cadete acaba de guardar bien y ve su perfil en blanco.
+     */
+    public function editarPerfil(GuardarPerfilRequest $request, PerfilDelCadete $perfil): JsonResponse
+    {
+        $cadete = self::elCadete($request);
+
+        $cuenta = $perfil->guardar(self::laCuenta($request), $cadete, $request->validated());
+
+        return response()->json([
+            'ok' => true,
+            'usuario' => new UsuarioDeLaApp($cuenta),
+        ]);
+    }
+
+    /**
+     * El historial: hoy, los últimos cinco días y los últimos seis meses.
+     *
+     * Las cuentas y las tres decisiones que no son obvias —por qué cuenta por `created_at`,
+     * por qué un tramo abierto vale cero y por qué el mes en curso ahora sí aparece— están
+     * en `HistorialDelCadete`.
+     */
+    public function historial(Request $request, HistorialDelCadete $historial): JsonResponse
+    {
+        return response()->json([
+            'historial' => $historial->para(self::elCadete($request)),
         ]);
     }
 }

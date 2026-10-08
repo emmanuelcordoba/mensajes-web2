@@ -55,6 +55,26 @@ class Momento
     }
 
     /**
+     * Una fecha y hora como las escribe la API vieja, para las apps.
+     *
+     * ⚠️ **Este formato es parte del contrato con las apps y se midió, no se eligió.** La
+     * app del cadete imprime `{{ pedido.created_at }}` y `{{ mensaje.created_at }}` crudos
+     * en la pantalla, así que lo que salga de acá es literalmente lo que el cadete lee. El
+     * sistema viejo emite `Y-m-d H:i:s` porque `jenssegers/mongodb` sobreescribe
+     * `getDateFormat()` con eso y Laravel 6 lo usa al serializar. Devolver el ISO-8601 que
+     * usa Laravel por omisión le pondría al cadete «2026-10-07T15:34:56.000000Z» en
+     * pantalla, y encima en UTC.
+     *
+     * ⚠️ Y en la zona de la aplicación, por lo mismo que `fechaYHora()`: `format()` usa la
+     * zona que trae el objeto, no la de la aplicación. Las dos aplicaciones están en
+     * `America/Argentina/Tucuman`.
+     */
+    public static function enApi(?CarbonInterface $momento): ?string
+    {
+        return $momento?->copy()->setTimezone((string) config('app.timezone'))->format('Y-m-d H:i:s');
+    }
+
+    /**
      * Sólo la fecha, sin hora.
      *
      * Para una fecha de nacimiento, que es un día y no un instante: mostrarla con

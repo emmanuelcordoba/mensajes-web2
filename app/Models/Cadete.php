@@ -365,6 +365,36 @@ class Cadete extends Model
         $this->orden_cola = now()->getTimestamp();
     }
 
+    /**
+     * Lo pone en la cola desde la app, o lo saca.
+     *
+     * Es el `cambiarEstado('app')` del sistema viejo, y es el gemelo de
+     * `alternarEstadoDesdeLaCentral()`. **No guarda**: el que llama decide cuándo.
+     *
+     * ⚠️ **Acá sí se abre un tramo de actividad, y en la central no.** Es la diferencia
+     * entre los dos caminos y no es un olvido: los informes de horas trabajadas miden la
+     * app. Un cadete puesto en la cola desde el mostrador no manda ubicación ni abre tramo.
+     *
+     * ⚠️ El cierre del tramo no se escribe acá: lo dispara el `saving` del modelo por
+     * cualquier camino que lo saque de la app. Ver PANEL-17.
+     *
+     * @return bool Si quedó activo. Falso cuando lo que hizo fue salir.
+     */
+    public function alternarEstadoDesdeLaApp(): bool
+    {
+        if ($this->estaTrabajando()) {
+            $this->estado = self::ESTADO_INACTIVO;
+
+            return false;
+        }
+
+        $this->estado = self::ESTADO_ACTIVO_APP;
+        // Es un timestamp Unix y no una posición: el orden de la cola es el de llegada.
+        $this->orden_cola = now()->getTimestamp();
+
+        return true;
+    }
+
     public function cobraPorSaldo(): bool
     {
         return $this->modalidad_cobranza === self::COBRANZA_SALDO;
@@ -510,14 +540,6 @@ class Cadete extends Model
     }
 
     /**
-     * El saldo mínimo con que un cadete puede seguir tomando pedidos, redondeado
-     * hacia arriba al siguiente múltiplo de 100.
-     *
-     * El método viejo tenía antes un `if ($saldo % 100 == 0) return $saldo;`. Es
-     * redundante: `ceil()` de un valor que ya es múltiplo de 100 devuelve ese mismo
-     * valor. Se saca porque hacía parecer que había dos casos, y hay uno.
-     */
-    /**
      * El mínimo, o null si falta alguna de las dos configuraciones con las que se calcula.
      *
      * ⚠️ `saldoMinimo()` lanza en ese caso, y está bien que lo haga donde se cobra. Pero
@@ -532,6 +554,14 @@ class Cadete extends Model
         return $sePuede ? self::saldoMinimo() : null;
     }
 
+    /**
+     * El saldo mínimo con que un cadete puede seguir tomando pedidos, redondeado hacia
+     * arriba al siguiente múltiplo de 100.
+     *
+     * El método viejo tenía antes un `if ($saldo % 100 == 0) return $saldo;`. Es
+     * redundante: `ceil()` de un valor que ya es múltiplo de 100 devuelve ese mismo valor.
+     * Se saca porque hacía parecer que había dos casos, y hay uno.
+     */
     public static function saldoMinimo(): float
     {
         $porcentaje = Configuracion::numero('COBRANZA_SALDO_PORCENTAJE');

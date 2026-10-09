@@ -36,6 +36,20 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        /*
+        | Cuántos pedidos por minuto aguanta la API.
+        |
+        | ⚠️ **Son los 120 del sistema viejo** —`throttle.user:120,1` en su Kernel—, y acá
+        | faltaban: el grupo `api` del esqueleto de Laravel no trae ninguno, así que las tres
+        | rutas públicas estaban sin tope. Una de ellas, la postulación, acepta cuatro
+        | imágenes de hasta 4 MB cada una sin pedir token.
+        |
+        | ⚠️ El sistema viejo necesitaba una subclase propia —`ThrottleRequestsByUser`— porque
+        | Passport no resolvía el usuario antes de que corriera `auth:api`. El `throttle` del
+        | framework ya hace lo mismo: cuenta por id cuando hay cuenta y por IP cuando no.
+        */
+        $middleware->api(prepend: ['throttle:120,1']);
+
         // Se usa como `rol:admin` o `rol:empleado,admin`, igual que en el panel viejo.
         $middleware->alias([
             'rol' => VerificarRol::class,

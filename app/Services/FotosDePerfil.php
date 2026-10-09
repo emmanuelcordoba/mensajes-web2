@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserFoto;
+use App\Support\ImagenEnDataUrl;
 use App\Support\RutaDeArchivo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * La foto de perfil del cadete: dónde vive y cómo se muestra.
@@ -28,6 +28,10 @@ use RuntimeException;
  * `this.usuario.foto = this.foto` y manda el objeto entero, así que si el cadete no cambió
  * la foto, lo que llega es la URL que emitimos nosotros. Sólo es una foto nueva cuando
  * llega un `data:image/...;base64,...`, que es lo que produce el recortador de la app.
+ *
+ * ⚠️ **Interpretar ese `data:` no vive acá**: es `App\Support\ImagenEnDataUrl`, compartido
+ * con las cuatro imágenes de una postulación, que llegan igual. Lo único propio es cuánto
+ * puede pesar.
  */
 class FotosDePerfil
 {
@@ -39,9 +43,6 @@ class FotosDePerfil
 
     /** Lo más grande que se acepta, ya decodificado: la app manda 500x500. */
     public const BYTES_MAXIMOS = 2 * 1024 * 1024;
-
-    /** Lo que el recortador de la app produce, y lo único que se acepta como foto nueva. */
-    public const TIPOS = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
 
     /**
      * La URL con la que se puede ver una foto, o null si no hay.
@@ -64,7 +65,7 @@ class FotosDePerfil
     /** Si lo que mandó la app es una foto nueva y no la URL que le dimos. */
     public static function esFotoNueva(mixed $valor): bool
     {
-        return is_string($valor) && str_starts_with($valor, 'data:');
+        return ImagenEnDataUrl::esUnaImagen($valor);
     }
 
     /**
@@ -81,17 +82,7 @@ class FotosDePerfil
      */
     public static function porQueNoSirve(mixed $valor): ?string
     {
-        if (! self::esFotoNueva($valor)) {
-            return null;
-        }
-
-        try {
-            self::interpretar((string) $valor);
-        } catch (RuntimeException $e) {
-            return $e->getMessage();
-        }
-
-        return null;
+        return ImagenEnDataUrl::porQueNoSirve($valor, self::BYTES_MAXIMOS);
     }
 
     /**
@@ -106,7 +97,7 @@ class FotosDePerfil
      */
     public function guardar(User $usuario, string $dataUrl): UserFoto
     {
-        [$extension, $contenido] = self::interpretar($dataUrl);
+        [$extension, $contenido] = ImagenEnDataUrl::interpretar($dataUrl, self::BYTES_MAXIMOS);
 
         $ruta = self::CARPETA.'/'.Str::uuid()->toString().'.'.$extension;
 
@@ -124,38 +115,6 @@ class FotosDePerfil
         }
 
         return $foto;
-    }
-
-    /**
-     * Separa el tipo y los bytes de un `data:` URL, o frena diciendo qué tiene de malo.
-     *
-     * @return array{string, string} La extensión y el contenido.
-     */
-    protected static function interpretar(string $dataUrl): array
-    {
-        if (preg_match('#^data:([a-z/+-]+);base64,(.+)$#is', $dataUrl, $partes) !== 1) {
-            throw new RuntimeException('La foto no viene en el formato esperado.');
-        }
-
-        $tipo = strtolower($partes[1]);
-
-        if (! array_key_exists($tipo, self::TIPOS)) {
-            throw new RuntimeException('Ese tipo de imagen no se acepta: '.$tipo.'.');
-        }
-
-        // ⚠️ `strict` en true: sin eso, base64_decode se come los caracteres inválidos y
-        // guarda un archivo corrupto en lugar de avisar.
-        $contenido = base64_decode($partes[2], true);
-
-        if ($contenido === false || $contenido === '') {
-            throw new RuntimeException('La foto no se pudo leer.');
-        }
-
-        if (strlen($contenido) > self::BYTES_MAXIMOS) {
-            throw new RuntimeException('La foto es demasiado grande.');
-        }
-
-        return [self::TIPOS[$tipo], $contenido];
     }
 
     /**

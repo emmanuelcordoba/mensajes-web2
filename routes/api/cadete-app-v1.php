@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\CadeteApp\V1\CadeteController;
 use App\Http\Controllers\Api\CadeteApp\V1\CobranzaController;
 use App\Http\Controllers\Api\CadeteApp\V1\MensajeController;
 use App\Http\Controllers\Api\CadeteApp\V1\PedidoController;
+use App\Http\Controllers\Api\CadeteApp\V1\PostulacionController;
+use App\Http\Controllers\Api\CadeteApp\V1\RecuperarContrasenaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,10 +19,11 @@ use Illuminate\Support\Facades\Route;
 | actualicen, y mientras tanto el que no actualizó no puede trabajar. Lo que lee está
 | declarado en `mensajes-cadeteria-cadete-app/src/app/interfaces/interfaces.ts`.
 |
-| ⚠️ **Se está portando por partes.** Lo que hay es con qué un cadete entra a la cola, qué
-| hace con sus pedidos, su perfil con el historial, el chat con la central, la cobranza y el
-| token de las notificaciones. Faltan **la postulación y el reseteo de contraseña**, que son
-| los dos únicos públicos que quedan.
+| ⚠️ **Está completa**: con qué un cadete entra a la cola, qué hace con sus pedidos, su
+| perfil con el historial, el chat con la central, la cobranza, el token de las
+| notificaciones, la postulación y el reseteo de contraseña. De los 22 endpoints del sistema
+| viejo se portaron 20: `getAsignados` y `getAceptados` quedaron afuera, y por qué está más
+| abajo.
 |
 | ⚠️ `getAsignados` y `getAceptados` del sistema viejo **no se portan**: buscados en toda la
 | historia del repositorio de la app, nunca se llamaron.
@@ -33,8 +36,25 @@ use Illuminate\Support\Facades\Route;
 | `pedidos.aceptar` no— y por eso las rutas de clientes directamente no tienen nombre.
 */
 
-// Pública: es por donde se entra.
+/*
+| Las tres públicas: por donde se entra, por donde se pide trabajo y por donde se recupera
+| la contraseña.
+|
+| ⚠️ **Las dos de la contraseña las comparten las dos apps**, y en el sistema viejo viven en
+| `Api/Auth/`, afuera de los cuatro consumidores, justamente porque no son de uno solo. Acá
+| quedan con una nota en el controlador en vez de duplicarse; el día que una de las dos apps
+| necesite otra cosa, se separan.
+|
+| ⚠️ **El límite de pedidos está en el grupo `api`**, no acá: son 120 por minuto, los mismos
+| que el sistema viejo pone en su Kernel. Ver `bootstrap/app.php`.
+*/
 Route::post('cadetes/login', [CadeteController::class, 'login'])->name('api.cadete-app.v1.login');
+Route::post('postulacion', [PostulacionController::class, 'store'])->name('api.cadete-app.v1.postulacion');
+
+Route::post('password/sendcode', [RecuperarContrasenaController::class, 'enviarCodigo'])
+    ->name('api.cadete-app.v1.password.codigo');
+Route::post('password/reset', [RecuperarContrasenaController::class, 'restablecer'])
+    ->name('api.cadete-app.v1.password.reset');
 
 /*
 | Y lo que necesita un token.

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Postulacion;
 use App\Models\PostulacionDocumento;
+use App\Support\ImagenEnDataUrl;
 use App\Support\RutaDeArchivo;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,21 @@ class DocumentosDePostulacion
 {
     /** La carpeta, la misma que escribió el ETL. Ver App\Etl\Archivos. */
     public const CARPETA = 'postulacion-documentos';
+
+    /**
+     * Lo más que puede pesar una de las cuatro, ya decodificada.
+     *
+     * Medido sobre las 2.900 imágenes migradas —725 postulaciones completas, ninguna sin
+     * archivo—: la mediana pesa 656 KB, el percentil 99 son 1,8 MB y la más grande de
+     * todas 2,7 MB. La app las saca con `width: 2000, quality: 90`, así que son grandes a
+     * propósito: dos de las cuatro son un DNI que alguien tiene que poder leer.
+     *
+     * 4 MB deja afuera el abuso y no toca nada de lo real. Y ojo con el total: las cuatro
+     * juntas en un solo JSON son ~3,6 MB en la mediana y pueden pasar los 12 MB en el peor
+     * caso, así que `post_max_size` del servidor tiene que darles lugar o PHP descarta el
+     * cuerpo entero antes de que Laravel lo vea.
+     */
+    public const BYTES_MAXIMOS = 4 * 1024 * 1024;
 
     /**
      * Los tres que hacen falta para contratar.
@@ -91,6 +107,44 @@ class DocumentosDePostulacion
         }
 
         return $faltan;
+    }
+
+    /** Qué tiene de malo una de las imágenes que mandó la app, o null si sirve. */
+    public static function porQueNoSirve(mixed $valor): ?string
+    {
+        return ImagenEnDataUrl::porQueNoSirve($valor, self::BYTES_MAXIMOS);
+    }
+
+    /**
+     * Guarda una imagen que llegó como `data:`, que es cómo las manda la app.
+     *
+     * Es el camino de la postulación desde el teléfono; `guardar()` es el de un archivo
+     * subido desde el panel. Los dos terminan en una fila con una ruta.
+     *
+     * ⚠️ El nombre lo pone el servidor, igual que en el otro camino, y por lo mismo.
+     */
+    public static function guardarDataUrl(Postulacion $postulacion, string $tipo, string $dataUrl): PostulacionDocumento
+    {
+        if (! in_array($tipo, PostulacionDocumento::TIPOS, true)) {
+            throw new RuntimeException("«{$tipo}» no es uno de los cuatro documentos.");
+        }
+
+        [$extension, $contenido] = ImagenEnDataUrl::interpretar($dataUrl, self::BYTES_MAXIMOS);
+
+        $carpeta = self::CARPETA.'/'.Str::ulid()->toString();
+        $ruta = $carpeta.'/'.$tipo.'.'.$extension;
+
+        if (! RutaDeArchivo::esValida($ruta)) {
+            throw new RuntimeException("La ruta «{$ruta}» no cumple la forma que exige la columna.");
+        }
+
+        Storage::disk(ImagenesDeLaApp::disco())->put($ruta, $contenido);
+
+        return PostulacionDocumento::query()->create([
+            'postulacion_id' => $postulacion->id,
+            'tipo' => $tipo,
+            'ruta_archivo' => $ruta,
+        ]);
     }
 
     /**

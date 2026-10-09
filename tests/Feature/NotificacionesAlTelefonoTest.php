@@ -119,7 +119,13 @@ test('without a token there is nobody to notify, and nothing is queued', functio
 test('the body is the one FCM v1 expects, and it does not carry data', function () {
     Http::fake(['fcm.googleapis.com/*' => Http::response(['name' => 'projects/x/messages/1'])]);
     Cache::put(AccesoAFirebase::CLAVE_DEL_TOKEN, 'un-access-token', now()->addMinutes(10));
-    config(['services.firebase.proyecto' => 'nuggo-mensajescadeteria']);
+    // ⚠️ El interruptor se fija acá y no se hereda del entorno: lo que este test comprueba
+    // es la forma del cuerpo con el interruptor apagado, que es la del sistema viejo. Sin
+    // esta línea, el test pasa o falla según lo que cada uno tenga en su `.env`.
+    config([
+        'services.firebase.proyecto' => 'nuggo-mensajescadeteria',
+        'services.firebase.enviar_el_tipo' => false,
+    ]);
 
     (new EnviarNotificacion('token-del-telefono', 'Nuevo pedido', 'Te toca', 'nuevo-pedido'))->handle();
 

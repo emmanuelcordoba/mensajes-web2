@@ -6,6 +6,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Recuperación de contraseña desde las apps
+    |--------------------------------------------------------------------------
+    |
+    | ⚠️ **`codigo_en_la_respuesta` en true replica el peor agujero del sistema viejo**, y
+    | está en true porque las apps publicadas no funcionan sin eso: `sendcode` les devuelve
+    | el código de verificación en el cuerpo de la respuesta y ellas lo comparan en el
+    | teléfono. Significa que quien sepa el email de un cadete puede pedir el código, leerlo
+    | y cambiarle la contraseña. Es SEC-2.
+    |
+    | Ponerlo en false es la etapa 2 de SEC-2, y **sólo se puede hacer cuando las dos apps se
+    | republiquen** verificando el código contra el servidor. Con las apps de hoy, apagarlo
+    | deja a los 220 cadetes sin forma de recuperar la contraseña.
+    |
+    | Ver `Api\CadeteApp\V1\RecuperarContrasenaController`.
+    |
+    */
+
+    'recuperacion' => [
+        'codigo_en_la_respuesta' => env('RECUPERACION_CODIGO_EN_LA_RESPUESTA', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Authentication Defaults
     |--------------------------------------------------------------------------
     |

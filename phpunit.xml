@@ -23,6 +23,12 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <!--
+            ⚠️ Fijo, porque si no la suite depende del .env de cada máquina: este valor
+            decide si las notificaciones llevan `data`, y hay un test de cada lado del
+            interruptor. Ver EnviarNotificacion.
+        -->
+        <env name="FIREBASE_ENVIAR_TIPO" value="false"/>
         <env name="DB_DATABASE" value="testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>

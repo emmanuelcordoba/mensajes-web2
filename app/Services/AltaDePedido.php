@@ -29,8 +29,9 @@ use RuntimeException;
  * la oficina usa para ver cuáles son sus pedidos, y es el 100% de los 43.318 pedidos web de
  * los últimos 180 días en producción. Ver `User::distintivo()`.
  *
- * ⚠️ **Las notificaciones push no se portan.** El sistema viejo le avisa al cadete que le
- * tocó el pedido; no hay Firebase en el sistema nuevo. Es una decisión tomada, no un olvido.
+ * ⚠️ **El aviso al teléfono del cadete no se manda desde acá**, y no falta: lo manda
+ * `AsignacionDeCadete::darleElPedido()`, que es el método que esta pantalla y el modal de la
+ * lista de espera comparten. En el sistema viejo ese aviso está escrito tres veces.
  */
 class AltaDePedido
 {

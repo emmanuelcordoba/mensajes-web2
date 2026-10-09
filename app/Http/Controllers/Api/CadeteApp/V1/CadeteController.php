@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\CadeteApp\V1;
 
+use App\Http\Requests\Api\CadeteApp\V1\GuardarFcmTokenRequest;
 use App\Http\Requests\Api\CadeteApp\V1\GuardarPerfilRequest;
 use App\Http\Requests\Api\CadeteApp\V1\LoginDeLaAppRequest;
 use App\Http\Requests\Api\CadeteApp\V1\UbicacionDelCadeteRequest;
 use App\Http\Resources\Api\CadeteApp\V1\CadeteDeLaApp;
 use App\Http\Resources\Api\CadeteApp\V1\UsuarioDeLaApp;
+use App\Models\Cadete;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\HistorialDelCadete;
@@ -29,7 +31,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * ⚠️ **Las rutas no llevan prefijo de versión** —`/api/getcadete`, `/api/cambiarestado`—
  * porque así las pide la app. Se ven mal y se quedan.
  *
- * ⚠️ **Las notificaciones push no se portan**: no hay Firebase en el sistema nuevo.
+ * ⚠️ **Las notificaciones push sí se portan.** El token del teléfono entra por
+ * `guardarFcmToken()` y sale por `cerrarSesion()`; lo que se manda está en
+ * `NotificacionesAlTelefono` y cómo se manda en `EnviarNotificacion`.
  */
 class CadeteController extends ControladorDeLaApp
 {
@@ -215,5 +219,51 @@ class CadeteController extends ControladorDeLaApp
         return response()->json([
             'historial' => $historial->para(self::elCadete($request)),
         ]);
+    }
+
+    /**
+     * Guardar el token con el que se le mandan notificaciones a este teléfono.
+     *
+     * La app lo manda sola al arrancar y cada vez que Firebase se lo renueva. Sin esto
+     * guardado, el cadete no recibe el aviso de que le asignaron un pedido ni el del chat.
+     *
+     * ⚠️ **Un cadete, un teléfono.** La columna es una sola, así que el token nuevo pisa al
+     * anterior: si el cadete entra desde otro aparato, los avisos van al último que entró.
+     * Es como funciona el sistema viejo y es lo que la app espera.
+     */
+    public function guardarFcmToken(GuardarFcmTokenRequest $request): JsonResponse
+    {
+        $cadete = self::elCadete($request);
+
+        $cadete->fcm_token = $request->string('fcm_token')->value();
+        $cadete->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Cerrar sesión: se va de la cola y deja de recibir avisos.
+     *
+     * Hace las tres cosas que hace el sistema viejo —borrar el token, ponerse inactivo y
+     * guardar— y una más que allá falta: **cerrar el tramo de actividad abierto**. Eso lo
+     * hace el modelo al guardar, y es el agujero de PANEL-17: allá el fin del tramo se
+     * escribe sólo en `cambiarEstado()`, así que el cadete que cierra sesión deja un tramo
+     * abierto para siempre. Son 113.065 de ésos, y son los que en el historial valen cero.
+     *
+     * ⚠️ **El token de la API no se revoca acá, y es a propósito.** La app guarda el
+     * `access_token` en el teléfono y lo sigue usando después de esto: `logout()` de
+     * `auth.service.ts` llama a este endpoint y recién después borra lo suyo. Revocar el
+     * token de Sanctum en el medio dejaría la respuesta sin llegar. Lo que corta el acceso
+     * es que la app lo olvide, igual que allá.
+     */
+    public function cerrarSesion(Request $request): JsonResponse
+    {
+        $cadete = self::elCadete($request);
+
+        $cadete->fcm_token = null;
+        $cadete->estado = Cadete::ESTADO_INACTIVO;
+        $cadete->save();
+
+        return response()->json(['ok' => true]);
     }
 }

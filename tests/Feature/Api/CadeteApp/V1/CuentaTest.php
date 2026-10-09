@@ -406,3 +406,94 @@ test('a 422 comes in the shape the app reads, and not in Laravel default one', f
 
     expect($respuestas['ubicacion']->json('error.lon.0'))->toBeString();
 });
+
+// ------------------------------------------------- el token de las notificaciones
+
+test('the app stores the token Firebase gave this phone', function () {
+    $cadete = unCadeteDeLaApp(['fcm_token' => null]);
+
+    $this->actingAs($cadete->user, 'sanctum')
+        ->postJson('/api/guardarfcmtoken', ['fcm_token' => 'el-token-de-este-telefono'])
+        ->assertOk()
+        ->assertJsonPath('ok', true);
+
+    expect($cadete->fresh()->fcm_token)->toBe('el-token-de-este-telefono');
+});
+
+test('a new token replaces the old one, because the column is one', function () {
+    // ⚠️ Un cadete, un teléfono: si entra desde otro aparato, los avisos van al último.
+    $cadete = unCadeteDeLaApp(['fcm_token' => 'el-viejo']);
+
+    $this->actingAs($cadete->user, 'sanctum')
+        ->postJson('/api/guardarfcmtoken', ['fcm_token' => 'el-nuevo'])
+        ->assertOk();
+
+    expect($cadete->fresh()->fcm_token)->toBe('el-nuevo');
+});
+
+test('a request without the token does not wipe the one he had', function () {
+    // ⚠️ El sistema viejo hace `$cadete->fcm_token = $request->fcm_token` sin validar: una
+    // petición sin el campo le BORRA el token y el cadete deja de recibir avisos sin que
+    // nadie se entere.
+    $cadete = unCadeteDeLaApp(['fcm_token' => 'el-que-funciona']);
+
+    $respuesta = $this->actingAs($cadete->user, 'sanctum')
+        ->postJson('/api/guardarfcmtoken', [])
+        ->assertStatus(422);
+
+    expect($respuesta->json('code'))->toBe(422)
+        ->and($respuesta->json('error.fcm_token'))->toBeArray()
+        ->and($cadete->fresh()->fcm_token)->toBe('el-que-funciona');
+});
+
+test('storing the token needs a token of its own, and the cadete role', function () {
+    $this->postJson('/api/guardarfcmtoken', ['fcm_token' => 'x'])->assertUnauthorized();
+    $this->postJson('/api/cerrarsesion')->assertUnauthorized();
+});
+
+// ------------------------------------------------------------------ cerrar sesión
+
+test('logging out drops the token, leaves the queue and closes the open stretch', function () {
+    $this->freezeTime();
+
+    $cadete = unCadeteDeLaApp([
+        'estado' => Cadete::ESTADO_ACTIVO_APP,
+        'orden_cola' => 50,
+        'fcm_token' => 'el-token-de-este-telefono',
+    ]);
+
+    $tramo = ActividadCadete::factory()->create([
+        'cadete_id' => $cadete->id,
+        'inicio' => now()->subHours(2),
+        'fin' => null,
+        'duracion' => null,
+    ]);
+
+    $this->actingAs($cadete->user, 'sanctum')
+        ->postJson('/api/cerrarsesion')
+        ->assertOk()
+        ->assertJsonPath('ok', true);
+
+    $cadete->refresh();
+
+    expect($cadete->fcm_token)->toBeNull()
+        ->and($cadete->estado)->toBe(Cadete::ESTADO_INACTIVO);
+
+    // ⚠️ Esto es lo que el sistema viejo NO hace: allá el fin del tramo se escribe sólo en
+    // `cambiarEstado()`, así que cerrar sesión deja un tramo abierto para siempre. Son
+    // 113.065 de ésos, y son los que en el historial valen cero. Ver PANEL-17.
+    $tramo->refresh();
+
+    expect($tramo->fin)->not->toBeNull()
+        ->and($tramo->duracion)->toBe(7_200);
+});
+
+test('logging out does not revoke the api token, because the app keeps using it', function () {
+    // ⚠️ `logout()` de `auth.service.ts` llama a este endpoint y recién después borra lo
+    // suyo. Revocar el token de Sanctum en el medio dejaría la respuesta sin llegar.
+    $cadete = unCadeteDeLaApp(['estado' => Cadete::ESTADO_ACTIVO_APP]);
+
+    $this->actingAs($cadete->user, 'sanctum')->postJson('/api/cerrarsesion')->assertOk();
+
+    $this->actingAs($cadete->user->fresh(), 'sanctum')->getJson('/api/getcadete')->assertOk();
+});

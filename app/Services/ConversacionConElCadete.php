@@ -39,16 +39,25 @@ class ConversacionConElCadete
         ]);
     }
 
-    /** Y la central desde el panel. */
+    /**
+     * Y la central desde el panel.
+     *
+     * ⚠️ Acá sale el aviso al teléfono, y no en el controlador, porque es el único camino
+     * por el que la central le escribe a un cadete: el que escribe avisa.
+     */
     public function escribeLaCentral(Cadete $cadete, User $cuenta, string $texto): Mensaje
     {
-        return Mensaje::query()->create([
+        $mensaje = Mensaje::query()->create([
             'cadete_id' => $cadete->id,
             'user_id' => $cuenta->id,
             'mensaje' => $texto,
             'leido_web' => true,
             'leido_app' => false,
         ]);
+
+        NotificacionesAlTelefono::nuevoMensaje($cadete->fcm_token);
+
+        return $mensaje;
     }
 
     /**

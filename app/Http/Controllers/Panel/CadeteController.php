@@ -10,6 +10,7 @@ use App\Models\MotivoBloqueo;
 use App\Services\AltaDeCadete;
 use App\Services\BajaDeCadete;
 use App\Services\ColaDeCadetes;
+use App\Services\NotificacionesAlTelefono;
 use App\Support\Momento;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -359,12 +360,17 @@ class CadeteController extends Controller
     }
 
     /**
-     * Bloquear la cuenta del cadete, con su motivo.
+     * Bloquear la cuenta del cadete, con su motivo, y avisarle al teléfono.
      *
-     * ⚠️ Esto **no manda la notificación** que mandaba el sistema viejo, y no es un olvido:
-     * la app todavía no está portada y no hay nada en este sistema que hable con Firebase.
-     * El bloqueo se escribe igual —es lo que la app lee al entrar—, y cuando la app exista,
-     * el aviso al teléfono se agrega acá.
+     * ⚠️ **Y lo saca de la cola.** El bloqueo viejo hace `$cadete->estado = INACTIVO` junto
+     * con el `bloqueado` de la cuenta, y acá eso faltaba: `IngresoALaCola` sólo niega la
+     * ENTRADA, así que un cadete bloqueado mientras estaba activo se quedaba en la cola con
+     * su `orden_cola` y el mostrador podía seguir dándole pedidos. De paso el tramo de
+     * actividad abierto se cierra solo —lo hace el modelo al guardar—, que es el agujero de
+     * PANEL-17 por el que allá queda abierto para siempre.
+     *
+     * ⚠️ El desbloqueo NO lo vuelve a poner activo, como en el sistema viejo: a la cola
+     * vuelve desde su app, o lo pone la central.
      */
     public function bloquear(BloquearCadeteRequest $request, Cadete $cadete): RedirectResponse
     {
@@ -380,11 +386,18 @@ class CadeteController extends Controller
 
         $motivo = $request->string('motivo')->value();
 
-        $cuenta->bloqueado = $motivo;
-        $cuenta->bloqueado_mensaje = $motivo === MotivoBloqueo::OTRO_MOTIVO
+        $mensaje = $motivo === MotivoBloqueo::OTRO_MOTIVO
             ? $request->string('mensaje')->value()
             : null;
+
+        $cuenta->bloqueado = $motivo;
+        $cuenta->bloqueado_mensaje = $mensaje;
         $cuenta->save();
+
+        $cadete->estado = Cadete::ESTADO_INACTIVO;
+        $cadete->save();
+
+        NotificacionesAlTelefono::bloqueado($cadete->fcm_token, $motivo, $mensaje);
 
         return back()->with('success', 'Móvil '.$cadete->numero_movil.' bloqueado.');
     }
@@ -409,6 +422,8 @@ class CadeteController extends Controller
         $cuenta->bloqueado = null;
         $cuenta->bloqueado_mensaje = null;
         $cuenta->save();
+
+        NotificacionesAlTelefono::desbloqueado($cadete->fcm_token);
 
         return back()->with('success', 'Móvil '.$cadete->numero_movil.' desbloqueado.');
     }

@@ -14,6 +14,41 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Firebase Cloud Messaging
+    |--------------------------------------------------------------------------
+    |
+    | Con esto se le manda una notificación al teléfono de un cadete o de un cliente. El
+    | sistema viejo tiene el proyecto escrito dentro de la URL —`nuggo-mensajescadeteria`— y
+    | lee la cuenta de servicio de `storage/nuggo-mensajescadeteria-firebase.json`, o sea un
+    | archivo con una clave privada adentro del repositorio desplegado.
+    |
+    | ⚠️ `credenciales` acepta las dos formas: **la ruta a un archivo JSON** o **el JSON
+    | entero**. Lo segundo es lo que hace falta donde no hay disco propio al que subir un
+    | archivo —Laravel Cloud—, y lo primero es más cómodo en una máquina. Sin esto
+    | configurado no se manda nada y queda anotado en el log: ver `AccesoAFirebase`.
+    |
+    */
+
+    'firebase' => [
+        'proyecto' => env('FIREBASE_PROJECT_ID'),
+        'credenciales' => env('FIREBASE_CREDENTIALS'),
+
+        /*
+        | ⚠️ Si el `type` de cada notificación viaja en `data`. **En false porque es lo que
+        | hace el sistema viejo**: allá cada sitio escribe su `['type' => ...]`, el trabajo
+        | lo guarda y nunca lo manda.
+        |
+        | Prenderlo CAMBIA lo que el cadete ve en la mano, y para mejor: la app lee
+        | `notification.data.type` y con `nuevo-pedido` abre la pestaña de pedidos, con
+        | `nuevo-mensaje` enciende el globito del chat y con cualquier otra cosa muestra un
+        | alerta. Como hoy `data` no llega, todas caen en el alerta genérico. La app de
+        | clientes no lo lee, así que a ésa no le cambia nada. Ver `EnviarNotificacion`.
+        */
+        'enviar_el_tipo' => env('FIREBASE_ENVIAR_TIPO', false),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\CancelarPedidoSinConfirmar;
 use App\Models\Cadete;
+use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\LogEstadoPedido;
 use App\Models\Pedido;
@@ -27,10 +28,15 @@ use RuntimeException;
  *   y empieza a correr un reloj de cinco minutos. Si no lo confirma, se cancela solo.
  * - Cualquier otro estado: **Finalizado**, como el `default` del switch viejo.
  *
- * ⚠️ **Las notificaciones push NO se portan.** El sistema viejo manda tres desde acá —al
- * cadete que le toca un pedido, al cliente cuando se le cotiza, y al cadete que perdió el
- * pedido por no confirmarlo—. No hay Firebase en el sistema nuevo y eso es una decisión
- * tomada, no un olvido: lo que falta es avisar, no decidir.
+ * ⚠️ **Los dos avisos al teléfono salen de acá**, con los mismos textos del sistema viejo:
+ * al cadete cuando le toca un pedido y al cliente de la app cuando se le pone precio. El
+ * tercero —el cadete que pierde el pedido por no confirmarlo— lo manda
+ * `CancelarPedidoSinConfirmar`, que es quien lo cancela.
+ *
+ * ⚠️ Y el aviso al cadete sale de `darleElPedido()`, o sea **una vez** para las dos
+ * pantallas. En el sistema viejo ese `if ($cadete->fcm_token)` con su llamada está escrito
+ * tres veces —el alta, el modal y la pantalla de asignar—, que son tres lugares donde
+ * olvidarse.
  */
 class AsignacionDeCadete
 {
@@ -189,6 +195,12 @@ class AsignacionDeCadete
         $pedido->save();
         LogEstadoPedido::registrar($pedido, LogEstadoPedido::WEB, userId: $userId);
 
+        // ⚠️ Se le avisa SIEMPRE, no sólo al que está en la app. Es lo que hace el sistema
+        // viejo: el `if` del token está afuera del `switch` de estados, así que también le
+        // llega al que se lo lleva del mostrador y al que estaba inactivo. Visto desde el
+        // teléfono tiene sentido: le asignaron un pedido.
+        NotificacionesAlTelefono::nuevoPedido($cadete->fcm_token);
+
         if ($deLaColaWeb) {
             // ⚠️ SÓLO el que vino de la cola web, como el sistema viejo: el de la app
             // todavía no terminó nada, y a uno que ya estaba inactivo el switch viejo
@@ -231,6 +243,28 @@ class AsignacionDeCadete
 
         $pedido->valor = $nuevo;
         $pedido->estado = Pedido::ESTADO_COTIZADO;
+
+        // ⚠️ El cliente se busca por `cliente_id` y no por la relación: `Pedido::$cliente`
+        // es nullable —`Cliente` usa SoftDeletes— y el sistema viejo hace
+        // `$pedido->cliente->fcm_token` sin mirar, que es un 500 cuando el comercio está
+        // dado de baja.
+        NotificacionesAlTelefono::pedidoCotizado(self::tokenDelCliente($pedido));
+    }
+
+    /**
+     * El token del teléfono del cliente, o null si no hay a quién avisarle.
+     *
+     * Sólo los pedidos que entraron por la app tienen un cliente con app: los de mostrador
+     * son de un comercio que no la usa, y el sistema viejo también pregunta por la
+     * plataforma antes de avisar.
+     */
+    protected static function tokenDelCliente(Pedido $pedido): ?string
+    {
+        if ($pedido->plataforma_origen !== Pedido::PLATAFORMA_APP || $pedido->cliente_id === null) {
+            return null;
+        }
+
+        return Cliente::query()->whereKey($pedido->cliente_id)->value('fcm_token');
     }
 
     /**

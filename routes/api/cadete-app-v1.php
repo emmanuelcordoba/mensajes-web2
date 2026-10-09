@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\Route;
 | declarado en `mensajes-cadeteria-cadete-app/src/app/interfaces/interfaces.ts`.
 |
 | ⚠️ **Se está portando por partes.** Lo que hay es con qué un cadete entra a la cola, qué
-| hace con sus pedidos, su perfil con el historial, el chat con la central y la cobranza.
-| Faltan la postulación, el reseteo de contraseña, `guardarfcmtoken` y `cerrarsesion` —y los
-| dos primeros son los únicos públicos que quedan—.
+| hace con sus pedidos, su perfil con el historial, el chat con la central, la cobranza y el
+| token de las notificaciones. Faltan **la postulación y el reseteo de contraseña**, que son
+| los dos únicos públicos que quedan.
 |
 | ⚠️ `getAsignados` y `getAceptados` del sistema viejo **no se portan**: buscados en toda la
 | historia del repositorio de la app, nunca se llamaron.
@@ -78,6 +78,18 @@ Route::middleware(['auth:sanctum', 'rol:cadete'])->group(function () {
     Route::get('cobranza', [CobranzaController::class, 'index'])->name('api.cadete-app.v1.cobranza');
     Route::get('cobranza/saldo/movimientos', [CobranzaController::class, 'movimientos'])
         ->name('api.cadete-app.v1.cobranza.movimientos');
+
+    /*
+    | El teléfono y la salida.
+    |
+    | ⚠️ `guardarfcmtoken` es lo que hace que las notificaciones lleguen: sin ese token
+    | guardado, al cadete no le avisa nada. La app lo manda sola al arrancar y cada vez que
+    | Firebase se lo renueva.
+    */
+    Route::post('guardarfcmtoken', [CadeteController::class, 'guardarFcmToken'])
+        ->name('api.cadete-app.v1.fcm-token');
+    Route::post('cerrarsesion', [CadeteController::class, 'cerrarSesion'])
+        ->name('api.cadete-app.v1.cerrar-sesion');
 
     /*
     | Los pedidos.

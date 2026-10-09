@@ -91,9 +91,8 @@ class MensajeController extends Controller
             $request->string('mensaje')->value(),
         );
 
-        // ⚠️ Acá NO se manda la notificación al teléfono que mandaba el sistema viejo: la
-        // app no está portada y no hay nada en este sistema que hable con Firebase. El
-        // mensaje se guarda igual, que es lo que la app lee al abrir el chat.
+        // El aviso al teléfono lo manda el servicio, que es por donde pasan los dos
+        // lados del chat. Ver `ConversacionConElCadete::escribeLaCentral()`.
         return back();
     }
 

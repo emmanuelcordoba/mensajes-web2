@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\LogEstadoPedido;
 use App\Models\Pedido;
+use App\Services\NotificacionesAlTelefono;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -23,8 +24,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * `queue:work` el pedido se queda Asignado para siempre y el cadete lo retiene sin haberlo
  * confirmado. En el sistema viejo pasa lo mismo y es parte del despliegue, no del código.
  *
- * ⚠️ La notificación al cadete que perdió el pedido no se porta: no hay Firebase en el
- * sistema nuevo.
+ * ⚠️ Al cadete se le avisa que lo perdió, con el texto del sistema viejo. Es el único aviso
+ * que sale de un trabajo encolado y no de alguien apretando un botón.
  */
 class CancelarPedidoSinConfirmar implements ShouldQueue
 {
@@ -53,5 +54,7 @@ class CancelarPedidoSinConfirmar implements ShouldQueue
         // el usuario de `Auth`, que desde un trabajo encolado no existe, así que quedaba en
         // null sin que nadie lo decidiera. Acá queda en null porque se decide que quede.
         LogEstadoPedido::registrar($pedido, LogEstadoPedido::WEB, $cadete);
+
+        NotificacionesAlTelefono::pedidoPerdido($cadete?->fcm_token);
     }
 }

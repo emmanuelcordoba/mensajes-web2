@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CadeteApp\V1\CadeteController;
+use App\Http\Controllers\Api\CadeteApp\V1\CobranzaController;
 use App\Http\Controllers\Api\CadeteApp\V1\MensajeController;
 use App\Http\Controllers\Api\CadeteApp\V1\PedidoController;
 use Illuminate\Support\Facades\Route;
@@ -17,8 +18,9 @@ use Illuminate\Support\Facades\Route;
 | declarado en `mensajes-cadeteria-cadete-app/src/app/interfaces/interfaces.ts`.
 |
 | ⚠️ **Se está portando por partes.** Lo que hay es con qué un cadete entra a la cola, qué
-| hace con sus pedidos, su perfil con el historial y el chat con la central. Faltan la
-| cobranza, la postulación, el reseteo de contraseña, `guardarfcmtoken` y `cerrarsesion`.
+| hace con sus pedidos, su perfil con el historial, el chat con la central y la cobranza.
+| Faltan la postulación, el reseteo de contraseña, `guardarfcmtoken` y `cerrarsesion` —y los
+| dos primeros son los únicos públicos que quedan—.
 |
 | ⚠️ `getAsignados` y `getAceptados` del sistema viejo **no se portan**: buscados en toda la
 | historia del repositorio de la app, nunca se llamaron.
@@ -66,6 +68,16 @@ Route::middleware(['auth:sanctum', 'rol:cadete'])->group(function () {
     Route::get('mensajes', [MensajeController::class, 'index'])->name('api.cadete-app.v1.mensajes.index');
     Route::get('mensajes/noleidos', [MensajeController::class, 'noLeidos'])->name('api.cadete-app.v1.mensajes.noleidos');
     Route::post('mensajes/store', [MensajeController::class, 'store'])->name('api.cadete-app.v1.mensajes.store');
+
+    /*
+    | La cobranza.
+    |
+    | ⚠️ Sólo tiene algo que mostrar para los 48 cadetes que cobran por saldo. Los otros 172
+    | cobran una cuota semanal, que se arregla en la oficina.
+    */
+    Route::get('cobranza', [CobranzaController::class, 'index'])->name('api.cadete-app.v1.cobranza');
+    Route::get('cobranza/saldo/movimientos', [CobranzaController::class, 'movimientos'])
+        ->name('api.cadete-app.v1.cobranza.movimientos');
 
     /*
     | Los pedidos.

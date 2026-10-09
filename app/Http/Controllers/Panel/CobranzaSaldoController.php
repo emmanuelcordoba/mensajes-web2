@@ -107,7 +107,8 @@ class CobranzaSaldoController extends Controller
                 'monto' => Pedido::comoMonto($movimiento->monto),
                 'suma' => $movimiento->monto_positivo,
                 // ⚠️ El saldo ANTES del movimiento, que es como lo guarda la tabla. Hay
-                // 21 movimientos históricos que lo tienen en null.
+                // 44 que lo tienen en null, y son la primera carga de 44 cadetes: el
+                // porqué está en el modelo.
                 'saldo_previo' => $movimiento->saldo_parcial,
                 // ⚠️ Null en los 12.827 migrados: en el sistema viejo `user_id` no estaba
                 // en el `fillable` y la asignación masiva lo descartaba en silencio

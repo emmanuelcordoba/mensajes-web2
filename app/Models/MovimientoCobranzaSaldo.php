@@ -14,8 +14,14 @@ use Illuminate\Support\Carbon;
  * Un movimiento en el saldo de un cadete que cobra por saldo. Son 13.412.
  *
  * El signo **no va en `monto`**: va en `monto_positivo`. `true` es una carga,
- * `false` un descuento. `saldo_parcial` es el saldo ANTES del movimiento, y 21
- * movimientos históricos lo tienen en null.
+ * `false` un descuento.
+ *
+ * ⚠️ `saldo_parcial` es el saldo ANTES del movimiento, y **44 lo tienen en null**. No son
+ * «históricos»: son todos del tipo «Carga de saldo» y todos el PRIMER movimiento de su
+ * cadete —44 movimientos, 44 cadetes distintos—, porque el sistema viejo escribe
+ * `'saldo_parcial' => $cadete->cobranza_saldo` y en la primera carga ese campo todavía está
+ * en null. El más nuevo es del 2026-09-21, o sea que allá sigue pasando. Medido el
+ * 2026-10-09; antes acá decía 21.
  *
  * ## Las dos columnas que existen por un bug cada una
  *

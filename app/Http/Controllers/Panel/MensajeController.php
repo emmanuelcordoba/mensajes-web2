@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Panel\EnviarMensajeRequest;
 use App\Models\Cadete;
 use App\Models\Mensaje;
+use App\Models\User;
+use App\Services\ConversacionConElCadete;
 use App\Support\Momento;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -50,17 +52,17 @@ class MensajeController extends Controller
     /** Cada cuánto la pantalla se vuelve a pedir sola, en milisegundos. Como el viejo. */
     public const REFRESCO = 5_000;
 
+    public function __construct(protected ConversacionConElCadete $conversacion) {}
+
     public function index(Request $request, ?Cadete $cadete = null): Response
     {
         $this->authorize('viewAny', Mensaje::class);
 
         // ⚠️ Abrir una conversación la marca como leída en la web, como en el panel viejo.
-        // Una sola sentencia: allá se cargaban los modelos y se guardaba uno por uno.
+        // Los dos «leído» son una regla con dos lados y viven juntos en el servicio, con el
+        // de la app: ver `ConversacionConElCadete`.
         if ($cadete !== null) {
-            Mensaje::query()
-                ->where('cadete_id', $cadete->id)
-                ->sinLeerEnLaWeb()
-                ->update(['leido_web' => true]);
+            $this->conversacion->losLeyoLaCentral($cadete);
         }
 
         return Inertia::render('mensajes/index', [
@@ -76,14 +78,18 @@ class MensajeController extends Controller
     {
         $this->authorize('create', Mensaje::class);
 
-        Mensaje::query()->create([
-            'cadete_id' => $cadete->id,
-            'user_id' => $request->user()?->id,
-            'mensaje' => $request->string('mensaje')->value(),
-            // Lo que escribe la central ya está leído de este lado, y no del otro.
-            'leido_web' => true,
-            'leido_app' => false,
-        ]);
+        $cuenta = $request->user();
+
+        // La ruta está detrás de `auth` y la política ya corrió, así que acá hay cuenta; el
+        // tipo de `$request->user()` no lo sabe. Antes esto era `$request->user()?->id`
+        // sobre una columna NOT NULL, o sea un null que la base iba a rechazar igual.
+        abort_unless($cuenta instanceof User, 403);
+
+        $this->conversacion->escribeLaCentral(
+            $cadete,
+            $cuenta,
+            $request->string('mensaje')->value(),
+        );
 
         // ⚠️ Acá NO se manda la notificación al teléfono que mandaba el sistema viejo: la
         // app no está portada y no hay nada en este sistema que hable con Firebase. El

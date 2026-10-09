@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CadeteApp\V1\CadeteController;
+use App\Http\Controllers\Api\CadeteApp\V1\MensajeController;
 use App\Http\Controllers\Api\CadeteApp\V1\PedidoController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,8 +17,8 @@ use Illuminate\Support\Facades\Route;
 | declarado en `mensajes-cadeteria-cadete-app/src/app/interfaces/interfaces.ts`.
 |
 | ⚠️ **Se está portando por partes.** Lo que hay es con qué un cadete entra a la cola, qué
-| hace con sus pedidos y su perfil con el historial. Faltan los mensajes, la cobranza, la
-| postulación, el reseteo de contraseña, `guardarfcmtoken` y `cerrarsesion`.
+| hace con sus pedidos, su perfil con el historial y el chat con la central. Faltan la
+| cobranza, la postulación, el reseteo de contraseña, `guardarfcmtoken` y `cerrarsesion`.
 |
 | ⚠️ `getAsignados` y `getAceptados` del sistema viejo **no se portan**: buscados en toda la
 | historia del repositorio de la app, nunca se llamaron.
@@ -55,6 +56,16 @@ Route::middleware(['auth:sanctum', 'rol:cadete'])->group(function () {
     Route::get('getperfil', [CadeteController::class, 'getPerfil'])->name('api.cadete-app.v1.perfil');
     Route::post('editarperfil', [CadeteController::class, 'editarPerfil'])->name('api.cadete-app.v1.perfil.guardar');
     Route::get('historial', [CadeteController::class, 'historial'])->name('api.cadete-app.v1.historial');
+
+    /*
+    | El chat con la central.
+    |
+    | ⚠️ `mensajes/noleidos` va ANTES de nada que pueda comérselo, y `mensajes/store` es un
+    | POST a una URL que dice qué hace: así las pide la app publicada.
+    */
+    Route::get('mensajes', [MensajeController::class, 'index'])->name('api.cadete-app.v1.mensajes.index');
+    Route::get('mensajes/noleidos', [MensajeController::class, 'noLeidos'])->name('api.cadete-app.v1.mensajes.noleidos');
+    Route::post('mensajes/store', [MensajeController::class, 'store'])->name('api.cadete-app.v1.mensajes.store');
 
     /*
     | Los pedidos.

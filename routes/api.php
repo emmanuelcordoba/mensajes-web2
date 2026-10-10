@@ -9,7 +9,7 @@
 | contrato y su propio ritmo de cambio:
 |
 |   routes/api/cadete-app-v1.php    La app de los cadetes.
-|   routes/api/cliente-app-v1.php   La app de los clientes. (falta)
+|   routes/api/cliente-app-v1.php   La app de los clientes.
 |   routes/api/cliente-app-v2.php   La misma app, contrato nuevo. (falta)
 |   routes/api/user-api-v1.php      La integración de terceros, DEP-3. (falta)
 |
@@ -36,3 +36,4 @@
 */
 
 require __DIR__.'/api/cadete-app-v1.php';
+require __DIR__.'/api/cliente-app-v1.php';

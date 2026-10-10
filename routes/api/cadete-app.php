@@ -10,8 +10,13 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| La app del cadete — contrato 1
+| La app del cadete
 |--------------------------------------------------------------------------
+|
+| ⚠️ **Hoy habla una sola versión, y el nombre del archivo no la dice** —igual que el de la
+| app de clientes, que habla dos—: un archivo por consumidor, y la versión en las carpetas de
+| los controladores, que es donde dice qué contrato implementa cada clase. El día que haga
+| falta un V2 del cadete, sus rutas entran acá al lado de las de hoy, como las de clientes.
 |
 | ⚠️ **Las URL las manda la app, no este archivo.** Está publicada en los teléfonos y pide
 | `/api/getcadete`, `/api/cambiarestado` y `/api/pedidos/aceptar?id=`, sin prefijo de versión

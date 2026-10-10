@@ -8,10 +8,15 @@
 | Son cuatro consumidores distintos y cada uno es una aplicación aparte, con su propio
 | contrato y su propio ritmo de cambio:
 |
-|   routes/api/cadete-app-v1.php    La app de los cadetes.
-|   routes/api/cliente-app-v1.php   La app de los clientes.
-|   routes/api/cliente-app-v2.php   La misma app, contrato nuevo. (falta)
-|   routes/api/user-api-v1.php      La integración de terceros, DEP-3. (falta)
+|   routes/api/cadete-app.php    La app de los cadetes.
+|   routes/api/cliente-app.php   La app de los clientes, con sus dos versiones.
+|   routes/api/user-api.php      La integración de terceros, DEP-3. (falta)
+|
+| ⚠️ **Un archivo por consumidor, sin la versión en el nombre.** La versión vive en las
+| carpetas de los controladores, que es donde dice qué contrato implementa cada clase; acá
+| sólo diría de cuál es la primera ruta del archivo. La app de clientes habla la v1 y la v2
+| al mismo tiempo, así que un `cliente-app-v1.php` con rutas `v2/` adentro es exactamente la
+| confusión que esto evita.
 |
 | ⚠️ **El consumidor va primero y la versión adentro, al revés que en el sistema viejo.**
 | Allá la carpeta de más afuera es la versión —`Api/v1/ClientesApp` y `Api/v2/ClientesApp`—,
@@ -35,5 +40,5 @@
 | pone `bootstrap/app.php`.
 */
 
-require __DIR__.'/api/cadete-app-v1.php';
-require __DIR__.'/api/cliente-app-v1.php';
+require __DIR__.'/api/cadete-app.php';
+require __DIR__.'/api/cliente-app.php';

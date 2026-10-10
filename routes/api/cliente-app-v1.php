@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ClienteApp\V1\AuthController;
+use App\Http\Controllers\Api\ClienteApp\V1\ClienteController;
 use App\Http\Controllers\Api\ClienteApp\V1\VerificacionController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,9 +18,13 @@ use Illuminate\Support\Facades\Route;
 | lo que leen las pantallas, así que cada respuesta dice en su recurso de dónde salió cada
 | campo. Es lo que vuelve delicado tocar cualquier cosa de acá.
 |
-| ⚠️ **Se está portando por partes.** Lo que hay es con qué un cliente entra, se registra y
-| verifica su casilla. Faltan el inicio y el perfil, el `guardarfcmtoken`, y los pedidos —los
-| de esta versión y los dos de la v2—.
+| ⚠️ **Se está portando por partes.** Lo que hay es con qué un cliente entra, se registra,
+| verifica su casilla, ve el inicio y edita su perfil. Faltan los pedidos: los cuatro de esta
+| versión y los dos de la v2.
+|
+| ⚠️ **`v2/clientesapp/get-setup` NO se porta.** Su único consumidor dejó de llamarlo el
+| 2024-06-30 —commit `1333550` de la app— cuando el precio pasó a calcularlo el servidor. Ver
+| `ClienteController`.
 */
 
 Route::prefix('clientesapp')->group(function (): void {
@@ -55,5 +60,12 @@ Route::prefix('clientesapp')->group(function (): void {
     */
     Route::middleware(['auth:sanctum', 'rol:cliente_app'])->group(function (): void {
         Route::post('logout', [AuthController::class, 'logout'])->name('api.cliente-app.v1.logout');
+
+        Route::post('guardarfcmtoken', [ClienteController::class, 'guardarFcmToken'])
+            ->name('api.cliente-app.v1.fcm-token');
+        Route::get('getinicio', [ClienteController::class, 'inicio'])->name('api.cliente-app.v1.inicio');
+        Route::get('getperfil', [ClienteController::class, 'perfil'])->name('api.cliente-app.v1.perfil');
+        Route::post('editarperfil', [ClienteController::class, 'guardarPerfil'])
+            ->name('api.cliente-app.v1.perfil.guardar');
     });
 });

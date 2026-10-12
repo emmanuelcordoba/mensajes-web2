@@ -10,7 +10,7 @@
 |
 |   routes/api/cadete-app.php    La app de los cadetes.
 |   routes/api/cliente-app.php   La app de los clientes, con sus dos versiones.
-|   routes/api/user-api.php      La integración de terceros, DEP-3. (falta)
+|   routes/api/user-api.php      La integración de terceros, DEP-3.
 |
 | ⚠️ **Un archivo por consumidor, sin la versión en el nombre.** La versión vive en las
 | carpetas de los controladores, que es donde dice qué contrato implementa cada clase; acá
@@ -42,3 +42,4 @@
 
 require __DIR__.'/api/cadete-app.php';
 require __DIR__.'/api/cliente-app.php';
+require __DIR__.'/api/user-api.php';

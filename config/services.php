@@ -64,6 +64,30 @@ return [
     */
     'google' => [
         'maps_key' => env('GOOGLE_MAPS_KEY'),
+
+        /*
+        | La clave que usa el SERVIDOR para geocodificar y medir distancias en la API de
+        | integración (`usersapi`). No viaja a ningún navegador.
+        |
+        | **Cae a la de arriba si no está configurada**, porque el sistema viejo usa una sola
+        | clave para las dos cosas y así sigue funcionando sin agregar nada al entorno.
+        |
+        | ⚠️ **Conviene que sean dos, y el motivo no es el servidor.** Google deja elegir UN
+        | solo tipo de restricción de aplicación por clave —referrers HTTP, O IPs, O apps—, y
+        | no se combinan: la API de JavaScript sólo tolera referrers y las llamadas del
+        | servidor sólo IPs. O sea que **mientras sea una sola clave para ambos usos, no se le
+        | puede poner ninguna restricción**, y ésa es la que el panel publica en el HTML
+        | (`<script src="...&key=">`). Separarlas no protege al servidor: permite restringir
+        | la del navegador, que es la expuesta, y el riesgo ahí es la facturación —Geocoding
+        | se cobra por llamada al proyecto—.
+        |
+        | Cuando se separen: clave nueva restringida por IP, con sólo Geocoding y Directions
+        | habilitados, y recién después restricción por dominio a la del navegador.
+        |
+        | Sin ninguna de las dos, cotizar contesta 503 y el alta crea el pedido sin precio
+        | para que lo cotice una persona. Ver `GoogleMaps` y `CotizacionDeViaje`.
+        */
+        'maps_servidor' => env('GOOGLE_MAPS_SERVER_KEY', env('GOOGLE_MAPS_KEY')),
     ],
 
     'resend' => [

@@ -96,7 +96,6 @@ class Postulaciones extends Migrador
         $emails = [];
         $dniInvalidos = 0;
         $fechasRaras = 0;
-        $fechasImposibles = 0;
 
         $campos = ['dni', 'email', 'fecha_nacimiento'];
 
@@ -112,12 +111,9 @@ class Postulaciones extends Migrador
             $email = mb_strtolower(trim((string) ($documento['email'] ?? '')));
             $emails[$email] = ($emails[$email] ?? 0) + 1;
 
-            $fecha = $documento['fecha_nacimiento'] ?? null;
-
-            if (! FechaDeNacimiento::bienEscrita($fecha)) {
+            // Las imposibles ya no se cuentan acá: no frenan, van en advertencias().
+            if (! FechaDeNacimiento::bienEscrita($documento['fecha_nacimiento'] ?? null)) {
                 $fechasRaras++;
-            } elseif (! FechaDeNacimiento::posible(trim((string) $fecha))) {
-                $fechasImposibles++;
             }
         }
 
@@ -159,18 +155,35 @@ class Postulaciones extends Migrador
             );
         }
 
-        if ($fechasImposibles > 0) {
-            $problemas[] = sprintf(
-                '%d fechas de nacimiento de postulación son imposibles: anteriores a %d o de '
-                .'alguien que hoy tendría menos de %d años. ⚠️ El esquema NO las rechaza; esto '
-                .'frena por decisión. Ver DATA-10.',
-                $fechasImposibles,
-                FechaDeNacimiento::ANIO_MINIMO,
-                FechaDeNacimiento::EDAD_MINIMA,
-            );
+        return $problemas;
+    }
+
+    /**
+     * Las fechas de nacimiento imposibles no frenan la carga. Ver DATA-10 y el
+     * docblock de `Cadetes::advertencias()`, que explica por qué cambió.
+     */
+    public function advertencias(): array
+    {
+        $imposibles = 0;
+
+        foreach ($this->origen->documentos($this->coleccion(), [], ['fecha_nacimiento']) as $documento) {
+            if (FechaDeNacimiento::imposible($documento['fecha_nacimiento'] ?? null)) {
+                $imposibles++;
+            }
         }
 
-        return $problemas;
+        if ($imposibles === 0) {
+            return [];
+        }
+
+        return [sprintf(
+            '%d fechas de nacimiento de postulación son imposibles: anteriores a %d o de alguien '
+            .'que hoy tendría menos de %d años. Se cargan tal cual y hay que corregirlas en el '
+            .'sistema nuevo.',
+            $imposibles,
+            FechaDeNacimiento::ANIO_MINIMO,
+            FechaDeNacimiento::EDAD_MINIMA,
+        )];
     }
 
     private static function dni(mixed $valor): int

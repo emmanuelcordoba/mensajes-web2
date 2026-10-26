@@ -37,6 +37,19 @@ class FechaDeNacimiento
     }
 
     /**
+     * Bien escrita pero de nadie: es lo que el ETL avisa sin frenar (DATA-10).
+     *
+     * Las dos comprobaciones juntas y en un solo lugar, porque los dos migradores
+     * preguntan exactamente esto y preguntarlo en dos pasos invita a confundir una
+     * fecha ilegible —que sí frena, porque el ETL no la puede interpretar— con una
+     * legible e imposible, que carga igual de bien que cualquier otra.
+     */
+    public static function imposible(mixed $valor): bool
+    {
+        return self::bienEscrita($valor) && ! self::posible(trim((string) $valor));
+    }
+
+    /**
      * Si además de estar bien escrita puede ser de una persona de verdad.
      */
     public static function posible(string $fecha): bool

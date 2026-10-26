@@ -149,6 +149,27 @@ class EtlMigrar extends Command
     }
 
     /**
+     * Lo que cada migrador ve mal y no impide cargar.
+     *
+     * @param  array<int, Migrador>  $migradores
+     * @return array<string, array<int, string>>
+     */
+    private function advertencias(array $migradores): array
+    {
+        $advertencias = [];
+
+        foreach ($migradores as $m) {
+            $suyas = $m->advertencias();
+
+            if ($suyas !== []) {
+                $advertencias[$m->tabla()] = $suyas;
+            }
+        }
+
+        return $advertencias;
+    }
+
+    /**
      * @param  array<string, array<int, string>>  $problemas
      */
     private function listar(array $problemas): void
@@ -172,6 +193,16 @@ class EtlMigrar extends Command
      */
     private function revisar(array $migradores): bool
     {
+        // Se avisan igual, y antes de cargar: una vez cargado, el informe no se
+        // vuelve a correr y nadie se enteraría de que entraron.
+        $advertencias = $this->advertencias($migradores);
+
+        if ($advertencias !== []) {
+            $this->warn('El origen tiene datos que el esquema acepta y están mal. Se cargan igual:');
+            $this->listar($advertencias);
+            $this->newLine();
+        }
+
         $problemas = $this->problemas($migradores);
 
         if ($problemas === []) {
@@ -205,6 +236,14 @@ class EtlMigrar extends Command
         } else {
             $this->error('El origen tiene datos que el esquema rechaza:');
             $this->listar($problemas);
+            $this->newLine();
+        }
+
+        $advertencias = $this->advertencias($migradores);
+
+        if ($advertencias !== []) {
+            $this->warn('Y datos que el esquema acepta y están mal. No frenan la carga:');
+            $this->listar($advertencias);
             $this->newLine();
         }
 

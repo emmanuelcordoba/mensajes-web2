@@ -89,6 +89,34 @@ abstract class Migrador
     }
 
     /**
+     * Lo que está mal en el origen pero **no impide cargar**.
+     *
+     * La diferencia con `problemas()` no es de gravedad: es de consecuencia. Un
+     * problema hace que el INSERT falle —un UNIQUE roto, un NOT NULL vacío, un
+     * valor que no entra en la columna—, así que cargar sobre él no es una
+     * opción. Una advertencia es un dato que el esquema acepta y que igual está
+     * mal: se carga, queda anotado en el informe, y se corrige después desde el
+     * sistema nuevo.
+     *
+     * Existe porque las fechas de nacimiento imposibles de DATA-10 frenaban el
+     * ETL por decisión y no por el esquema —`fecha_nacimiento` es DATE NOT NULL
+     * sin CHECK de rango—, y esa decisión costaba 51 correcciones a mano a cambio
+     * de poco: una fecha de 1890 carga igual de bien que una de 1990, y del otro
+     * lado se arregla con una pantalla.
+     *
+     * ⚠️ No es una puerta para bajar de categoría cualquier problema incómodo. Si
+     * el esquema lo rechaza, es un problema y frena.
+     *
+     * Cada elemento es una línea del informe. Vacío es que no hay nada.
+     *
+     * @return array<int, string>
+     */
+    public function advertencias(): array
+    {
+        return [];
+    }
+
+    /**
      * Migra la colección entera y devuelve cuántas filas escribió.
      *
      * Todo en una transacción, para que la tabla quede entera o no quede: sin

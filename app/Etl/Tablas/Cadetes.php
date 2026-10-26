@@ -117,7 +117,6 @@ class Cadetes extends Migrador
         $dnis = [];
         $dniInvalidos = 0;
         $fechasRaras = 0;
-        $fechasImposibles = 0;
 
         $campos = ['numero_movil', 'dni', 'fecha_nacimiento'];
 
@@ -140,10 +139,9 @@ class Cadetes extends Migrador
                 ? trim($documento['fecha_nacimiento'])
                 : '';
 
+            // Las imposibles ya no se cuentan acá: no frenan, van en advertencias().
             if ($nacimiento !== '' && preg_match(self::FECHA, $nacimiento) !== 1) {
                 $fechasRaras++;
-            } elseif ($nacimiento !== '' && ! FechaDeNacimiento::posible($nacimiento)) {
-                $fechasImposibles++;
             }
         }
 
@@ -187,18 +185,43 @@ class Cadetes extends Migrador
             );
         }
 
-        if ($fechasImposibles > 0) {
-            $problemas[] = sprintf(
-                '%d fechas de nacimiento son imposibles: anteriores a 1900 o de alguien que hoy '
-                .'tendría menos de %d años. ⚠️ El esquema NO las rechaza —`fecha_nacimiento` es '
-                .'DATE NOT NULL, sin CHECK de rango—, así que esto frena por decisión, no porque '
-                .'la carga vaya a fallar: son datos basura que no tiene sentido mudar. Ver DATA-10.',
-                $fechasImposibles,
-                FechaDeNacimiento::EDAD_MINIMA,
-            );
+        return $problemas;
+    }
+
+    /**
+     * Las fechas de nacimiento imposibles no frenan la carga. Ver DATA-10.
+     *
+     * ⚠️ ANTES FRENABAN, y se cambió a propósito (decisión del 2026-10-26): el
+     * esquema no las rechaza —`fecha_nacimiento` es DATE NOT NULL sin CHECK de
+     * rango—, así que frenar costaba corregirlas a mano antes del corte a cambio
+     * de nada. Una fecha de 1890 carga igual que una de 1990, queda anotada acá, y
+     * se corrige después desde el sistema nuevo.
+     *
+     * No se confunde con las fechas mal escritas, que sí frenan y están en
+     * `problemas()`: ésas el ETL no las puede interpretar, y en `dd/mm/aaaa` no se
+     * sabe si 05/11 es mayo o noviembre.
+     */
+    public function advertencias(): array
+    {
+        $imposibles = 0;
+
+        foreach ($this->origen->documentos($this->coleccion(), [], ['fecha_nacimiento']) as $documento) {
+            if (FechaDeNacimiento::imposible($documento['fecha_nacimiento'] ?? null)) {
+                $imposibles++;
+            }
         }
 
-        return $problemas;
+        if ($imposibles === 0) {
+            return [];
+        }
+
+        return [sprintf(
+            '%d fechas de nacimiento son imposibles: anteriores a %d o de alguien que hoy tendría '
+            .'menos de %d años. Se cargan tal cual y hay que corregirlas en el sistema nuevo.',
+            $imposibles,
+            FechaDeNacimiento::ANIO_MINIMO,
+            FechaDeNacimiento::EDAD_MINIMA,
+        )];
     }
 
     /**

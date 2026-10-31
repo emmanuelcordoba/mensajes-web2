@@ -20,7 +20,17 @@ use App\Http\Controllers\Panel\UserController;
 use App\Models\Rol;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+/*
+| La landing pública. Va con `Route::view` y no por Inertia: es una página
+| aislada, con su propio HTML y sus propios assets en /landing. Ver el
+| encabezado de la vista.
+|
+| ⚠️ El nombre `home` es el que usan los redirects de cerrar sesión, borrar la
+| cuenta y verificar el correo. Después de entrar, Fortify manda a /panel
+| —config/fortify.php—, así que la raíz es siempre la landing, como en el
+| sistema viejo.
+*/
+Route::view('/', 'landing')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');

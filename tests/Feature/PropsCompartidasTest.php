@@ -71,6 +71,9 @@ test('a user with no role shares a null role instead of failing', function () {
 });
 
 test('a guest gets no user at all', function () {
-    $this->get('/')
+    // Contra /login y no contra la raíz: la raíz es la landing, que es una página
+    // aislada y no pasa por Inertia. Ésta es la pantalla de Inertia a la que llega
+    // alguien que no entró todavía, que es justo lo que este test quiere mirar.
+    $this->get('/login')
         ->assertInertia(fn ($pagina) => $pagina->where('auth.user', null));
 });

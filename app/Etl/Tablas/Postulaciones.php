@@ -178,8 +178,9 @@ class Postulaciones extends Migrador
 
         return [sprintf(
             '%d fechas de nacimiento de postulación son imposibles: anteriores a %d o de alguien '
-            .'que hoy tendría menos de %d años. Se cargan tal cual y hay que corregirlas en el '
-            .'sistema nuevo.',
+            .'que hoy tendría menos de %d años. Se cargan tal cual. Se corrigen en el sistema '
+            .'VIEJO —Corrección de datos → Postulaciones → Fechas de nacimiento—, no en éste: '
+            .'cada carga con --reiniciar borra lo que se haya corregido acá.',
             $imposibles,
             FechaDeNacimiento::ANIO_MINIMO,
             FechaDeNacimiento::EDAD_MINIMA,

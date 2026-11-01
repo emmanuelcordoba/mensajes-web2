@@ -41,19 +41,34 @@ final class FechaDeNacimiento
     /**
      * Las reglas de validación, para sumarlas a `required` o a `nullable`.
      *
+     * ⚠️ **`date_format` Y NO `date`, Y ES LA PARTE QUE MÁS IMPORTA.** `date` acepta
+     * cualquier cosa que PHP sepa leer, y lo que PHP lee en `05/11/1990` es el 11 de
+     * MAYO. Alguien que escribe el 5 de noviembre queda guardado con otra fecha, válida
+     * y equivocada, que no delata nadie: el campo es DATE, el valor es plausible y el
+     * ETL no tiene de qué agarrarse. Medido: con `date` pasaban `05/11/1990`,
+     * `11-05-1990` y `1990-5-1`, y las tres quedaban reinterpretadas.
+     *
+     * Las dos reglas juntas no se llevan —lo dice la documentación de Laravel— y además
+     * no hace falta: `date_format:Y-m-d` ya rechaza lo que no es una fecha.
+     *
+     * ⚠️ Esto NO rompe a quien ya manda datos. Las cuatro pantallas usan un selector de
+     * fecha, que manda `aaaa-mm-dd`; y del lado de la app se comprobó contra el sistema
+     * viejo, que guarda el texto tal como llega: las 752 postulaciones de producción
+     * están en `aaaa-mm-dd`, sin una sola excepción.
+     *
      * @return list<string>
      */
     public static function reglas(): array
     {
         return [
-            'date',
+            'date_format:Y-m-d',
             'after_or_equal:'.self::masVieja()->toDateString(),
             'before_or_equal:'.self::masNueva()->toDateString(),
         ];
     }
 
     /**
-     * Los dos mensajes, para el campo que los necesite.
+     * Los mensajes, para el campo que los necesite.
      *
      * Se pasa el nombre del campo porque en postulaciones y en cadetes se llama igual pero
      * no tiene por qué: el que los pide dice cuál es el suyo.
@@ -63,6 +78,10 @@ final class FechaDeNacimiento
     public static function mensajes(string $campo = 'fecha_nacimiento'): array
     {
         return [
+            // Sin esto el mensaje sale en inglés: el `locale` es `es` pero no hay
+            // carpeta `lang/`, así que una regla sin mensaje propio cae en el texto que
+            // trae el framework.
+            $campo.'.date_format' => 'La fecha de nacimiento va como aaaa-mm-dd, por ejemplo 1990-11-25.',
             $campo.'.after_or_equal' => 'La fecha de nacimiento no puede ser de hace más de '
                 .self::ANOS_MAXIMOS.' años.',
             $campo.'.before_or_equal' => 'Tiene que tener al menos '.self::ANOS_MINIMOS.' años.',

@@ -16,7 +16,7 @@
     comprobó. Son anclas a sus propias secciones, WhatsApp y Play Store. Por eso el porteo no
     tuvo que recablear ninguna ruta.
 
-    Tres cosas que SÍ se cambiaron respecto de producción:
+    Cuatro cosas que SÍ se cambiaron respecto de producción:
 
     - **El favicon**, que allá apunta a `..public/landing/images/pagina/isotipoZenithBlanco.png`
       —una ruta rota, y además un archivo que no existe en el repositorio—. Ahora apunta a
@@ -25,6 +25,15 @@
     - **`lang="en"`**, que quedó del tema de Astro. La página está en español.
     - **El script del `typing-container`**, que se sacó porque buscaba un elemento que
       no existe y tiraba 28 errores por visita. El porqué está donde estaba el código.
+    - **Los scripts externos**, que eran cuatro y ahora son cero. La página cargaba
+      ALPINE DOS VECES —2.x desde un CDN y 3.x desde otro—, que es cargar dos versiones
+      distintas del mismo framework en la misma página; e ionicons dos veces más, para
+      cero `<ion-icon>` en todo el archivo. Alpine quedó servido desde `/landing/`, con
+      la versión fija en el nombre del archivo. Es la misma decisión que está escrita en
+      `cupon.blade.php`: lo que la página necesita para no salir desarmada no se pide
+      prestado a un CDN. Acá pesa más todavía, porque ésta es la primera página que ve
+      alguien que no es usuario del sistema, y Alpine es lo que abre el menú en el
+      teléfono.
 
     Las tres son reparaciones de algo roto, no retoques: lo que se rehace en el proyecto
     de Astro es el diseño, y eso sigue valiendo.
@@ -147,26 +156,16 @@
         f = "3814739347", k = `https://wa.me/${f}?text=${encodeURIComponent(E)}`;
       window.open(k, "_blank")
     });
-    let o = !1;
-    const l = document.querySelector("#navlinks"), c = document.querySelector("#hamburger"),
-      d = document.querySelector("#navLayer"), T = [...l.querySelector("ul").children];
-
-    function g() {
-      o ? (l.classList.add("!visible", "!scale-100", "!opacity-100", "!lg:translate-y-0"), c.classList.add("toggled"), d.classList.add("origin-top", "scale-y-100")) : (l.classList.remove("!visible", "!scale-100", "!opacity-100", "!lg:translate-y-0"), c.classList.remove("toggled"), d.classList.remove("origin-top", "scale-y-100"))
-    }
-
-    c.addEventListener("click", () => {
-      o = !o, g()
-    });
-    T.forEach(e => {
-      e.addEventListener("click", () => {
-        o = !o, g()
-      })
-    });
+    /*
+     * Acá iba una SEGUNDA implementación del menú móvil, en JS a secas, que buscaba
+     * #navlinks, #hamburger y #navLayer. Ninguno de los tres existe en este marcado:
+     * el menú lo maneja Alpine, con `x-data`, `@click` y `:class`, unas líneas más
+     * arriba en el <header>. Era código de otra versión de la plantilla, y tiraba un
+     * error en cada carga porque `l.querySelector` corría sobre null.
+     */
   </script>
 </head>
 <body class="bg-white" data-astro-cid-sckkx6r4>
-<script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
 <header data-astro-cid-qgrrgaau>
   <div class="w-full absolute z-10 border-b-2 border-primary"
        style="background-color: #f7f7f7; position: fixed;z-index: 999;" data-astro-cid-qgrrgaau>
@@ -313,8 +312,7 @@ Descargar App</span> </a></div>
       </div>
     </div>
   </div>
-  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  {{-- Acá se cargaba ionicons, dos veces, para cero <ion-icon> en la página. --}}
   <div id="Nosotros" class="valores" data-astro-cid-vnivfuh2>
     <div class="max-w-7xl mx-auto px-6 md:px-12 xl:px-6">
       <div class="relative my-10 pt-10 rounded-xl burbujas" style=";height: 65vh;" data-astro-cid-vnivfuh2><h3
@@ -1070,6 +1068,7 @@ Descargar App</span> </a></div>
     style="border: none;" data-astro-cid-sckkx6r4> <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 text-white ">
                     <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813A3.75 3.75 0 007.466 7.89l.813-2.846A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd"></path>
                 </svg> --> <img src="/landing/images/pagina/whatsapp.svg" alt="" data-astro-cid-sckkx6r4> </a></div>
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+{{-- Alpine, desde acá y no desde un CDN: ver el encabezado del archivo. --}}
+<script src="/landing/alpine-3.17.5.min.js" defer></script>
 </body>
 </html>

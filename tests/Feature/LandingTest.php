@@ -117,12 +117,10 @@ test('its scripts only look for elements that are on the page', function () {
     $faltan = array_values(array_diff($buscados, $definidos[1]));
     sort($faltan);
 
-    // ⚠️ LOS TRES QUE QUEDAN SON EL MENÚ MÓVIL, y están así en producción. El botón de
-    // hamburguesa se ve y no hace nada: el script que lo cablea busca #navlinks,
-    // #hamburger y #navLayer, y ninguno está en el HTML. No se arregló acá porque
-    // arreglarlo es agregar el marcado del menú, y eso es diseño: va en el proyecto de
-    // Astro. Si alguien lo arregla, este test se lo va a recordar.
-    expect($faltan)->toBe(['hamburger', 'navLayer', 'navlinks'],
+    // Ya no falta ninguno. Los tres que faltaban —#navlinks, #hamburger y #navLayer—
+    // eran de una SEGUNDA implementación del menú móvil, en JS a secas, que no
+    // correspondía a este marcado: el menú lo maneja Alpine. Ese bloque se borró.
+    expect($faltan)->toBe([],
         'el JS de la landing busca elementos que no están: '.implode(', ', $faltan));
 });
 
@@ -134,4 +132,36 @@ test('nothing executable is left of the typing script', function () {
     // Lo que no puede volver es la búsqueda del elemento.
     expect($html)->not->toContain('getElementById("typing-container")')
         ->and($html)->not->toContain('window.onload = m');
+});
+
+test('it does not borrow anything from a CDN to work', function () {
+    // ⚠️ CARGABA ALPINE DOS VECES, 2.x de un CDN y 3.x de otro: dos versiones del mismo
+    // framework en la misma página. Alpine es lo que abre el menú en el teléfono y lo que
+    // duplica la tira de logos, así que de eso depende que la página funcione. Ahora sale
+    // de /landing/, con la versión fija en el nombre.
+    //
+    // Las fuentes de Google que quedan en el <head> son otra cosa: si no cargan, la
+    // página se ve con otra tipografía y nada más.
+    $html = file_get_contents(resource_path('views/landing.blade.php'));
+
+    preg_match_all('/<script[^>]*src=["\'](https?:)?\/\/[^"\']+["\']/', $html, $externos);
+
+    expect($externos[0])->toBe([], 'la landing pide scripts afuera: '.implode(', ', $externos[0]));
+
+    // Y el que la hace andar está donde tiene que estar.
+    expect($html)->toContain('/landing/alpine-3.17.5.min.js')
+        ->and(public_path('landing/alpine-3.17.5.min.js'))->toBeFile();
+});
+
+test('alpine is the one that runs the menu, and it is still wired to it', function () {
+    // El marcado del menú es de Alpine: `x-data` con el estado, `@click` en el botón,
+    // `:class` en el <nav> y `x-show` en los dos iconos. Si alguien saca una de las
+    // cuatro, el botón vuelve a no hacer nada —que es como estaba— sin romper nada más,
+    // o sea sin que ningún otro test se entere.
+    $html = file_get_contents(resource_path('views/landing.blade.php'));
+
+    expect($html)->toContain('x-data="{ open: false }"')
+        ->and($html)->toContain('@click="open = !open"')
+        ->and($html)->toContain(":class=\"{'flex': open, 'hidden': !open}\"")
+        ->and(substr_count($html, 'x-show='))->toBe(2);
 });

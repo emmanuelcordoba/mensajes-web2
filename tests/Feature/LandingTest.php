@@ -99,3 +99,39 @@ test('every file it asks for is there', function () {
 
     expect($faltan)->toBe([], 'la landing pide archivos que no están: '.implode(', ', $faltan));
 });
+
+test('its scripts only look for elements that are on the page', function () {
+    // ⚠️ ES LA GENERALIZACIÓN DE UN BUG QUE ESTUVO EN PRODUCCIÓN DESDE SIEMPRE. Un
+    // script escribía «Tu Paquete en Manos Seguras» dentro de #typing-container, que
+    // no existe: el título nunca se vio y cada visita tiraba 28 errores de consola.
+    // No lo delató nadie porque la página «se veía bien». Esto lo delata.
+    $html = file_get_contents(resource_path('views/landing.blade.php'));
+
+    preg_match_all('/getElementById\(["\']([^"\']+)["\']\)/', $html, $porId);
+    preg_match_all('/querySelector(?:All)?\(["\']#([^"\'\s,)]+)["\']\)/', $html, $porSelector);
+
+    $buscados = array_unique(array_merge($porId[1], $porSelector[1]));
+
+    preg_match_all('/\bid=["\']([^"\']+)["\']/', $html, $definidos);
+
+    $faltan = array_values(array_diff($buscados, $definidos[1]));
+    sort($faltan);
+
+    // ⚠️ LOS TRES QUE QUEDAN SON EL MENÚ MÓVIL, y están así en producción. El botón de
+    // hamburguesa se ve y no hace nada: el script que lo cablea busca #navlinks,
+    // #hamburger y #navLayer, y ninguno está en el HTML. No se arregló acá porque
+    // arreglarlo es agregar el marcado del menú, y eso es diseño: va en el proyecto de
+    // Astro. Si alguien lo arregla, este test se lo va a recordar.
+    expect($faltan)->toBe(['hamburger', 'navLayer', 'navlinks'],
+        'el JS de la landing busca elementos que no están: '.implode(', ', $faltan));
+});
+
+test('nothing executable is left of the typing script', function () {
+    $html = file_get_contents(resource_path('views/landing.blade.php'));
+
+    // La cadena «Tu Paquete en Manos Seguras» SÍ sigue en el archivo, y está bien que
+    // siga: quedó en el comentario que cuenta qué hacía ese código y por qué se fue.
+    // Lo que no puede volver es la búsqueda del elemento.
+    expect($html)->not->toContain('getElementById("typing-container")')
+        ->and($html)->not->toContain('window.onload = m');
+});

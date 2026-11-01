@@ -16,13 +16,18 @@
     comprobó. Son anclas a sus propias secciones, WhatsApp y Play Store. Por eso el porteo no
     tuvo que recablear ninguna ruta.
 
-    Dos cosas que SÍ se cambiaron respecto de producción, las dos de una línea:
+    Tres cosas que SÍ se cambiaron respecto de producción:
 
     - **El favicon**, que allá apunta a `..public/landing/images/pagina/isotipoZenithBlanco.png`
       —una ruta rota, y además un archivo que no existe en el repositorio—. Ahora apunta a
       `favicon.svg`, que está en la misma carpeta, es la marca y es lo que la etiqueta ya
       declaraba con `type="image/svg+xml"`.
     - **`lang="en"`**, que quedó del tema de Astro. La página está en español.
+    - **El script del `typing-container`**, que se sacó porque buscaba un elemento que
+      no existe y tiraba 28 errores por visita. El porqué está donde estaba el código.
+
+    Las tres son reparaciones de algo roto, no retoques: lo que se rehace en el proyecto
+    de Astro es el diseño, y eso sigue valiendo.
 
     De los 98 archivos de `public/landing` se trajeron los 64 que el HTML y el CSS
     referencian de verdad. Los otros 34 —3 MB de logos de Netflix y Airbnb, avatares y PNG
@@ -116,20 +121,23 @@
     }
 
     document.addEventListener("click", w, !1);
-    const I = ["Tu Paquete en Manos Seguras"], S = document.getElementById("typing-container");
-    let i = 0, a = "", b = 100;
-
-    function m() {
-      const e = I[i];
-      for (let t = 0; t < e.length; t++) setTimeout(() => {
-        a += e[t], S.innerHTML = a
-      }, t * b);
-      setTimeout(() => {
-        a = "", i = 0, m()
-      }, 1e4)
-    }
-
-    window.onload = m;
+    /*
+     * Acá iba un script que escribía «Tu Paquete en Manos Seguras» letra por letra
+     * dentro de #typing-container. Ese elemento NO EXISTE: la cadena aparecía una
+     * sola vez en todo el archivo, en el `getElementById` que la buscaba. Resultado,
+     * desde que la página se publicó: el título nunca se mostró y cada visita tiraba
+     * 28 errores en consola, uno por cada letra de la cadena.
+     *
+     * Se sacó en lugar de agregarle el elemento, y la razón es que el titular
+     * animado ya no es parte del diseño: tampoco está la clase `.agency`, que es la
+     * que tiene el efecto hecho en CSS —`animation: typing 2s steps(60)`, con el
+     * cursor en un `border-right`— y que sigue en la hoja sin que nadie la use. El
+     * hero tiene hoy su titular estático. Ponerle el elemento sería inventar un
+     * segundo título que nadie diseñó.
+     *
+     * Si alguna vez se quiere ese título de vuelta, es una decisión de diseño y va
+     * en el proyecto de Astro, no acá.
+     */
     document.getElementById("whatsappForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var t = document.getElementById("desde").value, v = document.getElementById("hasta").value,

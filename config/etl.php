@@ -77,6 +77,16 @@ return [
     |
     */
 
-    'archivos' => env('ETL_ARCHIVOS', storage_path('app/etl-origen')),
+    /*
+     * ⚠️ `?:` Y NO EL SEGUNDO ARGUMENTO DE `env()`. La variable está en .env.example
+     * declarada y VACÍA, y `env('X', 'defecto')` devuelve la cadena vacía cuando la
+     * clave existe: el defecto no se usa nunca. La ruta quedaba `/postulaciones/...`,
+     * desde la raíz del sistema de archivos, y la carga frenaba en
+     * `postulacion_documentos` diciendo que falta un archivo que sí está.
+     *
+     * Pasó en el ensayo del 2026-11-01. El día del corte habría pasado igual, a mitad
+     * de la carga y con la ventana corriendo.
+     */
+    'archivos' => env('ETL_ARCHIVOS') ?: storage_path('app/etl-origen'),
 
 ];

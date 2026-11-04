@@ -7,10 +7,15 @@ use App\Http\Requests\Panel\AsignarCadeteRequest;
 use App\Http\Requests\Panel\GuardarPedidoRequest;
 use App\Models\LogEstadoPedido;
 use App\Models\Pedido;
+use App\Models\Rol;
 use App\Services\AltaDePedido;
 use App\Services\AsignacionDeCadete;
 use App\Support\Momento;
+use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
+use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,40 +31,204 @@ use Inertia\Response;
 class PedidoController extends Controller
 {
     /**
-     * La cola de trabajo: los pedidos que esperan un cadete.
+     * Los siete estados que el listado muestra: todos menos «Sin asignar».
      *
-     * Es la pantalla que la oficina mira todo el día, y el orden no es cosmético —los
-     * resueltos arriba, y después el que espera hace más tiempo—. Ver
-     * `Pedido::scopeEsperandoCadete()`.
+     * ⚠️ Es el recorte del sistema viejo, y tiene sentido: un pedido sin asignar está
+     * esperando en la lista de espera de Inicio, que es donde se lo atiende. Si
+     * apareciera también acá, la oficina lo vería dos veces y en dos órdenes distintos.
+     *
+     * @var list<string>
+     */
+    private const ESTADOS_DEL_LISTADO = [
+        Pedido::ESTADO_COTIZADO,
+        Pedido::ESTADO_ACEPTADO,
+        Pedido::ESTADO_ASIGNADO,
+        Pedido::ESTADO_EN_CURSO,
+        Pedido::ESTADO_RECHAZADO,
+        Pedido::ESTADO_CANCELADO,
+        Pedido::ESTADO_FINALIZADO,
+    ];
+
+    /** Las diez del sistema viejo. */
+    private const POR_PAGINA = 10;
+
+    /**
+     * El listado de pedidos: el `/pedidos` del sistema viejo, con su mismo criterio.
+     *
+     * ⚠️ **NO ES LA LISTA DE ESPERA**, y hasta el 2026-11-03 lo era: esta pantalla
+     * mostraba `esperandoCadete()`, que es la tercera columna de Inicio. O sea que la
+     * cola estaba dos veces y el listado general no estaba en ninguna parte. El sistema
+     * viejo tiene las dos cosas separadas —`/panel` la cola, `/pedidos` el listado— y
+     * acá vuelven a estarlo.
+     *
+     * El criterio, tal como está en `PedidoController@index` del sistema viejo:
+     *
+     * - **El último mes**, o el rango que venga en `desde`/`hasta`.
+     * - Los siete estados de `ESTADOS_DEL_LISTADO`.
+     * - Del más nuevo al más viejo, de a diez.
+     * - Con búsqueda por cliente, por direcciones o por cadete.
+     *
+     * ⚠️ **Un comercio es otra consulta, no la misma con un filtro más.** El sistema
+     * viejo le muestra TODOS sus pedidos: sin recorte de estado y sin recorte de fecha,
+     * y sin formulario de búsqueda. Replicarlo importa, porque un comercio que entra a
+     * ver un pedido de hace tres meses lo encuentra.
      */
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Pedido::class);
 
-        $pedidos = Pedido::query()
-            ->alcanzablesPor($request->user())
-            ->esperandoCadete()
+        $usuario = $request->user();
+        $esComercio = $usuario !== null && $usuario->tieneRol(Rol::RESTRINGIDO);
+
+        [$desde, $hasta] = $this->rango($request);
+        $buscar = trim((string) $request->query('buscar', ''));
+        $campo = trim((string) $request->query('campo', ''));
+
+        $consulta = Pedido::query()
+            ->alcanzablesPor($usuario)
             // Sin esto el listado hace una consulta por pedido para el nombre del
-            // cliente. El modelo viejo lo resolvía con $with en TODA consulta, que es
-            // el otro extremo.
-            ->with(['cliente:id,nombre_mostrado'])
-            ->paginate(50)
-            ->through(fn (Pedido $pedido): array => [
-                'id' => $pedido->id,
-                'numero' => $pedido->numero,
-                'estado' => $pedido->estado,
-                'cliente' => $pedido->nombreDelCliente(),
-                'direccion' => $pedido->direccion,
-                'destino' => $pedido->destino,
-                'valor' => $pedido->valor,
-                // Ya formateado: la zona horaria la sabe el servidor. Ver Momento.
-                'actualizado' => Momento::hace($pedido->updated_at),
-            ]);
+            // cliente y otra para el cadete. El modelo viejo lo resolvía con $with en
+            // TODA consulta, que es el otro extremo.
+            ->with(['cliente:id,nombre_mostrado', 'cadete:id,numero_movil,nombres,apellidos'])
+            ->orderByDesc('created_at');
+
+        if (! $esComercio) {
+            $consulta
+                ->whereIn('estado', self::ESTADOS_DEL_LISTADO)
+                ->whereBetween('created_at', [$desde, $hasta]);
+
+            if ($buscar !== '') {
+                $consulta->where($this->filtro($campo, $buscar));
+            }
+        }
+
+        $pedidos = $consulta
+            ->paginate(self::POR_PAGINA)
+            ->withQueryString()
+            ->through(fn (Pedido $pedido): array => $this->fila($pedido));
 
         return Inertia::render('pedidos/index', [
             'pedidos' => $pedidos,
-            'estados' => Pedido::ESTADOS,
+            'filtros' => [
+                'buscar' => $buscar,
+                'campo' => $campo,
+                'desde' => $desde->toDateString(),
+                'hasta' => $hasta->toDateString(),
+            ],
+            // Un comercio no tiene formulario de búsqueda, igual que en el panel viejo:
+            // ve todos los suyos y no hay nada que recortar.
+            'puede_buscar' => ! $esComercio,
+            // Y tampoco ve el botón de los borrados, que es administrativo.
+            'puede_ver_eliminados' => $request->user()?->can('verEliminados', Pedido::class) ?? false,
         ]);
+    }
+
+    /**
+     * El rango de fechas: el que venga, o el último mes.
+     *
+     * ⚠️ Una fecha mal escrita cae al rango por defecto en lugar de reventar. El sistema
+     * viejo hace `Carbon::createFromFormat` sin red, así que `?desde=hola` devuelve un
+     * 500. No es un criterio distinto: es el mismo criterio sin la excepción.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private function rango(Request $request): array
+    {
+        $desde = $request->query('desde');
+        $hasta = $request->query('hasta');
+
+        if (is_string($desde) && is_string($hasta) && $desde !== '' && $hasta !== '') {
+            try {
+                return [
+                    CarbonImmutable::createFromFormat('Y-m-d', $desde)->startOfDay(),
+                    CarbonImmutable::createFromFormat('Y-m-d', $hasta)->endOfDay(),
+                ];
+            } catch (InvalidFormatException) {
+                // Cae al rango por defecto.
+            }
+        }
+
+        return [
+            CarbonImmutable::now()->subMonth()->startOfDay(),
+            CarbonImmutable::now()->endOfDay(),
+        ];
+    }
+
+    /**
+     * La búsqueda, con los mismos cuatro casos del sistema viejo.
+     *
+     * Allá se traen todos los pedidos del rango y se filtran en PHP con `stripos`; acá
+     * es `ilike`, que dice lo mismo y lo resuelve la base. Sobre el último mes son 7.023
+     * filas: traerlas para descartarlas no se nota hoy y se nota el día que el rango sea
+     * un año.
+     *
+     * ⚠️ **«Direcciones» mira dirección Y destino; la búsqueda sin campo mira sólo
+     * dirección.** Parece un descuido del sistema viejo y puede que lo sea, pero es lo
+     * que hace, y el formulario siempre manda un campo: al `default` sólo se llega a
+     * mano, por la URL.
+     */
+    private function filtro(string $campo, string $texto): Closure
+    {
+        $como = '%'.addcslashes($texto, '%_\\').'%';
+
+        return match ($campo) {
+            'cliente' => $this->porCliente($como),
+            'direccion' => fn (Builder $q) => $q
+                ->where('direccion', 'ilike', $como)
+                ->orWhere('destino', 'ilike', $como),
+            'cadete' => $this->porCadete($como, $texto),
+            default => function (Builder $q) use ($como, $texto): void {
+                $q->where('direccion', 'ilike', $como)
+                    ->orWhere($this->porCliente($como))
+                    ->orWhere($this->porCadete($como, $texto));
+            },
+        };
+    }
+
+    /**
+     * Por nombre de cliente.
+     *
+     * ⚠️ El pedido que TIENE cliente se busca por el nombre del cliente; el que no lo
+     * tiene, por el nombre suelto que quedó en la fila. Es un «o» entre dos mundos que
+     * no se pisan, no un «o» entre dos columnas: un pedido con cliente no se encuentra
+     * por `nombre_cliente` ni allá ni acá.
+     *
+     * ⚠️ Y busca por `nombre_mostrado`, que es **la única diferencia deliberada con el
+     * sistema viejo**. Allá se busca por `clientes.nombre`, que un cliente de la app
+     * tiene en null —el suyo son `nombres` y `apellidos`—, así que esos clientes no se
+     * encontraban nunca. `nombre_mostrado` es la columna generada que resuelve los dos,
+     * y es la que esta misma pantalla muestra en la columna Cliente: buscar por otra
+     * cosa que la que se ve es lo que no tiene defensa.
+     */
+    private function porCliente(string $como): Closure
+    {
+        return function (Builder $q) use ($como): void {
+            $q->whereHas('cliente', fn (Builder $c) => $c->where('nombre_mostrado', 'ilike', $como))
+                ->orWhere(fn (Builder $q) => $q
+                    ->whereDoesntHave('cliente')
+                    ->where('nombre_cliente', 'ilike', $como));
+        };
+    }
+
+    /**
+     * Por cadete: nombres, apellidos o número de móvil exacto.
+     *
+     * ⚠️ El móvil sólo se compara cuando lo que se buscó son dígitos. El sistema viejo
+     * hace `$cadete->numero_movil == $buscar`, y en PHP 7.4 `0 == "juan"` es verdadero:
+     * buscar un nombre traería de prepo a los cadetes con móvil 0. Hoy no hay ninguno
+     * —se midió—, así que esto no cambia ningún resultado; cambia que no pueda empezar
+     * a cambiarlos.
+     */
+    private function porCadete(string $como, string $texto): Closure
+    {
+        return fn (Builder $q) => $q->whereHas('cadete', function (Builder $c) use ($como, $texto): void {
+            $c->where('nombres', 'ilike', $como)
+                ->orWhere('apellidos', 'ilike', $como);
+
+            if (ctype_digit($texto)) {
+                $c->orWhere('numero_movil', (int) $texto);
+            }
+        });
     }
 
     /**
@@ -209,6 +378,117 @@ class PedidoController extends Controller
         $pedido->load(['cliente:id,numero,nombre_mostrado', 'cadete:id,numero_movil,apellidos,nombres']);
 
         return view('cupon', ['pedido' => $pedido]);
+    }
+
+    /**
+     * Los pedidos borrados, para poder recuperarlos.
+     *
+     * ⚠️ **Es de oficina, no del grupo compartido.** En el sistema viejo la ruta vive en
+     * `rol:empleado,admin` y el botón está gateado con el mismo `@if`. Un comercio puede
+     * borrar los suyos pero no ve esta pantalla: recuperar un pedido es administración.
+     *
+     * ⚠️ Y acá importa más de lo que parece que exista: la oficina se deshace de los
+     * pedidos que no llegan al final borrándolos, así que **la mayor parte de los estados
+     * intermedios está entre los borrados**. Sin esta pantalla, un borrado por error no
+     * tiene vuelta desde el panel.
+     */
+    public function eliminados(): Response
+    {
+        $this->authorize('verEliminados', Pedido::class);
+
+        $pedidos = Pedido::onlyTrashed()
+            ->with(['cliente:id,nombre_mostrado', 'cadete:id,numero_movil,nombres,apellidos'])
+            ->orderByDesc('created_at')
+            ->paginate(self::POR_PAGINA)
+            ->through(fn (Pedido $pedido): array => $this->fila($pedido));
+
+        return Inertia::render('pedidos/eliminados', ['pedidos' => $pedidos]);
+    }
+
+    /**
+     * Devolver un pedido borrado a la lista.
+     *
+     * ⚠️ El sistema viejo no comprueba a quién pertenece —`Ajax\PedidoController@restaurar`
+     * hace `withTrashed()->findOrFail()` y `restore()`, nada más—; lo único que lo cuida es
+     * que la ruta esté en el grupo de oficina. Acá lo dice además la política, que es donde
+     * se lo puede leer.
+     */
+    public function restaurar(Pedido $pedido): RedirectResponse
+    {
+        $this->authorize('restore', $pedido);
+
+        $pedido->restore();
+
+        return back()->with('success', 'Pedido '.$pedido->numero.' restaurado.');
+    }
+
+    /**
+     * Borrar los pedidos tildados en el listado.
+     *
+     * ⚠️ **Todo o nada, como el sistema viejo.** Allá se recorren dos veces: la primera
+     * comprueba el alcance de todos y contesta 404 al primero que no corresponde, y la
+     * segunda recién borra. Si fuera una sola pasada, un id ajeno en el medio dejaría
+     * borrada la mitad de la selección y la otra mitad no, sin forma de saber cuál.
+     */
+    public function destroyMasivo(Request $request): RedirectResponse
+    {
+        $datos = $request->validate([
+            'pedidos' => ['required', 'array', 'min:1'],
+            'pedidos.*' => ['integer'],
+        ]);
+
+        $pedidos = Pedido::query()->whereKey($datos['pedidos'])->get();
+
+        // Un id que no existe es 404 y no se borra nada, igual que el `findOrFail` de allá.
+        abort_unless($pedidos->count() === count(array_unique($datos['pedidos'])), 404);
+
+        foreach ($pedidos as $pedido) {
+            $this->authorize('delete', $pedido);
+        }
+
+        foreach ($pedidos as $pedido) {
+            $pedido->delete();
+        }
+
+        $cuantos = $pedidos->count();
+
+        return back()->with('success', $cuantos === 1
+            ? 'Se eliminó 1 pedido.'
+            : 'Se eliminaron '.$cuantos.' pedidos.');
+    }
+
+    /**
+     * Una fila del listado, que es la misma en los pedidos y en los eliminados.
+     *
+     * @return array<string, mixed>
+     */
+    private function fila(Pedido $pedido): array
+    {
+        return [
+            'id' => $pedido->id,
+            'numero' => $pedido->numero,
+            'estado' => $pedido->estado,
+            'cuando' => Momento::fechaYHora($pedido->created_at),
+            'cliente' => $pedido->nombreDelCliente(),
+            'direccion' => $pedido->direccion,
+            'destino' => $pedido->destino,
+            'telefono' => $pedido->telefono,
+            // ⚠️ Los dos montos viajan como cadena. Son NUMERIC(12,2) y castearlos a
+            // float es donde se pierden los centavos. Hay una prueba que lo fija.
+            'garantia' => $pedido->garantia,
+            'valor' => $pedido->valor,
+            'movil' => $pedido->cadete?->numero_movil,
+            'cadete' => $pedido->cadete?->nombre_completo,
+            // El sistema viejo no ofrece borrar un pedido finalizado: no dibuja el botón
+            // ni la casilla. Lo decide el servidor para que la pantalla no tenga que
+            // saber cuál de los ocho estados es el final.
+            'se_puede_borrar' => $pedido->estado !== Pedido::ESTADO_FINALIZADO,
+            // ⚠️ El cupón es el papel que se le entrega AL CADETE, así que sin cadete no
+            // hay nada que imprimir: el listado viejo dibuja el botón dentro de un
+            // `@if($pedido->cadete)`. Va como bandera propia y no mirando si `movil`
+            // vino nulo, que da la misma respuesta hoy por casualidad.
+            'se_puede_imprimir' => $pedido->cadete !== null,
+        ];
     }
 
     /**

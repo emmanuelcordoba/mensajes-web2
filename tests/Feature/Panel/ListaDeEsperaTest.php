@@ -72,8 +72,10 @@ test('the office sees the waiting list and a shop does not', function () {
             ->where('paraAsignar', null));
 });
 
-test('the waiting list is the same queue the orders screen shows', function () {
-    // Los dos leen `scopeEsperandoCadete`: una regla, dos pantallas.
+test('the waiting list is the queue, and the orders screen is not', function () {
+    // ⚠️ Hasta el 2026-11-03 las dos pantallas mostraban esto, y era un error: la cola
+    // estaba dos veces y el listado general no estaba en ninguna parte. Acá se fija que
+    // la cola es de Inicio; que el listado es otra cosa lo fija `PedidosTest`.
     unPedidoEnEspera(Pedido::ESTADO_SIN_ASIGNAR);
     unPedidoEnEspera(Pedido::ESTADO_CANCELADO);
     unPedidoEnEspera(Pedido::ESTADO_ACEPTADO);

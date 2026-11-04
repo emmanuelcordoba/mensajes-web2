@@ -95,6 +95,31 @@ class PedidoPolicy
         return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
     }
 
+    /**
+     * Ver el listado de pedidos borrados: sólo la oficina.
+     *
+     * ⚠️ En el sistema viejo esto no es una regla escrita en ningún lado: es la ruta,
+     * que vive en el grupo `rol:empleado,admin`, más un `@if` en la vista que esconde
+     * el botón. Las dos cosas dicen lo mismo y ninguna lo dice en voz alta. Acá se
+     * pregunta una sola vez, y la pantalla recibe la respuesta en una prop.
+     */
+    public function verEliminados(User $user): bool
+    {
+        return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO]);
+    }
+
+    /**
+     * Devolver a la lista un pedido borrado: también sólo la oficina.
+     *
+     * ⚠️ Un comercio puede borrar los suyos pero no recuperarlos, y no es un olvido:
+     * es lo que hace el sistema viejo, donde `ajax/pedidos/restaurar` está en el grupo
+     * de oficina. Recuperar es deshacer, y deshacer es administración.
+     */
+    public function restore(User $user, Pedido $pedido): bool
+    {
+        return $this->verEliminados($user);
+    }
+
     public function update(User $user, Pedido $pedido): bool
     {
         return $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO])

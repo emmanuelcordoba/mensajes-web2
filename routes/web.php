@@ -101,6 +101,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 */
                 Route::get('pedidos/{pedido}/cupon', [PedidoController::class, 'cupon'])->name('pedidos.cupon');
 
+                /*
+                | Los pedidos borrados.
+                |
+                | ⚠️ VA ANTES de `pedidos/{pedido}`, o el parámetro la captura y Laravel
+                | sale a buscar un pedido con id «eliminados». Es la misma advertencia que
+                | el sistema viejo deja escrita en su propio archivo de rutas.
+                |
+                | ⚠️ Y lleva su middleware propio aunque esté en el grupo compartido: es
+                | una pantalla de oficina, y allá la ruta vive en `rol:empleado,admin`. No
+                | se puede mover al grupo de abajo porque ése se registra después.
+                */
+                Route::get('pedidos/eliminados', [PedidoController::class, 'eliminados'])
+                    ->middleware('rol:'.implode(',', [Rol::ADMIN, Rol::EMPLEADO]))
+                    ->name('pedidos.eliminados');
+
+                Route::patch('pedidos/{pedido}/restaurar', [PedidoController::class, 'restaurar'])
+                    ->withTrashed()
+                    ->middleware('rol:'.implode(',', [Rol::ADMIN, Rol::EMPLEADO]))
+                    ->name('pedidos.restaurar');
+
                 // Después del listado y de las rutas exactas, que no las captura.
                 Route::get('pedidos/{pedido}', [PedidoController::class, 'show'])->name('pedidos.show');
 
@@ -113,6 +133,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 | Las dos del modal de la lista de espera NO están acá: ver más abajo.
                 */
                 Route::delete('pedidos/{pedido}', [PedidoController::class, 'destroy'])->name('pedidos.destroy');
+
+                /*
+                | El borrado masivo: los tildados en el listado. Es
+                | `ajax/pedidos/eliminacionmasiva` del sistema viejo, y como aquél está en
+                | el grupo compartido —un comercio puede borrar los suyos de a varios— con
+                | la pertenencia comprobada adentro, pedido por pedido.
+                */
+                Route::delete('pedidos', [PedidoController::class, 'destroyMasivo'])->name('pedidos.destroy-masivo');
             });
 
         /*

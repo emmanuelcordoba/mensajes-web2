@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Cadete;
 use App\Models\Cliente;
 use App\Models\Pedido;
 use App\Models\Rol;
@@ -31,28 +32,158 @@ test('a guest is sent to log in', function () {
     $this->get('/panel/pedidos')->assertRedirect(route('login'));
 });
 
-test('the queue shows what is waiting, in the order the office works in', function () {
-    $viejo = Pedido::factory()->enEstado(Pedido::ESTADO_SIN_ASIGNAR)
-        ->create(['updated_at' => now()->subHours(3)]);
-    $nuevo = Pedido::factory()->enEstado(Pedido::ESTADO_ACEPTADO)
-        ->create(['updated_at' => now()->subHour()]);
-    $cancelado = Pedido::factory()->enEstado(Pedido::ESTADO_CANCELADO)
-        ->create(['updated_at' => now()->subHours(5)]);
+/*
+| El criterio del listado, que es el de `/pedidos` del sistema viejo.
+|
+| ⚠️ ESTA PANTALLA NO ES LA LISTA DE ESPERA, y hasta el 2026-11-03 lo era: mostraba
+| `esperandoCadete()`, o sea la tercera columna de Inicio. La cola estaba dos veces y el
+| listado general no estaba en ninguna parte. Los tests de la cola viven en
+| `ListaDeEsperaTest`; los de acá fijan lo otro.
+*/
 
-    // En curso no espera a nadie, y cotizado espera al cliente: ninguno entra.
-    Pedido::factory()->enEstado(Pedido::ESTADO_EN_CURSO)->create();
-    Pedido::factory()->enEstado(Pedido::ESTADO_COTIZADO)->create();
+test('it lists the last month and leaves out the ones waiting to be assigned', function () {
+    $finalizado = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['created_at' => now()->subDays(3)]);
+    $enCurso = Pedido::factory()->enEstado(Pedido::ESTADO_EN_CURSO)
+        ->create(['created_at' => now()->subDay()]);
+
+    // «Sin asignar» se atiende en la lista de espera de Inicio: si apareciera también
+    // acá, la oficina lo vería dos veces y en dos órdenes distintos.
+    Pedido::factory()->enEstado(Pedido::ESTADO_SIN_ASIGNAR)->create();
+
+    // Y lo de hace dos meses queda fuera del rango por defecto.
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['created_at' => now()->subMonths(2)]);
 
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
         ->get('/panel/pedidos')
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('pedidos/index')
-            ->where('pedidos.total', 3)
-            ->where('pedidos.data.0.id', $cancelado->id)
-            ->where('pedidos.data.1.id', $viejo->id)
-            ->where('pedidos.data.2.id', $nuevo->id)
+            ->where('pedidos.total', 2)
+            // Del más nuevo al más viejo, por fecha de alta.
+            ->where('pedidos.data.0.id', $enCurso->id)
+            ->where('pedidos.data.1.id', $finalizado->id)
         );
+});
+
+test('a range given by hand replaces the last month', function () {
+    $dentro = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['created_at' => now()->subMonths(6)]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['created_at' => now()->subDay()]);
+
+    $dia = $dentro->created_at->toDateString();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?desde='.$dia.'&hasta='.$dia)
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $dentro->id)
+        );
+});
+
+test('a date that is not a date falls back to the last month instead of blowing up', function () {
+    // El sistema viejo hace `Carbon::createFromFormat` sin red: `?desde=hola` es un 500.
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?desde=hola&hasta=1990-05-11')
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->where('pedidos.total', 1));
+});
+
+test('it searches by client, and a search is not a filter on top of another', function () {
+    $cliente = Cliente::factory()->create(['nombre' => 'Panadería La Esquina']);
+    $suyo = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['cliente_id' => $cliente->id]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['cliente_id' => Cliente::factory()->create(['nombre' => 'Otra cosa'])->id]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?campo=cliente&buscar=esquina')
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $suyo->id)
+        );
+});
+
+test('an order with no client is searched by the name written on the row', function () {
+    // Son dos mundos que no se pisan: el pedido que TIENE cliente se busca por el
+    // nombre del cliente, y el que no, por el nombre suelto de la fila.
+    $suelto = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['cliente_id' => null, 'nombre_cliente' => 'Doña Rosa']);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?campo=cliente&buscar=rosa')
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $suelto->id)
+        );
+});
+
+test('searching by addresses looks at both ends of the trip', function () {
+    $porOrigen = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['direccion' => 'Muñecas 500', 'destino' => 'otra']);
+    $porDestino = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['direccion' => 'otra', 'destino' => 'Muñecas 900']);
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['direccion' => 'Corrientes 1', 'destino' => 'Salta 2']);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?campo=direccion&buscar=muñecas')
+        ->assertInertia(fn ($pagina) => $pagina->where('pedidos.total', 2));
+
+    expect([$porOrigen->id, $porDestino->id])->toHaveCount(2);
+});
+
+test('it searches a cadete by name and by the number on the bike', function (string $buscado) {
+    $cadete = Cadete::factory()->create([
+        'nombres' => 'Rodrigo', 'apellidos' => 'Giménez', 'numero_movil' => 777,
+    ]);
+    $suyo = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['cadete_id' => $cadete->id]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create(['cadete_id' => null]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?campo=cadete&buscar='.$buscado)
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $suyo->id)
+        );
+})->with([
+    'por el nombre' => 'rodrigo',
+    'por el apellido' => 'giménez',
+    'por el móvil' => '777',
+]);
+
+test('a shop sees all of its orders, with no cut by state or by date', function () {
+    // ⚠️ El sistema viejo le muestra a un comercio TODOS sus pedidos: la rama del
+    // `restringido` no filtra por estado ni por fecha. Un comercio que entra a ver un
+    // pedido de hace tres meses lo encuentra.
+    $comercio = Cliente::factory()->create();
+
+    $viejo = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['cliente_id' => $comercio->id, 'created_at' => now()->subMonths(6)]);
+    $sinAsignar = Pedido::factory()->enEstado(Pedido::ESTADO_SIN_ASIGNAR)
+        ->create(['cliente_id' => $comercio->id]);
+
+    $this->actingAs(usuarioCon(Rol::RESTRINGIDO, $comercio))
+        ->get('/panel/pedidos')
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 2)
+            // Y no le llega el formulario de búsqueda, como en el panel viejo.
+            ->where('puede_buscar', false)
+        );
+
+    expect([$viejo->id, $sinAsignar->id])->toHaveCount(2);
+});
+
+test('the office does get the search form', function () {
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos')
+        ->assertInertia(fn ($pagina) => $pagina->where('puede_buscar', true));
 });
 
 test('a shop only sees its own orders in the listing', function () {
@@ -113,7 +244,8 @@ test('the listing filter and the per-row rule agree on every order', function ()
 });
 
 test('the money in the listing stays a string, so no cents are lost on the way out', function () {
-    Pedido::factory()->create(['valor' => '1234.56']);
+    // En un estado que el listado muestra: el del factory es «Sin asignar», que no entra.
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create(['valor' => '1234.56']);
 
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
         ->get('/panel/pedidos')
@@ -122,7 +254,8 @@ test('the money in the listing stays a string, so no cents are lost on the way o
 
 test('the listing does not run a query per row for the client name', function () {
     Cliente::factory()->count(5)->create()->each(
-        fn (Cliente $cliente) => Pedido::factory()->create(['cliente_id' => $cliente->id]),
+        fn (Cliente $cliente) => Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+            ->create(['cliente_id' => $cliente->id]),
     );
 
     $usuario = usuarioCon(Rol::EMPLEADO);

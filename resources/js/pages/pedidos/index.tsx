@@ -1,135 +1,248 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 
-import { EstadoBadge, Monto } from '@/components/pedido';
+import {
+    Paginacion,
+    TablaDePedidos,
+    type Paginado,
+    type PedidoEnLista,
+} from '@/components/tabla-de-pedidos';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 /*
- * La cola de trabajo del panel: los pedidos que esperan un cadete.
+ * El listado de pedidos: el `/pedidos` del sistema viejo, con su mismo criterio.
  *
- * El orden lo decide el servidor y acá no se re-ordena: los resueltos arriba y
- * después el que espera hace más tiempo, que es el que hay que atender. Ver
- * Pedido::scopeEsperandoCadete().
+ * ⚠️ NO ES LA LISTA DE ESPERA. Hasta el 2026-11-03 esta pantalla mostraba la cola de
+ * Inicio, así que la cola estaba dos veces y el listado general no estaba en ninguna
+ * parte. Quien busca un pedido de la semana pasada viene acá; quien atiende el que
+ * está esperando, a Inicio.
+ *
+ * ⚠️ Un comercio no ve el formulario de búsqueda ni el botón de los borrados, igual
+ * que en el panel viejo. Las dos cosas las decide el servidor —`puede_buscar` y
+ * `puede_ver_eliminados`—, no un `if` de rol acá.
  */
 
-type PedidoEnLista = {
-    id: number;
-    numero: number | null;
-    estado: string;
-    cliente: string | null;
-    direccion: string | null;
-    destino: string | null;
-    valor: string | null;
-    /** Ya en palabras y desde el servidor: «hace 40 min». */
-    actualizado: string | null;
+type Filtros = {
+    buscar: string;
+    campo: string;
+    desde: string;
+    hasta: string;
 };
 
-type Paginado<T> = {
-    data: T[];
-    links: { url: string | null; label: string; active: boolean }[];
-    total: number;
-    from: number | null;
-    to: number | null;
-};
+export default function PedidosIndex({
+    pedidos,
+    filtros,
+    puede_buscar,
+    puede_ver_eliminados,
+}: {
+    pedidos: Paginado<PedidoEnLista>;
+    filtros: Filtros;
+    puede_buscar: boolean;
+    puede_ver_eliminados: boolean;
+}) {
+    const [elegidos, setElegidos] = useState<number[]>([]);
 
-export default function PedidosIndex({ pedidos }: { pedidos: Paginado<PedidoEnLista> }) {
+    const borrables = pedidos.data.filter((p) => p.se_puede_borrar);
+
+    const alternar = (id: number) =>
+        setElegidos((antes) =>
+            antes.includes(id) ? antes.filter((otro) => otro !== id) : [...antes, id],
+        );
+
+    const alternarTodos = () =>
+        setElegidos((antes) =>
+            antes.length === borrables.length ? [] : borrables.map((p) => p.id),
+        );
+
+    const eliminarSeleccionados = () => {
+        if (elegidos.length === 0) {
+            return;
+        }
+
+        const cuantos =
+            elegidos.length === 1
+                ? 'el pedido seleccionado'
+                : `los ${elegidos.length} pedidos seleccionados`;
+
+        if (!confirm(`Se eliminan ${cuantos}. ¿Seguir?`)) {
+            return;
+        }
+
+        router.delete('/panel/pedidos', {
+            data: { pedidos: elegidos },
+            preserveScroll: true,
+            onSuccess: () => setElegidos([]),
+        });
+    };
+
     return (
         <>
             <Head title="Pedidos" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
-                <div className="flex items-baseline justify-between">
-                    <h1 className="text-xl font-semibold">Esperando cadete</h1>
-                    <p className="text-muted-foreground text-sm">
-                        {pedidos.total === 0
-                            ? 'Ninguno'
-                            : `${pedidos.from}–${pedidos.to} de ${pedidos.total}`}
-                    </p>
+                {puede_buscar && (
+                    <Card className="p-4">
+                        <Form
+                            method="get"
+                            action="/panel/pedidos"
+                            className="flex flex-wrap items-end gap-2"
+                        >
+                            <div className="grid gap-1">
+                                <label htmlFor="buscar" className="text-sm font-medium">
+                                    Buscar
+                                </label>
+                                <Input
+                                    id="buscar"
+                                    name="buscar"
+                                    defaultValue={filtros.buscar}
+                                    maxLength={255}
+                                    className="w-56"
+                                />
+                            </div>
+
+                            <div className="grid gap-1">
+                                <label htmlFor="campo" className="text-sm font-medium">
+                                    En
+                                </label>
+                                <select
+                                    id="campo"
+                                    name="campo"
+                                    defaultValue={filtros.campo || 'cliente'}
+                                    className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+                                >
+                                    <option value="cliente">Cliente</option>
+                                    <option value="direccion">Direcciones</option>
+                                    <option value="cadete">Cadete</option>
+                                </select>
+                            </div>
+
+                            <div className="grid gap-1">
+                                <label htmlFor="desde" className="text-sm font-medium">
+                                    Desde
+                                </label>
+                                <Input
+                                    id="desde"
+                                    name="desde"
+                                    type="date"
+                                    defaultValue={filtros.desde}
+                                    className="w-40"
+                                />
+                            </div>
+
+                            <div className="grid gap-1">
+                                <label htmlFor="hasta" className="text-sm font-medium">
+                                    Hasta
+                                </label>
+                                <Input
+                                    id="hasta"
+                                    name="hasta"
+                                    type="date"
+                                    defaultValue={filtros.hasta}
+                                    className="w-40"
+                                />
+                            </div>
+
+                            <Button type="submit">Buscar</Button>
+
+                            {filtros.buscar !== '' && (
+                                <Button asChild variant="ghost">
+                                    <Link href="/panel/pedidos">Limpiar</Link>
+                                </Button>
+                            )}
+                        </Form>
+                    </Card>
+                )}
+
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h1 className="text-xl font-semibold">Pedidos</h1>
+
+                    <div className="flex items-center gap-2">
+                        <p className="text-muted-foreground text-sm">
+                            {pedidos.total === 0
+                                ? 'Ninguno'
+                                : `${pedidos.from}–${pedidos.to} de ${pedidos.total}`}
+                        </p>
+
+                        {puede_ver_eliminados && (
+                            <Button asChild variant="secondary" size="sm">
+                                <Link href="/panel/pedidos/eliminados">
+                                    Pedidos eliminados
+                                </Link>
+                            </Button>
+                        )}
+
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={eliminarSeleccionados}
+                            disabled={elegidos.length === 0}
+                        >
+                            Eliminar seleccionados
+                            {elegidos.length > 0 && ` (${elegidos.length})`}
+                        </Button>
+                    </div>
                 </div>
 
-                {pedidos.data.length === 0 ? (
-                    <Card className="text-muted-foreground p-8 text-center text-sm">
-                        No hay pedidos esperando un cadete.
-                    </Card>
-                ) : (
-                    <Card className="overflow-x-auto p-0">
-                        <table className="w-full text-sm">
-                            <thead className="text-muted-foreground border-b text-left">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">N°</th>
-                                    <th className="px-4 py-3 font-medium">Estado</th>
-                                    <th className="px-4 py-3 font-medium">Cliente</th>
-                                    <th className="px-4 py-3 font-medium">Origen</th>
-                                    <th className="px-4 py-3 font-medium">Destino</th>
-                                    <th className="px-4 py-3 text-right font-medium">Valor</th>
-                                    <th className="px-4 py-3 font-medium">Actualizado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pedidos.data.map((pedido) => (
-                                    <tr key={pedido.id} className="border-b last:border-0">
-                                        <td className="px-4 py-3 tabular-nums">
-                                            <Link
-                                                href={`/panel/pedidos/${pedido.id}`}
-                                                className="underline underline-offset-2"
-                                            >
-                                                {/* Por id y no por número: hay 11.295 números
-                                                    repetidos entre 23.524 pedidos (DATA-1), y 221
-                                                    pedidos sin número. */}
-                                                {pedido.numero ?? 'ver'}
-                                            </Link>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <EstadoBadge estado={pedido.estado} />
-                                        </td>
-                                        <td className="px-4 py-3">{pedido.cliente ?? '—'}</td>
-                                        <td className="text-muted-foreground px-4 py-3">
-                                            {pedido.direccion ?? '—'}
-                                        </td>
-                                        <td className="text-muted-foreground px-4 py-3">
-                                            {pedido.destino ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <Monto valor={pedido.valor} />
-                                        </td>
-                                        <td className="text-muted-foreground px-4 py-3 whitespace-nowrap">
-                                            {pedido.actualizado ?? '—'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </Card>
-                )}
+                <TablaDePedidos
+                    pedidos={pedidos.data}
+                    vacia="Ningún pedido con ese criterio."
+                    seleccion={{
+                        elegidos,
+                        alternar,
+                        alternarTodos,
+                        borrables: borrables.length,
+                    }}
+                    acciones={(pedido) => (
+                        <>
+                            {/* El cupón es el papel que se le da al cadete: sin cadete
+                                asignado no hay nada que imprimir, como en el listado
+                                viejo. Y en otra pestaña, porque la página se imprime
+                                sola al cargar y se cierra. */}
+                            {pedido.se_puede_imprimir && (
+                                <Button asChild size="sm" variant="secondary">
+                                    <a
+                                        href={`/panel/pedidos/${pedido.id}/cupon`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        Imprimir
+                                    </a>
+                                </Button>
+                            )}
 
-                {pedidos.links.length > 3 && (
-                    <nav className="flex flex-wrap gap-1">
-                        {pedidos.links.map((link) =>
-                            link.url === null ? (
-                                <span
-                                    key={link.label}
-                                    className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ) : (
-                                <Link
-                                    key={link.label}
-                                    href={link.url}
-                                    className={`rounded-md px-3 py-1.5 text-sm ${
-                                        link.active
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'hover:bg-muted'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ),
-                        )}
-                    </nav>
-                )}
+                            <Button asChild size="sm" variant="secondary">
+                                <Link href={`/panel/pedidos/${pedido.id}`}>Ver</Link>
+                            </Button>
+
+                            {pedido.se_puede_borrar && (
+                                <Form
+                                    method="delete"
+                                    action={`/panel/pedidos/${pedido.id}`}
+                                    options={{ preserveScroll: true }}
+                                    onBefore={() =>
+                                        confirm('Se elimina el pedido. ¿Seguir?')
+                                    }
+                                >
+                                    {({ processing }) => (
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            variant="destructive"
+                                            disabled={processing}
+                                        >
+                                            Eliminar
+                                        </Button>
+                                    )}
+                                </Form>
+                            )}
+                        </>
+                    )}
+                />
+
+                <Paginacion links={pedidos.links} />
             </div>
         </>
     );
 }
-
-PedidosIndex.layout = {
-    breadcrumbs: [{ title: 'Pedidos', href: '/panel/pedidos' }],
-};

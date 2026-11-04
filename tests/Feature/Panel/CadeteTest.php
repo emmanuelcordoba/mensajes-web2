@@ -560,3 +560,80 @@ test('a pin inside the range gets in', function (string $password) {
     'el máximo' => '12345678',
     'con un cero adelante' => '0123',
 ]);
+
+// ------------------------------------------------------- el listado para imprimir
+
+test('the printed list is a PDF and an employee gets it', function () {
+    // Es `pdf/cadetes` del sistema viejo, y éste sí es un PDF de verdad: el cupón del
+    // pedido, pese al nombre de la ruta de allá, es una página que se imprime sola.
+    unCadete(['numero_movil' => 7]);
+
+    $respuesta = $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/cadetes/imprimir')
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'application/pdf');
+
+    // No se le pregunta nada más al PDF: que sea un PDF lo dice su firma, y lo que dice
+    // adentro se prueba sobre la vista, que es donde se puede leer.
+    expect(substr($respuesta->getContent(), 0, 4))->toBe('%PDF');
+});
+
+test('a shop does not get the printed list', function () {
+    $this->actingAs(usuarioCon(Rol::RESTRINGIDO))
+        ->get('/panel/cadetes/imprimir')
+        ->assertForbidden();
+});
+
+test('the printed list has the whole padron, by mobile number, and ignores the search', function () {
+    // ⚠️ **Lo que se imprime es la lista entera y no lo que esté filtrado en la pantalla.**
+    // El botón viejo tampoco pasa el buscador: lo que se cuelga en la oficina es el padrón.
+    unCadete(['numero_movil' => 30, 'apellidos' => 'Zabala', 'nombres' => 'Ana', 'telefono' => '3815551111']);
+    unCadete(['numero_movil' => 10, 'apellidos' => 'Acosta', 'nombres' => 'Beto', 'telefono' => '3815552222']);
+    unCadete(['numero_movil' => 20, 'apellidos' => 'Medina', 'nombres' => 'Carla', 'telefono' => '3815553333']);
+
+    $cadetes = Cadete::query()
+        ->orderBy('numero_movil')
+        ->get(['numero_movil', 'apellidos', 'nombres', 'telefono', 'tipo_vehiculo']);
+
+    $html = view('listado-de-cadetes', ['cadetes' => $cadetes])->render();
+
+    expect($html)->toContain('Acosta', 'Medina', 'Zabala', '3815552222')
+        // Por número de móvil y no por nombre, que es como se los busca en papel.
+        ->and(strpos($html, 'Acosta'))->toBeLessThan(strpos($html, 'Medina'))
+        ->and(strpos($html, 'Medina'))->toBeLessThan(strpos($html, 'Zabala'));
+});
+
+test('the printed list does not send what it must not', function () {
+    // El mismo recorte que el listado de la pantalla: son cinco columnas, y la ubicación en
+    // vivo, el token del teléfono y los montos de cobranza no son del papel.
+    unCadete([
+        'numero_movil' => 40,
+        'fcm_token' => 'un-token-de-firebase',
+        'ubicacion_lat' => -26.8,
+        'monto_deuda' => '1234.56',
+        'dni' => '30999888',
+    ]);
+
+    $html = view('listado-de-cadetes', [
+        'cadetes' => Cadete::query()
+            ->orderBy('numero_movil')
+            ->get(['numero_movil', 'apellidos', 'nombres', 'telefono', 'tipo_vehiculo']),
+    ])->render();
+
+    expect($html)->not->toContain('un-token-de-firebase', '1234.56', '30999888', '-26.8');
+});
+
+test('the printed list leaves out the ones given up', function () {
+    $sigue = unCadete(['numero_movil' => 50, 'apellidos' => 'Quiroga']);
+    $deBaja = unCadete(['numero_movil' => 60, 'apellidos' => 'Barrientos']);
+
+    (new BajaDeCadete)->dar($deBaja);
+
+    $html = view('listado-de-cadetes', [
+        'cadetes' => Cadete::query()
+            ->orderBy('numero_movil')
+            ->get(['numero_movil', 'apellidos', 'nombres', 'telefono', 'tipo_vehiculo']),
+    ])->render();
+
+    expect($html)->toContain('Quiroga')->not->toContain('Barrientos');
+});

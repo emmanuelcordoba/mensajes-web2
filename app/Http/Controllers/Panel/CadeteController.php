@@ -9,16 +9,21 @@ use App\Models\Cadete;
 use App\Models\MotivoBloqueo;
 use App\Services\AltaDeCadete;
 use App\Services\BajaDeCadete;
+use App\Services\BorradoDefinitivoDeCadete;
 use App\Services\ColaDeCadetes;
 use App\Services\NotificacionesAlTelefono;
 use App\Support\Momento;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as RespuestaHttp;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 /**
  * Los cadetes.
@@ -108,6 +113,9 @@ class CadeteController extends Controller
             'cadetes' => $cadetes,
             'filtros' => ['buscar' => $buscado],
             'motivos' => self::motivos(),
+            // El botón de dados de baja es de administradores. Lo decide la política y no
+            // un `if` de rol en la pantalla, como en `pedidos/index`.
+            'puede_ver_dados_de_baja' => Gate::allows('verDadosDeBaja', Cadete::class),
         ]);
     }
 
@@ -224,6 +232,150 @@ class CadeteController extends Controller
             'Móvil '.$movil.' dado de baja, con sus '.$llevo['mensajes'].' mensajes'
             .($llevo['postulacion'] ? ', su postulación' : '')
             .' y su cuenta. Sus '.$pedidos.' pedidos se conservan en el historial.');
+    }
+
+    /**
+     * Los cadetes dados de baja, y lo único que se puede hacer con ellos.
+     *
+     * Es el botón «Dados de baja» del listado viejo, que allá es de administradores por la
+     * ruta y por un `@if` en la vista. Mismo criterio que `pedidos/eliminados`: una
+     * pantalla aparte y no un filtro del listado, porque las dos listas se usan distinto
+     * —una es el trabajo del día y la otra es administrativa— y porque las acciones de cada
+     * fila no son las mismas.
+     *
+     * ⚠️ **Acá no se restaura, y es la diferencia con los pedidos eliminados.** Lo único
+     * que se ofrece es el borrado definitivo: sacar la fila. Ver
+     * `BorradoDefinitivoDeCadete`, que explica qué se lleva y qué deja.
+     *
+     * ⚠️ El usuario se carga con `withTrashed()`: la baja de un cadete da de baja su
+     * cuenta, así que la relación normal devolvería null para todas las filas y la columna
+     * diría «sin cuenta» justo en el caso normal. Es la misma advertencia que dejó escrita
+     * la pantalla vieja.
+     *
+     * Se ordena por fecha de baja descendente: lo último que se dio de baja es lo que
+     * alguien está buscando cuando entra acá.
+     */
+    public function dadosDeBaja(): Response
+    {
+        $this->authorize('verDadosDeBaja', Cadete::class);
+
+        $cadetes = Cadete::onlyTrashed()
+            ->with(['user' => fn ($consulta) => $consulta->withTrashed()->select('id', 'email', 'deleted_at')])
+            ->orderByDesc('deleted_at')
+            ->paginate(10)
+            ->through(fn (Cadete $cadete): array => [
+                'id' => $cadete->id,
+                'numero_movil' => $cadete->numero_movil,
+                'nombre' => $cadete->nombre_completo,
+                'baja' => Momento::fecha($cadete->deleted_at),
+                // ⚠️ Tres estados y no dos. Lo normal es que la cuenta esté dada de baja
+                // con el cadete; que siga activa es un estado raro que conviene ver antes
+                // de apretar, porque es la señal de que algo más la está usando.
+                'cuenta' => $cadete->user === null
+                    ? null
+                    : ['email' => $cadete->user->email, 'de_baja' => $cadete->user->trashed()],
+                // Lo que arrastra el borrado, para que la confirmación lo diga. Son cinco
+                // subconsultas por fila y la página trae diez: es una pantalla que se abre
+                // a propósito, no una que se refresca sola.
+                'arrastra' => BorradoDefinitivoDeCadete::queArrastra($cadete),
+                'borrado' => self::decision('forceDelete', $cadete),
+            ]);
+
+        return Inertia::render('cadetes/dados-de-baja', ['cadetes' => $cadetes]);
+    }
+
+    /**
+     * Sacar del padrón, de verdad, a un cadete dado de baja.
+     *
+     * ⚠️ **PIDE ESCRIBIR EL NÚMERO DE MÓVIL, y no es un adorno.** No se deshace, y es lo
+     * único del panel que saca filas. En el sistema viejo la confirmación es una pantalla
+     * entera de Corrección de datos que mide el impacto y pide lo mismo; acá las
+     * correcciones no existen —son previas a la migración— así que la confirmación vive en
+     * el diálogo del listado, con los mismos números y la misma pregunta.
+     *
+     * ⚠️ La ruta lleva `withTrashed()` o el binding no encuentra nada: por definición el
+     * cadete está dado de baja.
+     */
+    public function borradoDefinitivo(Request $request, Cadete $cadete): RedirectResponse
+    {
+        // La política niega con el motivo cuando la cuenta está en uso, así que el mensaje
+        // llega hasta la pantalla y no es un 403 a secas.
+        $this->authorize('forceDelete', $cadete);
+
+        $movil = $cadete->numero_movil;
+
+        if (trim($request->string('confirmacion')->value()) !== (string) $movil) {
+            return back()->with('danger', 'Para confirmar hay que escribir el número de móvil '.$movil.'.');
+        }
+
+        try {
+            $hecho = (new BorradoDefinitivoDeCadete)->ejecutar($cadete, $request->user());
+        } catch (RuntimeException $e) {
+            // La política ya preguntó lo mismo; esto es la red por si algo cambió entre la
+            // pantalla y el botón.
+            return back()->with('danger', 'Móvil '.$movil.': no se borró. '.$e->getMessage());
+        }
+
+        return to_route('panel.cadetes.dados-de-baja')->with('success',
+            'Móvil '.$movil.' borrado definitivamente. Quedaron sin cadete '.$hecho['pedidos_sin_cadete']
+            .' pedidos y '.$hecho['logs_sin_cadete'].' registros de su historial; se borraron '
+            .$hecho['mensajes'].' mensajes, '.$hecho['actividades'].' tramos de actividad, '
+            .$hecho['cobranza'].' movimientos de cobranza'
+            .($hecho['postulacion'] > 0 ? ', su postulación' : '')
+            .($hecho['cuenta'] ? ' y su cuenta.' : '.'));
+    }
+
+    /**
+     * El listado para imprimir: el padrón en papel, con el teléfono de cada uno.
+     *
+     * Es `pdf/cadetes` del sistema viejo, y **éste sí es un PDF de verdad** —a diferencia
+     * del cupón del pedido, que pese al nombre de la ruta allá es una página que se imprime
+     * sola—. Se arma con Dompdf, igual que allá, y sale con las mismas columnas y el mismo
+     * orden: por número de móvil.
+     *
+     * ⚠️ **Son todos los del padrón y no lo que esté filtrado en la pantalla.** El listado
+     * viejo tampoco pasa el buscador: lo que se imprime y se cuelga en la oficina es la
+     * lista entera, hoy 234 personas.
+     *
+     * ⚠️ **El CSS está escrito en la vista, y allá viene de un CDN.** La vista vieja trae
+     * Bootstrap 4 de jsdelivr con `enable_remote`, así que sin internet el listado sale sin
+     * estilos —y de paso cada impresión es una petición a un tercero desde el servidor—.
+     * Acá están las reglas que usaba, con las medidas que Bootstrap les daba, y por eso
+     * `setIsRemoteEnabled(false)`: la vista no pide nada de afuera.
+     */
+    public function imprimir(): RespuestaHttp
+    {
+        $this->authorize('viewAny', Cadete::class);
+
+        $cadetes = Cadete::query()
+            ->orderBy('numero_movil')
+            ->get(['numero_movil', 'apellidos', 'nombres', 'telefono', 'tipo_vehiculo']);
+
+        // Sin archivo de configuración: son tres opciones y se leen mejor acá. `enable_php`
+        // y `enable_remote` quedan en false, que es lo que corresponde cuando la vista es
+        // nuestra y no trae nada de afuera.
+        $opciones = new Options;
+        $opciones->setChroot(base_path());
+        $opciones->setDefaultPaperSize('a4');
+        $opciones->setDpi(96);
+
+        $dompdf = new Dompdf($opciones);
+        $dompdf->setPaper('a4', 'portrait');
+        $dompdf->loadHtml(view('listado-de-cadetes', ['cadetes' => $cadetes])->render());
+        $dompdf->render();
+
+        // El mismo nombre que allá, con la fecha y la hora adentro: se imprime seguido y
+        // así dos archivos guardados no se pisan.
+        //
+        // ⚠️ Sin barras ni dos puntos, que allá sí tiene: Windows no los acepta en un
+        // nombre de archivo, y lo que hace el navegador con eso es cosa suya.
+        $cuando = str_replace(['/', ':'], '-', (string) Momento::fechaYHora(now()));
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            // `inline`: se abre en otra pestaña y se imprime desde ahí, como allá.
+            'Content-Disposition' => 'inline; filename="Listado de Cadetes - '.$cuando.'.pdf"',
+        ]);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\Cadete;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\BajaDeCadete;
+use App\Services\BorradoDefinitivoDeCadete;
 use App\Services\CambioDeModalidadDeCobranza;
 use Illuminate\Auth\Access\Response;
 
@@ -150,6 +151,38 @@ class CadetePolicy
         }
 
         $motivo = CambioDeModalidadDeCobranza::porQueNo($cadete);
+
+        return $motivo === null
+            ? Response::allow()
+            : Response::deny($motivo);
+    }
+
+    /**
+     * Mirar el listado de dados de baja.
+     *
+     * ⚠️ Sólo administradores, y es el mismo recorte que allá: la ruta vieja lleva
+     * `rol:admin` y el botón del listado está dentro de un `@if`. Lo único que se ofrece
+     * desde esa pantalla es el borrado definitivo, que no se deshace.
+     */
+    public function verDadosDeBaja(User $user): bool
+    {
+        return $user->tieneRol(Rol::ADMIN);
+    }
+
+    /**
+     * Sacarlo del padrón de verdad, cuando ya está dado de baja.
+     *
+     * La regla vive en `BorradoDefinitivoDeCadete::porQueNo()`, que es la que aplica el
+     * servicio antes de escribir; acá se pregunta la misma. Es la misma disciplina que la
+     * baja, y por el mismo motivo: el listado no dibuja un botón que iba a fallar.
+     */
+    public function forceDelete(User $user, Cadete $cadete): Response
+    {
+        if (! $this->verDadosDeBaja($user)) {
+            return Response::deny();
+        }
+
+        $motivo = BorradoDefinitivoDeCadete::porQueNo($cadete);
 
         return $motivo === null
             ? Response::allow()

@@ -259,6 +259,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 */
                 Route::get('cadetes/create', [CadeteController::class, 'create'])->name('cadetes.create');
                 /*
+                | El padrón para imprimir. Es `pdf/cadetes` del sistema viejo, y éste sí
+                | arma un PDF de verdad —el cupón del pedido, pese al nombre de la ruta de
+                | allá, es una página que se imprime sola—.
+                |
+                | Es de todo el grupo: allá el botón no está gateado.
+                */
+                Route::get('cadetes/imprimir', [CadeteController::class, 'imprimir'])->name('cadetes.imprimir');
+
+                /*
+                | Los cadetes dados de baja, y el borrado definitivo, que es lo único que se
+                | ofrece sobre ellos.
+                |
+                | ⚠️ VAN ANTES de `cadetes/{cadete}`, o el parámetro las captura y Laravel
+                | sale a buscar un cadete con id «dados-de-baja». Es la misma advertencia
+                | que el sistema viejo deja escrita en su propio archivo de rutas.
+                |
+                | ⚠️ `withTrashed()` en el borrado, o el binding no encuentra nada: por
+                | definición el cadete está dado de baja.
+                |
+                | Las dos son de administradores, y lo dice la política —`verDadosDeBaja` y
+                | `forceDelete`—, que es lo mismo que el listado pregunta para dibujar el
+                | botón. El middleware de rol no hace falta dos veces.
+                */
+                Route::get('cadetes/dados-de-baja', [CadeteController::class, 'dadosDeBaja'])->name('cadetes.dados-de-baja');
+                Route::delete('cadetes/{cadete}/borrado-definitivo', [CadeteController::class, 'borradoDefinitivo'])
+                    ->withTrashed()
+                    ->name('cadetes.borrado-definitivo');
+                /*
                 | Las postulaciones.
                 |
                 | ⚠️ `postulaciones/create` antes de `postulaciones/{postulacion}`, o el

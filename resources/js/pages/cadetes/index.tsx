@@ -61,10 +61,12 @@ export default function CadetesIndex({
     cadetes,
     filtros,
     motivos,
+    puede_ver_dados_de_baja,
 }: {
     cadetes: Paginado<CadeteEnLista>;
     filtros: { buscar: string };
     motivos: Motivo[];
+    puede_ver_dados_de_baja: boolean;
 }) {
     const [bloqueando, setBloqueando] = useState<CadeteEnLista | null>(null);
 
@@ -83,6 +85,29 @@ export default function CadetesIndex({
                         <Button asChild size="sm">
                             <Link href="/panel/cadetes/create">Nuevo cadete</Link>
                         </Button>
+
+                        {/* ⚠️ Un `<a>` y no un `<Link>`: lo que hay del otro lado es un
+                            PDF, no una pantalla de Inertia. Se abre en otra pestaña, como
+                            el botón viejo, y de ahí se imprime. */}
+                        <Button asChild size="sm" variant="secondary">
+                            <a
+                                href="/panel/cadetes/imprimir"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                Imprimir listado
+                            </a>
+                        </Button>
+
+                        {/* El listado de bajas es de administradores. Lo dice el servidor
+                            —`puede_ver_dados_de_baja`—, no un `if` de rol acá. */}
+                        {puede_ver_dados_de_baja && (
+                            <Button asChild size="sm" variant="outline">
+                                <Link href="/panel/cadetes/dados-de-baja">
+                                    Dados de baja
+                                </Link>
+                            </Button>
+                        )}
                     </div>
                 </div>
 

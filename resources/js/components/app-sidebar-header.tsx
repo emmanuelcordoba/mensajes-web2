@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { MensajesSinLeer } from '@/components/panel/mensajes-sin-leer';
 import { TiempoDeDemora } from '@/components/panel/tiempo-de-demora';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
@@ -15,9 +16,13 @@ export function AppSidebarHeader({
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
 
-            {/* A la derecha, como en la barra del sistema viejo. */}
+            {/*
+                A la derecha y en este orden, como en la barra del sistema viejo: primero
+                la demora —que sólo está en la portada— y después el sobre del chat.
+            */}
             <div className="ml-auto flex items-center gap-2">
                 <TiempoDeDemora />
+                <MensajesSinLeer />
             </div>
         </header>
     );

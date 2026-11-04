@@ -132,6 +132,28 @@ class MensajeController extends Controller
     }
 
     /**
+     * Cuántos mensajes esperan a la central. Es el refresco del globito del sobre.
+     *
+     * ⚠️ **Contesta JSON y no una pantalla de Inertia**, como `cadetes/{cadete}/detalle` y
+     * por un motivo parecido: es un número suelto que la barra de arriba se vuelve a pedir
+     * cada diez segundos, en todas las pantallas. Hacerlo con una recarga parcial de
+     * Inertia obligaría a volver a armar las props de la pantalla que esté abierta, que es
+     * mucho más caro que contar una fila; y lo que viaja acá es un entero, no mensajes.
+     *
+     * Es `ajax/mensajes/noleidos` del sistema viejo, recortado: allá la respuesta trae
+     * además los mensajes agrupados y los últimos de cada conversación —el texto de lo que
+     * se escribieron, en cada refresco— y el JavaScript usa sólo `cantidad`.
+     *
+     * La regla de qué se cuenta vive en el modelo: ver `Mensaje::cuantosEsperanALaCentral()`.
+     */
+    public function sinLeer(): JsonResponse
+    {
+        $this->authorize('viewAny', Mensaje::class);
+
+        return response()->json(['cantidad' => Mensaje::cuantosEsperanALaCentral()]);
+    }
+
+    /**
      * La lista de conversaciones: el último mensaje de cada una y cuántos faltan leer.
      *
      * ⚠️ Dos consultas, no una por conversación. `DISTINCT ON` es de PostgreSQL y es

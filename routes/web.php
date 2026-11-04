@@ -189,6 +189,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::put('pedidos/{pedido}/impresion', [PedidoController::class, 'impresion'])->name('pedidos.impresion');
 
                 Route::get('mensajes/cadetes', [MensajeController::class, 'cadetes'])->name('mensajes.cadetes');
+                /*
+                | Cuántos mensajes esperan a la central: el globito del sobre de la barra
+                | de arriba, que se lo vuelve a pedir cada diez segundos.
+                |
+                | ⚠️ También ANTES de `mensajes/{cadete}`, o el parámetro la captura y
+                | Laravel sale a buscar un cadete con id «sin-leer».
+                |
+                | ⚠️ Contesta JSON y no una pantalla de Inertia: es un entero que se pide
+                | desde todas las pantallas, y una recarga parcial obligaría a volver a
+                | armar las props de la que esté abierta. Es `ajax/mensajes/noleidos` del
+                | sistema viejo, sin los mensajes que allá viajan al pedo.
+                */
+                Route::get('mensajes/sin-leer', [MensajeController::class, 'sinLeer'])->name('mensajes.sin-leer');
                 Route::get('mensajes/{cadete?}', [MensajeController::class, 'index'])->name('mensajes.index');
                 Route::post('mensajes/{cadete}', [MensajeController::class, 'enviar'])->name('mensajes.enviar');
 

@@ -19,6 +19,8 @@ declare module '@inertiajs/core' {
              * viejo. En el resto llega `undefined`. Ver InicioController::tiempoDeDemora().
              */
             tiempoDeDemora?: TiempoDeDemora | null;
+            /** Cuántos mensajes esperan a la central, o null si esa persona no ve el chat. */
+            mensajesSinLeer: number | null;
             /** El mensaje que dejó el controlador en la sesión. Ver components/avisos. */
             aviso: { success: string | null; danger: string | null };
             sidebarOpen: boolean;

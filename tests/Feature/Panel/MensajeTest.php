@@ -332,3 +332,142 @@ test('a shop cannot read or write at any of the routes', function () {
 
     expect(Mensaje::query()->count())->toBe(0);
 });
+
+// ------------------------------------------------- el globito del sobre de la barra
+
+test('the envelope carries the count on every screen, and a shop does not get it', function () {
+    // Viaja en las props compartidas para que el número esté desde la primera pintura, en
+    // cualquier pantalla: el sobre vive en la barra de arriba, no en el chat.
+    $cadete = unCadeteQueEscribe(['numero_movil' => 11]);
+    Mensaje::factory()->count(3)->create([
+        'cadete_id' => $cadete->id,
+        'user_id' => $cadete->user_id,
+        'leido_web' => false,
+    ]);
+
+    $empleado = usuarioCon(Rol::EMPLEADO);
+
+    foreach (['/panel', '/panel/pedidos', '/panel/cadetes'] as $pantalla) {
+        $this->actingAs($empleado)
+            ->get($pantalla)
+            ->assertInertia(fn ($pagina) => $pagina->where('mensajesSinLeer', 3)->etc());
+    }
+
+    // null y no 0: «no te corresponde» y «no hay ninguno» son dos cosas distintas, y el
+    // frontend las dibuja distinto. Un comercio no ve el sobre ni hace la consulta.
+    $this->actingAs(usuarioCon(Rol::RESTRINGIDO))
+        ->get('/panel/pedidos')
+        ->assertInertia(fn ($pagina) => $pagina->where('mensajesSinLeer', null)->etc());
+});
+
+test('the refresh of the envelope answers the same number as the page', function () {
+    // Una regla, dos lectores: la primera carga y el refresco de cada diez segundos. Si se
+    // separaran, el globito diría una cosa al entrar y otra diez segundos después.
+    $cadete = unCadeteQueEscribe(['numero_movil' => 22]);
+    Mensaje::factory()->count(2)->create([
+        'cadete_id' => $cadete->id,
+        'user_id' => $cadete->user_id,
+        'leido_web' => false,
+    ]);
+    Mensaje::factory()->create([
+        'cadete_id' => $cadete->id,
+        'user_id' => $cadete->user_id,
+        'leido_web' => true,
+    ]);
+
+    $empleado = usuarioCon(Rol::EMPLEADO);
+
+    $delRefresco = $this->actingAs($empleado)
+        ->getJson('/panel/mensajes/sin-leer')
+        ->assertOk()
+        ->json('cantidad');
+
+    expect($delRefresco)->toBe(2);
+
+    $this->actingAs($empleado)
+        ->get('/panel')
+        ->assertInertia(fn ($pagina) => $pagina->where('mensajesSinLeer', $delRefresco)->etc());
+});
+
+test('a shop cannot ask how many messages are waiting', function () {
+    $this->actingAs(usuarioCon(Rol::RESTRINGIDO))
+        ->getJson('/panel/mensajes/sin-leer')
+        ->assertForbidden();
+});
+
+test('messages from a cadete given up do not count, because they cannot be read', function () {
+    // ⚠️ **La única diferencia con el contador viejo, y es para que el número se pueda
+    // bajar.** El Chat lista sólo las conversaciones de cadetes vigentes, así que un
+    // mensaje sin leer de alguien que ya no está no se puede abrir ni marcar como leído:
+    // allá eso es un globito rojo que no baja nunca. Sobre la base de hoy serían 20 sin
+    // leer, los 20 de cadetes dados de baja.
+    $vigente = unCadeteQueEscribe(['numero_movil' => 33]);
+    $deBaja = unCadeteQueEscribe(['numero_movil' => 44]);
+
+    Mensaje::factory()->create([
+        'cadete_id' => $vigente->id,
+        'user_id' => $vigente->user_id,
+        'leido_web' => false,
+    ]);
+    Mensaje::factory()->count(5)->create([
+        'cadete_id' => $deBaja->id,
+        'user_id' => $deBaja->user_id,
+        'leido_web' => false,
+    ]);
+
+    $deBaja->delete();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->getJson('/panel/mensajes/sin-leer')
+        ->assertOk()
+        ->assertExactJson(['cantidad' => 1]);
+});
+
+test('the number of the page is the one after opening the conversation, not the one before', function () {
+    // ⚠️ **Esto salía mal y se veía.** Las props compartidas se arman ANTES de que corra el
+    // controlador, así que al abrir una conversación el globito mostraba el número de
+    // antes de marcarla leída: entrabas a un chat con tres sin leer y el sobre seguía
+    // diciendo tres, hasta el refresco siguiente. Lo arregla que la prop sea una función,
+    // que Inertia resuelve al armar la respuesta. Ver HandleInertiaRequests::share().
+    $cadete = unCadeteQueEscribe(['numero_movil' => 66]);
+    $otro = unCadeteQueEscribe(['numero_movil' => 67]);
+
+    Mensaje::factory()->count(3)->create([
+        'cadete_id' => $cadete->id,
+        'user_id' => $cadete->user_id,
+        'leido_web' => false,
+    ]);
+    Mensaje::factory()->create([
+        'cadete_id' => $otro->id,
+        'user_id' => $otro->user_id,
+        'leido_web' => false,
+    ]);
+
+    // La misma visita que marca leídos los tres tiene que contestar el uno que queda.
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get("/panel/mensajes/{$cadete->id}")
+        ->assertInertia(fn ($pagina) => $pagina->where('mensajesSinLeer', 1)->etc());
+});
+
+test('opening a conversation brings the number down', function () {
+    // El camino entero: el globito baja porque abrir la conversación marca los mensajes
+    // como leídos, que es la misma regla de siempre y no una cuenta aparte.
+    $cadete = unCadeteQueEscribe(['numero_movil' => 55]);
+    Mensaje::factory()->count(4)->create([
+        'cadete_id' => $cadete->id,
+        'user_id' => $cadete->user_id,
+        'leido_web' => false,
+    ]);
+
+    $empleado = usuarioCon(Rol::EMPLEADO);
+
+    $this->actingAs($empleado)
+        ->getJson('/panel/mensajes/sin-leer')
+        ->assertExactJson(['cantidad' => 4]);
+
+    $this->actingAs($empleado)->get("/panel/mensajes/{$cadete->id}")->assertSuccessful();
+
+    $this->actingAs($empleado)
+        ->getJson('/panel/mensajes/sin-leer')
+        ->assertExactJson(['cantidad' => 0]);
+});

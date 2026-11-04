@@ -113,4 +113,30 @@ class Mensaje extends Model
     {
         return $query->where('leido_web', false);
     }
+
+    /**
+     * Cuántos mensajes esperan a la central: el número del globito de la barra de arriba.
+     *
+     * Es una regla con dos lectores —la primera carga de la página y el refresco que el
+     * globito se pide solo cada diez segundos—, así que vive acá y no en el controlador.
+     *
+     * ⚠️ **SÓLO LOS DE CADETES VIGENTES, y el sistema viejo cuenta todos.** Es la única
+     * diferencia con el contador de allá, y es para que el número se pueda bajar: la
+     * pantalla de Chat lista únicamente las conversaciones de cadetes vigentes —407 de las
+     * 444 son de dados de baja—, así que un mensaje sin leer de alguien que ya no está no
+     * se puede abrir y no se puede marcar como leído. Allá eso es un globito rojo que no
+     * baja nunca; hoy, sobre esta base, serían **20 sin leer, los 20 de cadetes dados de
+     * baja**, o sea un «20» permanente en todas las pantallas. Es el mismo `whereHas` que
+     * usa la lista de conversaciones.
+     *
+     * Cuesta menos de un milisegundo: los sin leer salen del índice parcial
+     * `idx_mensajes_no_leidos_web` y son pocos por definición.
+     */
+    public static function cuantosEsperanALaCentral(): int
+    {
+        return self::query()
+            ->sinLeerEnLaWeb()
+            ->whereHas('cadete')
+            ->count();
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Mensaje;
 use App\Models\Rol;
 use App\Models\User;
 use App\Support\Navegacion;
@@ -48,6 +49,16 @@ class HandleInertiaRequests extends Middleware
             // El menú del panel, ya recortado por rol: lo que un comercio no
             // puede usar no viaja. Ver App\Support\Navegacion.
             'navegacion' => Navegacion::para($request->user()),
+            // El globito del sobre de la barra de arriba. Ver `mensajesSinLeer()`.
+            //
+            // ⚠️ **Una función y no el número, y hace falta.** Las props compartidas se
+            // arman ANTES de que corra el controlador —`Inertia\Middleware::handle()`
+            // comparte y recién después llama a `$next`—, así que contando acá el número
+            // sale de antes de lo que esa pantalla hizo. Se nota justo donde importa: abrir
+            // una conversación la marca leída, y el globito seguía mostrando el número
+            // viejo hasta el refresco siguiente. Inertia resuelve las funciones al armar la
+            // respuesta, que es después del controlador, y ahí el número ya es el de ahora.
+            'mensajesSinLeer' => fn (): ?int => self::mensajesSinLeer($request->user()),
             // ⚠️ El mensaje que dejan los `->with('success', ...)` de los controladores.
             // Hasta ahora no lo compartía nadie, así que se escribía en la sesión y no lo
             // leía nadie: todas las pantallas del panel contestaban en silencio —el panel
@@ -118,5 +129,29 @@ class HandleInertiaRequests extends Middleware
             'email_verified_at' => $user->email_verified_at,
             'rol' => $user->rol?->rol,
         ];
+    }
+
+    /**
+     * Cuántos mensajes esperan a la central, para el globito del sobre.
+     *
+     * ⚠️ Viaja en las props compartidas y no lo pide el frontend al dibujarse, para que el
+     * número esté desde la primera pintura: si no, el globito aparecería un instante
+     * después de cada página. De ahí en más lo refresca el propio componente cada diez
+     * segundos, como el `setInterval` del sistema viejo.
+     *
+     * ⚠️ **null y no 0 para quien no puede mirar el chat.** Son dos cosas distintas —«no te
+     * corresponde» y «no hay ninguno»— y el frontend las dibuja distinto: con null no hay
+     * sobre. Un comercio no lo recibe, y tampoco hace la consulta. El sistema viejo esconde
+     * el sobre con un `@if(tieneRol([...]))` en la barra.
+     *
+     * La regla de qué se cuenta vive en el modelo: ver `Mensaje::cuantosEsperanALaCentral()`.
+     */
+    private static function mensajesSinLeer(?User $user): ?int
+    {
+        if ($user === null || ! $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO])) {
+            return null;
+        }
+
+        return Mensaje::cuantosEsperanALaCentral();
     }
 }

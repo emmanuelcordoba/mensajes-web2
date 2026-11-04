@@ -6,6 +6,7 @@ use App\Models\Cadete;
 use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\LogEstadoPedido;
+use App\Models\MotivoBloqueo;
 use App\Models\MovimientoCobranzaSaldo;
 use App\Models\Pedido;
 use App\Models\Rol;
@@ -187,26 +188,74 @@ test('an order nobody signed carries no badge, and does not pretend otherwise', 
         ->assertJsonPath('distintivo', null);
 });
 
-test('the queue is what travels in the page; the rest is searched', function () {
-    // ⚠️ **Esto es lo que hay que no romper, y acá el sistema viejo hace otra cosa.** Allá
-    // el primer dibujado del selector trae los 134 cadetes no bloqueados y cinco segundos
-    // después `recargarCadetesActivos()` lo reemplaza por `Cadete::all()`: 220 cadetes, con
-    // los 86 que tienen el usuario bloqueado adentro, y los documentos completos de los 220
+test('the queue comes first, and the rest of the padrón underneath', function () {
+    // ⚠️ **El orden es la regla, y acá el sistema viejo hace otra cosa.** Allá el primer
+    // dibujado del selector trae los 134 cadetes no bloqueados y cinco segundos después
+    // `recargarCadetesActivos()` lo reemplaza por `Cadete::all()`: 220 cadetes, con los 86
+    // que tienen el usuario bloqueado adentro, y los documentos completos de los 220
     // viajando cada cinco segundos —186 KB por refresco—.
     //
-    // Acá en la página viaja SÓLO la cola, que es de donde sale el 97% de los pedidos, y a
-    // cualquier otro cadete se llega con el buscador —`cadetes/buscar`, que además deja
-    // afuera a los bloqueados—. O sea que se puede asignar fuera de la cola, como allá,
-    // pero no se mandan 220 cadetes a una pantalla abierta todo el día.
+    // Acá viaja la cola primero, en orden de llegada, porque de ahí sale el 97% de los
+    // pedidos; y abajo el resto del padrón por móvil, esté el cadete activo o no, porque se
+    // asigna fuera de la cola cuando el cadete avisa por teléfono o pasa por el mostrador.
+    // De cada uno viajan cinco valores y no el documento.
     unCadeteParaAsignar(Cadete::ESTADO_ACTIVO_WEB);
+
+    // Entró antes a la cola: va primero, aunque su móvil sea más alto.
+    Cadete::factory()->create([
+        'numero_movil' => 99,
+        'estado' => Cadete::ESTADO_ACTIVO_APP,
+        'orden_cola' => 500,
+    ]);
+
     Cadete::factory()->create(['numero_movil' => 22, 'estado' => Cadete::ESTADO_INACTIVO]);
-    Cadete::factory()->create(['numero_movil' => 33, 'estado' => Cadete::ESTADO_CON_PEDIDO_APP, 'orden_cola' => 1]);
+
+    // Con un pedido en la mano no está en la cola, pero se le puede dar otro: va abajo.
+    Cadete::factory()->create([
+        'numero_movil' => 33,
+        'estado' => Cadete::ESTADO_CON_PEDIDO_APP,
+        'orden_cola' => 1,
+    ]);
 
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
         ->get('/panel')
-        ->assertInertia(fn ($pagina) => expect(
-            array_column($pagina->toArray()['props']['paraAsignar'], 'movil'),
-        )->toBe([11]));
+        ->assertInertia(function ($pagina) {
+            $ofrecidos = $pagina->toArray()['props']['paraAsignar'];
+
+            expect(array_column($ofrecidos, 'movil'))->toBe([99, 11, 22, 33])
+                ->and(array_column($ofrecidos, 'en_la_cola'))->toBe([true, true, false, false])
+                // Cinco valores por cadete: ni el DNI, ni el teléfono, ni la dirección.
+                ->and(array_keys($ofrecidos[0]))
+                ->toBe(['id', 'movil', 'nombre', 'en_la_app', 'en_la_cola']);
+        });
+});
+
+test('a blocked cadete is not offered, not even from the queue', function () {
+    // ⚠️ **Bloquear no saca de la cola**: `IngresoALaCola` sólo niega la ENTRADA, así que
+    // al que lo bloquean mientras espera se queda ahí adentro. Es el agujero por el que el
+    // selector viejo dejaba darle un pedido a una cuenta bloqueada —los 86—.
+    $enLaCola = unCadeteParaAsignar(Cadete::ESTADO_ACTIVO_WEB);
+    $enLaCola->user->bloqueado = MotivoBloqueo::FALTA_DE_PAGO;
+    $enLaCola->user->save();
+
+    $afuera = Cadete::factory()->create(['numero_movil' => 44, 'estado' => Cadete::ESTADO_INACTIVO]);
+    $afuera->user->bloqueado = MotivoBloqueo::FALTA_DE_PAGO;
+    $afuera->user->save();
+
+    // El único que queda: inactivo, pero con la cuenta habilitada. Que esté él dice
+    // además que con la cola vacía el resto del padrón se ofrece igual.
+    $ofrecible = Cadete::factory()->create(['numero_movil' => 55, 'estado' => Cadete::ESTADO_INACTIVO]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel')
+        ->assertInertia(fn ($pagina) => $pagina
+            ->has('paraAsignar', 1)
+            ->where('paraAsignar.0.id', $ofrecible->id)
+            ->where('paraAsignar.0.en_la_cola', false)
+            // En la cola de la pantalla el bloqueado sigue estando: ese es el estado real,
+            // y la oficina tiene que verlo para sacarlo.
+            ->has('cola', 1)
+            ->etc());
 });
 
 test('a cadete found outside the queue can be given the order', function () {

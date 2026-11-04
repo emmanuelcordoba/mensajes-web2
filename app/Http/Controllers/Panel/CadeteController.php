@@ -263,9 +263,8 @@ class CadeteController extends Controller
         }
 
         return Cadete::query()
-            // La cuenta bloqueada no puede recibir pedidos, y por eso se pregunta por el
-            // usuario y no sólo por el cadete.
-            ->whereHas('user', fn (Builder $u) => $u->whereNull('bloqueado'))
+            // La misma regla que usa el selector de Inicio: ver `scopeOfrecibles`.
+            ->ofrecibles()
             ->where(function (Builder $w) use ($buscado): void {
                 $w->where('apellidos', 'ilike', '%'.$buscado.'%')
                     ->orWhere('nombres', 'ilike', '%'.$buscado.'%');

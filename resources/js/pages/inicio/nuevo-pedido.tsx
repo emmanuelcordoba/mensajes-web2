@@ -112,7 +112,7 @@ function comoSeEscribe(partes: ParteDeDireccion[]): string {
 
 export function NuevoPedido({
     deLaOficina,
-    cola,
+    cadetes,
     mapa,
     ultimoPedido,
     cadeteElegido,
@@ -120,7 +120,7 @@ export function NuevoPedido({
 }: {
     /** Admin o empleado: pone precio, elige cadete y tiene las herramientas de Google. */
     deLaOficina: boolean;
-    cola: CadeteElegible[] | null;
+    cadetes: CadeteElegible[] | null;
     mapa: ConfigDelMapa | null;
     /** El que se acaba de cargar, para poder imprimir el comprobante. */
     ultimoPedido: ParaImprimir | null;
@@ -434,12 +434,12 @@ export function NuevoPedido({
                             <p className="text-muted-foreground text-xs">{problema}</p>
                         )}
 
-                        {deLaOficina && cola !== null && (
+                        {deLaOficina && cadetes !== null && (
                             <label className="grid gap-1 text-sm" htmlFor="cadete_id">
                                 <span className="text-muted-foreground">Cadete</span>
                                 <SelectorDeCadete
                                     id="cadete_id"
-                                    cola={cola}
+                                    cadetes={cadetes}
                                     elegido={cadeteElegido}
                                     alElegir={alElegirCadete}
                                 />

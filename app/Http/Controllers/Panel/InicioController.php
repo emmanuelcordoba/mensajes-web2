@@ -161,36 +161,66 @@ class InicioController extends Controller
     }
 
     /**
-     * Los cadetes que el alta y el modal ofrecen primero: la cola.
+     * Los cadetes que el alta y el modal ofrecen: la cola arriba, y abajo el resto.
      *
-     * ⚠️ **En la página viaja la cola, y al resto se llega buscando.** El panel viejo manda
-     * los otros dos extremos y ninguno está bien: al cargar la pantalla el selector tiene
-     * los 134 cadetes no bloqueados, y cinco segundos después `recargarCadetesActivos()` lo
-     * reemplaza por `Cadete::all()` —**220, con los 86 que tienen el usuario bloqueado
-     * adentro**—, y manda los documentos completos de los 220 en cada refresco: 186 KB cada
-     * cinco segundos, en una pantalla abierta todo el día. O sea que el selector se
-     * ensancha al primer refresco y deja elegir a alguien bloqueado.
+     * El orden no es decorativo: de la cola sale el 97,1% de los pedidos web, así que lo
+     * primero que se ve es lo que casi siempre se elige. Abajo va el padrón, por móvil,
+     * esté el cadete activo o no: se le asigna a alguien fuera de la cola cuando avisa por
+     * teléfono o pasa por el mostrador, y antes había que buscarlo para que apareciera.
      *
-     * Acá la cola va en la página porque es de donde sale el 97,1% de los pedidos web, y
-     * cualquier otro cadete se busca contra el servidor con `CadeteController@buscar`, que
-     * deja afuera a los bloqueados. Se puede asignar fuera de la cola, como allá, sin
-     * mandar el padrón.
+     * ⚠️ **Los bloqueados no están, y es la única exclusión.** Ver `scopeOfrecibles`. El
+     * selector del panel viejo hacía lo contrario y se contradecía solo: al cargar la
+     * pantalla tenía los 134 cadetes no bloqueados y cinco segundos después
+     * `recargarCadetesActivos()` lo reemplazaba por `Cadete::all()` —220, con los 86 que
+     * tienen el usuario bloqueado adentro—. O sea que el selector se ensanchaba al primer
+     * refresco y recién entonces dejaba elegir a alguien bloqueado.
      *
-     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool}>
+     * ⚠️ **También se filtra la cola, y no es por prolijidad:** bloquear no saca de la cola
+     * —`IngresoALaCola` sólo niega la ENTRADA—, así que un cadete bloqueado mientras
+     * esperaba sigue ahí. Se sigue mostrando en la cola de la pantalla, que es el estado
+     * real, pero no se ofrece para asignarle un pedido.
+     *
+     * ⚠️ **Lista explícita de campos, y por eso esto se puede mandar en cada refresco.** De
+     * los 143 ofrecibles viajan cinco valores cada uno: unos 10 KB, contra los 186 KB que
+     * manda el panel viejo cada cinco segundos con los documentos completos de los 220. La
+     * pantalla está abierta todo el día en la oficina.
+     *
+     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool}>
      */
     protected function paraAsignar(): array
     {
-        return Cadete::query()
-            ->enLaCola()
-            ->get(['id', 'numero_movil', 'nombres', 'apellidos', 'estado', 'orden_cola'])
+        $campos = ['id', 'numero_movil', 'nombres', 'apellidos', 'estado', 'orden_cola'];
+
+        $enLaCola = Cadete::query()->enLaCola()->ofrecibles()->get($campos);
+
+        // El resto: todos los demás ofrecibles, por móvil, que es por donde se los nombra.
+        $afuera = Cadete::query()
+            ->ofrecibles()
+            ->whereNotIn('id', $enLaCola->modelKeys())
+            ->orderBy('numero_movil')
+            ->get($campos);
+
+        return $enLaCola
+            ->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete, true))
+            ->concat($afuera->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete, false)))
             ->values()
-            ->map(fn (Cadete $cadete): array => [
-                'id' => $cadete->id,
-                'movil' => $cadete->numero_movil,
-                'nombre' => trim($cadete->nombres.' '.$cadete->apellidos),
-                'en_la_app' => $cadete->estaEnLaApp(),
-            ])
             ->all();
+    }
+
+    /**
+     * Un cadete como lo necesita el selector, y nada más que eso.
+     *
+     * @return array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool}
+     */
+    protected static function comoSeOfrece(Cadete $cadete, bool $enLaCola): array
+    {
+        return [
+            'id' => $cadete->id,
+            'movil' => $cadete->numero_movil,
+            'nombre' => trim($cadete->nombres.' '.$cadete->apellidos),
+            'en_la_app' => $cadete->estaEnLaApp(),
+            'en_la_cola' => $enLaCola,
+        ];
     }
 
     /**

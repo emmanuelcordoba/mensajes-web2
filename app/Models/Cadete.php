@@ -443,6 +443,25 @@ class Cadete extends Model
     }
 
     /**
+     * A quién se le puede dar un pedido: a cualquiera con la cuenta habilitada.
+     *
+     * No pide que esté activo. Se le puede asignar a alguien que no está en la cola —el
+     * panel viejo también dejaba, y la central lo usa: el cadete avisa por teléfono o pasa
+     * por el mostrador—; lo que no se puede es darle un pedido a una cuenta bloqueada.
+     *
+     * ⚠️ Pregunta por el usuario y no por el cadete, y por eso es un `whereHas`: el bloqueo
+     * vive en `users.bloqueado`. El selector del panel viejo ofrecía `Cadete::all()`, con
+     * los 86 bloqueados adentro.
+     *
+     * @param  Builder<Cadete>  $query
+     * @return Builder<Cadete>
+     */
+    public function scopeOfrecibles(Builder $query): Builder
+    {
+        return $query->whereHas('user', fn (Builder $u) => $u->whereNull('bloqueado'));
+    }
+
+    /**
      * Sugerencia para el campo «número de móvil» del alta de una postulación.
      *
      * Es una lectura pura: el valor sólo precarga un campo que el administrador

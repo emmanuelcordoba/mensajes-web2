@@ -57,6 +57,8 @@ export type ParaAsignar = {
     movil: number;
     nombre: string;
     en_la_app: boolean;
+    /** La cola va arriba en el selector; el resto del padrón, abajo. */
+    en_la_cola: boolean;
 };
 
 type DetalleDePedido = {
@@ -498,7 +500,7 @@ function ElModalDelPedido({
                                     </span>
                                     <SelectorDeCadete
                                         id="asignar-cadete"
-                                        cola={paraAsignar}
+                                        cadetes={paraAsignar}
                                         elegido={cadete}
                                         alElegir={setCadete}
                                         enLinea

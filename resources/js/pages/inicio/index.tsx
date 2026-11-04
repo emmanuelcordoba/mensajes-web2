@@ -157,7 +157,7 @@ export default function InicioIndex({
                 <div className={cola === null ? 'lg:col-span-7' : 'lg:col-span-5'}>
                     <NuevoPedido
                         deLaOficina={deLaOficina}
-                        cola={paraAsignar}
+                        cadetes={paraAsignar}
                         mapa={mapa}
                         ultimoPedido={ultimoPedido}
                         cadeteElegido={cadeteElegido}

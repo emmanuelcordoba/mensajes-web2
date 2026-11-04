@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
 
@@ -8,17 +8,17 @@ import { Input } from '@/components/ui/input';
 | Lo usan las dos pantallas que asignan: el alta de Inicio y el modal de la lista de espera.
 | Es un componente y no dos copias porque la regla de a quién se puede ofrecer es una sola.
 |
-| ⚠️ **La cola arriba, y el resto buscando contra el servidor.** El panel viejo hace algo
+| ⚠️ **La cola arriba y el resto abajo, y están todos en la lista.** El panel viejo hace algo
 | distinto y se contradice solo: al cargar la pantalla el `<select>` tiene los 134 cadetes no
 | bloqueados, y cinco segundos después `recargarCadetesActivos()` lo reemplaza por
-| `Cadete::all()` —220, **incluidos los 86 que tienen el usuario bloqueado**—. O sea que el
-| selector se ensancha al primer refresco y se le podía asignar un pedido a alguien
-| bloqueado. Acá la cola va primero porque es de donde sale el 97% de los pedidos, y los
-| demás se buscan: nunca viajan 220 cadetes a la pantalla, y los bloqueados no aparecen.
+| `Cadete::all()` —220, **incluidos los 86 que tienen el usuario bloqueado**—. Acá la cola va
+| primero porque es de donde sale el 97% de los pedidos, y abajo está el resto del padrón
+| esté el cadete activo o no, porque se le asigna a alguien fuera de la cola cuando avisa por
+| teléfono o pasa por el mostrador. Los bloqueados no aparecen nunca.
 |
-| ⚠️ **Un cadete elegido de la búsqueda se queda en la lista.** La pantalla se refresca sola
-| cada cinco segundos y con ella la cola; sin recordarlo, el que se eligió a mano desaparecía
-| del selector y el formulario se quedaba apuntando a una opción que ya no estaba.
+| ⚠️ **El campo de al lado filtra la lista; ya no le pregunta al servidor.** Antes el resto
+| de los cadetes no viajaba y había que buscarlos contra `cadetes/buscar`, una consulta por
+| tecla. Ahora están todos acá: filtrar es mirar lo que la pantalla ya tiene.
 */
 
 export type CadeteElegible = {
@@ -26,8 +26,7 @@ export type CadeteElegible = {
     movil: number;
     nombre: string;
     en_la_app: boolean;
-    /** Lo dice el buscador; los de la cola, por estar ahí, lo están. */
-    en_la_cola?: boolean;
+    en_la_cola: boolean;
 };
 
 /**
@@ -41,91 +40,60 @@ export type CadeteElegible = {
 function comoSeLee(cadete: CadeteElegible): string {
     const nombre = `${cadete.movil} — ${cadete.nombre}`;
 
-    if (cadete.en_la_cola === false) {
+    if (!cadete.en_la_cola) {
         return nombre;
     }
 
     return `${nombre} ${cadete.en_la_app ? '(APP)' : '(WEB)'}`;
 }
 
+/** Si lo tipeado aparece en el móvil o en el nombre, sin distinguir mayúsculas. */
+function coincide(cadete: CadeteElegible, buscado: string): boolean {
+    return (
+        String(cadete.movil).includes(buscado) ||
+        cadete.nombre.toLocaleLowerCase().includes(buscado)
+    );
+}
+
 export function SelectorDeCadete({
-    cola,
+    cadetes,
     elegido,
     alElegir,
     nombre = 'cadete_id',
     id,
     enLinea = false,
 }: {
-    cola: CadeteElegible[];
+    cadetes: CadeteElegible[];
     elegido: number | null;
     alElegir: (id: number | null) => void;
     nombre?: string;
     id?: string;
-    /** El buscador al lado del selector y no debajo, donde la fila sobra ancho. */
+    /** El filtro al lado del selector y no debajo, donde la fila sobra ancho. */
     enLinea?: boolean;
 }) {
     const [buscado, setBuscado] = useState('');
-    const [encontrados, setEncontrados] = useState<CadeteElegible[]>([]);
-    const [buscando, setBuscando] = useState(false);
 
-    // El que se eligió fuera de la cola, recordado para que el refresco no se lo lleve.
-    const [recordado, setRecordado] = useState<CadeteElegible | null>(null);
+    /*
+    | Los dos grupos, ya filtrados.
+    |
+    | ⚠️ **El elegido se muestra aunque el filtro lo deje afuera.** Si no, al seguir tipeando
+    | su opción desaparecía del `<select>`, que quedaba apuntando a un valor que no estaba en
+    | la lista: se veía vacío y se mandaba igual.
+    */
+    const { enLaCola, afuera } = useMemo(() => {
+        const texto = buscado.trim().toLocaleLowerCase();
 
-    useEffect(() => {
-        if (buscado.trim() === '') {
-            setEncontrados([]);
-            setBuscando(false);
+        const queVan = cadetes.filter(
+            (c) => texto === '' || c.id === elegido || coincide(c, texto),
+        );
 
-            return;
-        }
+        return {
+            enLaCola: queVan.filter((c) => c.en_la_cola),
+            afuera: queVan.filter((c) => !c.en_la_cola),
+        };
+    }, [cadetes, buscado, elegido]);
 
-        setBuscando(true);
-
-        // Un respiro antes de preguntar: si no, se dispara una consulta por tecla.
-        const espera = setTimeout(() => {
-            void fetch(`/panel/cadetes/buscar?q=${encodeURIComponent(buscado)}`, {
-                headers: { Accept: 'application/json' },
-            })
-                .then((r) => (r.ok ? r.json() : []))
-                .then((datos: CadeteElegible[]) => setEncontrados(datos))
-                .catch(() => setEncontrados([]))
-                .finally(() => setBuscando(false));
-        }, 300);
-
-        return () => clearTimeout(espera);
-    }, [buscado]);
-
-    const enLaCola = useMemo(() => new Set(cola.map((c) => c.id)), [cola]);
-
-    // Los de afuera que hay que ofrecer: lo encontrado, más el elegido si ya no aparece.
-    const afuera = useMemo(() => {
-        const lista = encontrados.filter((c) => !enLaCola.has(c.id));
-
-        if (
-            recordado !== null &&
-            !enLaCola.has(recordado.id) &&
-            !lista.some((c) => c.id === recordado.id)
-        ) {
-            return [recordado, ...lista];
-        }
-
-        return lista;
-    }, [encontrados, enLaCola, recordado]);
-
-    const cambiar = (valor: string) => {
-        if (valor === '') {
-            setRecordado(null);
-            alElegir(null);
-
-            return;
-        }
-
-        const elegidoId = Number(valor);
-        const deAfuera = afuera.find((c) => c.id === elegidoId) ?? null;
-
-        setRecordado(enLaCola.has(elegidoId) ? null : deAfuera);
-        alElegir(elegidoId);
-    };
+    const hayCola = cadetes.some((c) => c.en_la_cola);
 
     /*
     | ⚠️ `min-w-0` en los tres, y no es cosmético: el ancho mínimo de un `<select>` es el de
@@ -141,14 +109,16 @@ export function SelectorDeCadete({
                 id={id}
                 name={nombre}
                 value={elegido === null ? '' : String(elegido)}
-                onChange={(e) => cambiar(e.target.value)}
+                onChange={(e) =>
+                    alElegir(e.target.value === '' ? null : Number(e.target.value))
+                }
                 className="border-input bg-background h-9 w-full min-w-0 rounded-md border px-3 text-sm"
             >
                 <option value="">Ninguno</option>
 
-                {cola.length > 0 && (
+                {enLaCola.length > 0 && (
                     <optgroup label="En la cola">
-                        {cola.map((cadete) => (
+                        {enLaCola.map((cadete) => (
                             <option key={cadete.id} value={cadete.id}>
                                 {comoSeLee(cadete)}
                             </option>
@@ -170,14 +140,14 @@ export function SelectorDeCadete({
             <Input
                 value={buscado}
                 onChange={(e) => setBuscado(e.target.value)}
-                placeholder="Buscar otro cadete por móvil o nombre"
+                placeholder="Filtrar por móvil o nombre"
                 autoComplete="off"
                 className={`min-w-0 text-xs ${enLinea ? 'h-9' : 'h-8'}`}
-                aria-label="Buscar un cadete que no está en la cola"
+                aria-label="Filtrar la lista de cadetes"
             />
 
-            {/* Que no haya resultados es información: si no, el campo parece no funcionar. */}
-            {buscado.trim() !== '' && !buscando && afuera.length === 0 && (
+            {/* Que no quede nadie es información: si no, el campo parece no funcionar. */}
+            {buscado.trim() !== '' && enLaCola.length === 0 && afuera.length === 0 && (
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >
@@ -185,7 +155,7 @@ export function SelectorDeCadete({
                 </span>
             )}
 
-            {cola.length === 0 && (
+            {!hayCola && (
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >

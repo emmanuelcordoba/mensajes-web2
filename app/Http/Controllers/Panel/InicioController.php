@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cadete;
+use App\Models\Configuracion;
 use App\Models\Pedido;
+use App\Models\Rol;
 use App\Models\User;
 use App\Services\ColaDeCadetes;
 use Illuminate\Http\Request;
@@ -99,7 +101,49 @@ class InicioController extends Controller
              */
             'ultimoPedido' => $request->session()->get('ultimoPedido'),
             'refresco' => self::REFRESCO,
+            // El selector de la barra de arriba. Ver `tiempoDeDemora()`.
+            'tiempoDeDemora' => self::tiempoDeDemora($usuario),
         ]);
+    }
+
+    /**
+     * El tiempo de demora que la barra de arriba deja cambiar.
+     *
+     * Es una fila de `configuraciones` que la oficina toca varias veces por día —cuando
+     * hay demora, cuando se normaliza—, así que el sistema viejo la puso en la barra en
+     * lugar de hacer abrir una pantalla.
+     *
+     * ⚠️ **VIVE ACÁ Y NO EN LAS PROPS COMPARTIDAS, Y POR ESO SE VE SÓLO EN ESTA PANTALLA.**
+     * Es lo que hace el panel viejo, aunque el selector esté dibujado en la barra: la barra
+     * lo envuelve en un `@isset($tiempo_de_demora)` y la única pantalla que define esa
+     * variable es `PanelController`, la portada. En el resto del panel el `isset` da false
+     * y el selector no existe. Cuando esto se compartía, el selector salía en las catorce
+     * pantallas y además costaba una consulta en cada una.
+     *
+     * ⚠️ Y sólo para quien puede cambiarlo: un comercio no la hace. Es una fila buscada por
+     * una columna UNIQUE; si alguna vez pesa, lo que corresponde es cachearla.
+     *
+     * @return array{id: int, valor: string|null, opciones: list<string>}|null
+     */
+    private static function tiempoDeDemora(User $usuario): ?array
+    {
+        if (! $usuario->tieneRol([Rol::ADMIN, Rol::EMPLEADO])) {
+            return null;
+        }
+
+        $configuracion = Configuracion::query()
+            ->where('nombre', 'TIEMPO_DE_DEMORA')
+            ->first(['id', 'valor']);
+
+        if ($configuracion === null) {
+            return null;
+        }
+
+        return [
+            'id' => $configuracion->id,
+            'valor' => $configuracion->valor,
+            'opciones' => Configuracion::TIEMPOS_DE_DEMORA,
+        ];
     }
 
     /**

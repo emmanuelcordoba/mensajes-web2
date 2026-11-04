@@ -127,16 +127,38 @@ test('the delay travels to the topbar only for whoever can change it', function 
     configuracion('TIEMPO_DE_DEMORA', Configuracion::TIPO_TEXTO, '30 minutos');
 
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->get('/panel/pedidos')
+        ->get('/panel')
         ->assertInertia(fn ($pagina) => $pagina
             ->where('tiempoDeDemora.valor', '30 minutos')
             ->where('tiempoDeDemora.opciones', Configuracion::TIEMPOS_DE_DEMORA)
+            ->etc()
         );
 
     // Un comercio no lo recibe: no se esconde con CSS, no viaja.
     $this->actingAs(usuarioCon(Rol::RESTRINGIDO))
-        ->get('/panel/pedidos')
-        ->assertInertia(fn ($pagina) => $pagina->where('tiempoDeDemora', null));
+        ->get('/panel')
+        ->assertInertia(fn ($pagina) => $pagina->where('tiempoDeDemora', null)->etc());
+});
+
+test('the delay is only on the front page of the panel, and not on every screen', function () {
+    // ⚠️ **Es lo que hace el sistema viejo**, aunque el selector esté dibujado en la barra
+    // de arriba: allá la barra lo envuelve en un `@isset($tiempo_de_demora)` y la única
+    // pantalla que define esa variable es `PanelController`, la portada. Cuando esto
+    // viajaba en las props compartidas, el selector salía en las catorce pantallas del
+    // panel y costaba una consulta en cada una.
+    configuracion('TIEMPO_DE_DEMORA', Configuracion::TIPO_TEXTO, '30 minutos');
+
+    $empleado = usuarioCon(Rol::EMPLEADO);
+
+    $this->actingAs($empleado)
+        ->get('/panel')
+        ->assertInertia(fn ($pagina) => $pagina->has('tiempoDeDemora')->etc());
+
+    foreach (['/panel/pedidos', '/panel/cadetes', '/panel/mensajes', '/panel/clientes'] as $otra) {
+        $this->actingAs($empleado)
+            ->get($otra)
+            ->assertInertia(fn ($pagina) => $pagina->missing('tiempoDeDemora')->etc());
+    }
 });
 
 test('a shop cannot change it either, even posting straight at the route', function () {

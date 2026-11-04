@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Configuracion;
 use App\Models\Rol;
 use App\Models\User;
 use App\Support\Navegacion;
@@ -49,8 +48,6 @@ class HandleInertiaRequests extends Middleware
             // El menú del panel, ya recortado por rol: lo que un comercio no
             // puede usar no viaja. Ver App\Support\Navegacion.
             'navegacion' => Navegacion::para($request->user()),
-            // El selector de la barra de arriba. Ver `tiempoDeDemora()`.
-            'tiempoDeDemora' => self::tiempoDeDemora($request->user()),
             // ⚠️ El mensaje que dejan los `->with('success', ...)` de los controladores.
             // Hasta ahora no lo compartía nadie, así que se escribía en la sesión y no lo
             // leía nadie: todas las pantallas del panel contestaban en silencio —el panel
@@ -120,40 +117,6 @@ class HandleInertiaRequests extends Middleware
             'email' => $user->email,
             'email_verified_at' => $user->email_verified_at,
             'rol' => $user->rol?->rol,
-        ];
-    }
-
-    /**
-     * El tiempo de demora que la barra de arriba deja cambiar.
-     *
-     * Es una fila de `configuraciones` que la oficina toca varias veces por día —cuando
-     * hay demora, cuando se normaliza—, así que el sistema viejo la puso en la barra en
-     * lugar de hacer abrir una pantalla. Acá igual.
-     *
-     * ⚠️ Es una consulta por página, pero **sólo para quien puede cambiarlo**: un comercio
-     * no la hace. Es una fila buscada por una columna UNIQUE; si alguna vez pesa, lo que
-     * corresponde es cachearla, no sacarla de acá.
-     *
-     * @return array{valor: string|null, opciones: list<string>}|null
-     */
-    private static function tiempoDeDemora(?User $user): ?array
-    {
-        if ($user === null || ! $user->tieneRol([Rol::ADMIN, Rol::EMPLEADO])) {
-            return null;
-        }
-
-        $configuracion = Configuracion::query()
-            ->where('nombre', 'TIEMPO_DE_DEMORA')
-            ->first(['id', 'valor']);
-
-        if ($configuracion === null) {
-            return null;
-        }
-
-        return [
-            'id' => $configuracion->id,
-            'valor' => $configuracion->valor,
-            'opciones' => Configuracion::TIEMPOS_DE_DEMORA,
         ];
     }
 }

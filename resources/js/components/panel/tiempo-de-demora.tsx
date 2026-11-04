@@ -8,8 +8,14 @@ import { useState } from 'react';
 | demora, cuando se normaliza—, y por eso el sistema viejo la puso en la barra en lugar de
 | hacer abrir una pantalla. Acá igual.
 |
-| ⚠️ No se dibuja para quien no puede cambiarlo: el servidor manda null y acá no hay nada
-| que esconder con CSS. Ver HandleInertiaRequests::tiempoDeDemora().
+| ⚠️ **SE VE SÓLO EN LA PORTADA DEL PANEL**, y es lo que hace el sistema viejo: la barra
+| de allá envuelve el selector en un `@isset($tiempo_de_demora)`, y la única pantalla que
+| define esa variable es `PanelController`. Acá lo mismo, por el mismo camino: la prop la
+| manda esa pantalla y no las props compartidas, así que en el resto del panel llega
+| `undefined` y no hay nada que dibujar. Ver InicioController::tiempoDeDemora().
+|
+| ⚠️ No se dibuja tampoco para quien no puede cambiarlo: el servidor manda null y acá no
+| hay nada que esconder con CSS.
 */
 
 export function TiempoDeDemora() {
@@ -17,7 +23,9 @@ export function TiempoDeDemora() {
     // El valor que se ve, para que el selector no vuelva al anterior mientras se guarda.
     const [elegido, setElegido] = useState(tiempoDeDemora?.valor ?? '');
 
-    if (tiempoDeDemora === null) {
+    // `undefined` es «esta pantalla no lo lleva» y null es «no te corresponde». Las dos
+    // terminan igual acá, pero son dos cosas distintas y conviene que se lean distinto.
+    if (tiempoDeDemora === null || tiempoDeDemora === undefined) {
         return null;
     }
 

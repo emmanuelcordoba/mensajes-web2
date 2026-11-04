@@ -7,6 +7,7 @@ use App\Models\Rol;
 use App\Models\User;
 use App\Support\Navegacion;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -55,10 +56,20 @@ class HandleInertiaRequests extends Middleware
             // leía nadie: todas las pantallas del panel contestaban en silencio —el panel
             // viejo mostraba estas dos alertas arriba de cada vista—. Se muestra con
             // `sonner`, que ya estaba montado en app.tsx sin que nada le mandara nada.
-            'aviso' => [
+            //
+            // ⚠️ **`always()`, y es lo que arregla el aviso repetido.** Las pantallas que
+            // se refrescan solas lo hacen con `usePoll(..., { only: [...] })`, y en una
+            // recarga parcial Inertia manda SÓLO las props pedidas y deja las demás como
+            // estaban. O sea que «Pedido 957329 asignado al móvil 1615» se quedaba pegado
+            // en las props y el cartel volvía a salir en cada refresco, uno atrás del
+            // otro, para siempre. Con `always()` el aviso viaja también en las parciales,
+            // ya vacío —el mensaje de sesión vale para un solo pedido—, y se borra el de
+            // antes. Vale para las cuatro pantallas que se refrescan: Inicio, la cola, el
+            // mapa y los mensajes.
+            'aviso' => Inertia::always([
                 'success' => $request->session()->get('success'),
                 'danger' => $request->session()->get('danger'),
-            ],
+            ]),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

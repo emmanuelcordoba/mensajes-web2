@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Jobs\CancelarPedidoSinConfirmar;
 use App\Models\Cadete;
 use App\Models\Cliente;
@@ -686,4 +687,53 @@ test('the mark is a yes or a no, and nothing else', function () {
         ->assertSessionHasErrors('imprimir');
 
     expect(MarcaDeImpresion::puesta($pedido))->toBeFalse();
+});
+
+test('the message of an assignment is said once, and not at every refresh', function () {
+    // ⚠️ **Esto salía mal y se veía:** después de asignar, el cartel «Pedido … asignado al
+    // móvil …» volvía a aparecer cada pocos segundos, uno atrás del otro, hasta que alguien
+    // cambiaba de pantalla.
+    //
+    // Inicio se refresca solo con `usePoll(..., { only: [...] })`, y en una recarga parcial
+    // Inertia manda SÓLO las props pedidas y deja las demás como estaban. El aviso no
+    // estaba entre las pedidas, así que el mensaje quedaba pegado en las props de la página
+    // y el front —que escucha cada visita— lo volvía a cantar en cada refresco.
+    //
+    // Lo que fija este test es que el aviso viaje también en las parciales: vacío, que es
+    // lo que un mensaje de sesión vale después de haberse leído una vez.
+    $pedido = unPedidoEnEspera();
+    $cadete = unCadeteParaAsignar(Cadete::ESTADO_ACTIVO_WEB);
+    $empleado = usuarioCon(Rol::EMPLEADO);
+
+    $this->actingAs($empleado)
+        ->patch("/panel/pedidos/{$pedido->id}/asignacion", loQueMandaElModal([
+            'cadete_id' => $cadete->id,
+        ]));
+
+    // La visita que sigue al redirect: acá sale el cartel, una vez.
+    $this->actingAs($empleado)
+        ->get('/panel')
+        ->assertInertia(fn ($pagina) => $pagina->where(
+            'aviso.success',
+            "Pedido {$pedido->numero} asignado al móvil {$cadete->numero_movil}.",
+        ));
+
+    // Y el refresco, que pide cuatro props: el aviso tiene que venir igual —si no, el de
+    // antes sigue en la página— y tiene que venir vacío.
+    $this->actingAs($empleado)
+        ->get('/panel', [
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'inicio/index',
+            'X-Inertia-Partial-Data' => 'cola,porQueNoLimpiar,espera,paraAsignar',
+            // Sin la version, Inertia contesta 409 y manda a recargar la pagina entera.
+            // La calcula el middleware a partir del manifiesto de Vite, como en un
+            // refresco de verdad.
+            'X-Inertia-Version' => (string) (new HandleInertiaRequests)->version(request()),
+        ])
+        ->assertOk()
+        // ⚠️ A mano y no con `assertInertia`: ese ayudante lee la vista, y una recarga
+        // parcial no tiene vista, contesta el JSON de la página.
+        ->assertJsonStructure(['props' => ['aviso' => ['success', 'danger']]])
+        ->assertJsonPath('props.aviso.success', null)
+        ->assertJsonPath('props.aviso.danger', null);
 });

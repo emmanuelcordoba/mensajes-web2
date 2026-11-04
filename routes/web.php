@@ -338,16 +338,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::patch('cadetes/{cadete}/estado', [CadeteController::class, 'cambiarEstado'])->name('cadetes.estado');
 
                 /*
-                | El buscador de cadetes del selector de Inicio: la cola la tiene la
-                | pantalla, y esto es para el resto.
-                |
-                | ⚠️ Contesta JSON como `detalle`, y por el mismo motivo: son nombres de
-                | personas y no tienen que viajar en cada refresco de una pantalla que está
-                | abierta todo el día en una oficina.
-                */
-                Route::get('cadetes/buscar', [CadeteController::class, 'buscar'])->name('cadetes.buscar');
-
-                /*
                 | ⚠️ Contesta JSON y no una pantalla de Inertia. La pide el diálogo de
                 | detalle de Inicio con un `fetch`, como el panel viejo pedía
                 | `ajax/cadetes/getcadete`: son datos de una persona y se traen recién

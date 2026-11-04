@@ -258,10 +258,10 @@ test('a blocked cadete is not offered, not even from the queue', function () {
             ->etc());
 });
 
-test('a cadete found outside the queue can be given the order', function () {
-    // El camino nuevo del selector, de punta a punta: se lo encuentra con el buscador y se
-    // le asigna. Es la rama `default` del switch viejo —queda Finalizado y no se le cobra—,
-    // y en el sistema viejo era alcanzable porque el selector ofrecía a todos.
+test('a cadete offered outside the queue can be given the order', function () {
+    // El camino nuevo del selector, de punta a punta: aparece en la parte de abajo de la
+    // lista y se le asigna. Es la rama `default` del switch viejo —queda Finalizado y no se
+    // le cobra—, y en el sistema viejo era alcanzable porque el selector ofrecía a todos.
     $pedido = unPedidoEnEspera();
     $afuera = Cadete::factory()->create([
         'numero_movil' => 77,
@@ -271,12 +271,13 @@ test('a cadete found outside the queue can be given the order', function () {
 
     $empleado = usuarioCon(Rol::EMPLEADO);
 
-    $encontrados = $this->actingAs($empleado)
-        ->getJson('/panel/cadetes/buscar?q=quiroga')
-        ->assertOk()
-        ->json();
-
-    expect(array_column($encontrados, 'id'))->toBe([$afuera->id]);
+    $this->actingAs($empleado)
+        ->get('/panel')
+        ->assertInertia(fn ($pagina) => $pagina
+            ->has('paraAsignar', 1)
+            ->where('paraAsignar.0.id', $afuera->id)
+            ->where('paraAsignar.0.en_la_cola', false)
+            ->etc());
 
     $this->actingAs($empleado)
         ->patch("/panel/pedidos/{$pedido->id}/asignacion", loQueMandaElModal([

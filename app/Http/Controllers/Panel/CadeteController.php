@@ -48,9 +48,6 @@ use Inertia\Response;
  */
 class CadeteController extends Controller
 {
-    /** Cuántos cadetes contesta el buscador: lo que cabe en una lista sin scroll. */
-    public const CUANTOS_AL_BUSCAR = 20;
-
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Cadete::class);
@@ -227,66 +224,6 @@ class CadeteController extends Controller
             'Móvil '.$movil.' dado de baja, con sus '.$llevo['mensajes'].' mensajes'
             .($llevo['postulacion'] ? ', su postulación' : '')
             .' y su cuenta. Sus '.$pedidos.' pedidos se conservan en el historial.');
-    }
-
-    /**
-     * Los cadetes a los que se les puede dar un pedido, buscados contra el servidor.
-     *
-     * La cola ya está en la pantalla y se refresca sola; esto es para el resto. Son las
-     * dos mitades del selector de cadetes del alta y del modal de la lista de espera: la
-     * cola arriba, porque es de donde sale el 97% de los pedidos, y abajo quien haga falta.
-     *
-     * ⚠️ **Sin los bloqueados, y el sistema viejo los ofrecía.** Allá el primer dibujado de
-     * la pantalla llena el selector con los no bloqueados —134 hoy— y cinco segundos después
-     * `recargarCadetesActivos()` lo reemplaza por `Cadete::all()`, que son 220 e incluye a
-     * los 86 que tienen el usuario bloqueado. O sea que el selector se ensancha al primer
-     * refresco y se le podía asignar un pedido a alguien bloqueado. Esa es la única parte
-     * del comportamiento viejo que no se replica, y es a propósito.
-     *
-     * ⚠️ **Contra el servidor y no en la página.** El panel viejo manda los documentos
-     * completos de los 220 cadetes cada cinco segundos: 186 KB por refresco, en una
-     * pantalla que está abierta todo el día. Es el mismo arreglo que ya se hizo en el
-     * buscador de Mensajes.
-     *
-     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool}>
-     */
-    public function buscar(Request $request): array
-    {
-        $this->authorize('viewAny', Cadete::class);
-
-        $buscado = trim($request->string('q')->value());
-
-        // Con el campo vacío no se contesta nada: lo que hay que mirar entonces es la cola,
-        // que la pantalla ya tiene. Así tampoco se manda el padrón entero al navegador.
-        if ($buscado === '') {
-            return [];
-        }
-
-        return Cadete::query()
-            // La misma regla que usa el selector de Inicio: ver `scopeOfrecibles`.
-            ->ofrecibles()
-            ->where(function (Builder $w) use ($buscado): void {
-                $w->where('apellidos', 'ilike', '%'.$buscado.'%')
-                    ->orWhere('nombres', 'ilike', '%'.$buscado.'%');
-
-                // Por móvil sólo si se escribió un número: `intval('juan')` es 0 y traía
-                // al móvil 0. Es el mismo descuido del listado viejo.
-                if (ctype_digit($buscado)) {
-                    $w->orWhere('numero_movil', (int) $buscado);
-                }
-            })
-            ->orderBy('numero_movil')
-            ->limit(self::CUANTOS_AL_BUSCAR)
-            ->get(['id', 'numero_movil', 'apellidos', 'nombres', 'estado'])
-            ->values()
-            ->map(fn (Cadete $cadete): array => [
-                'id' => $cadete->id,
-                'movil' => $cadete->numero_movil,
-                'nombre' => $cadete->nombre_completo,
-                'en_la_app' => $cadete->estaEnLaApp(),
-                'en_la_cola' => $cadete->estaActivo(),
-            ])
-            ->all();
     }
 
     /**

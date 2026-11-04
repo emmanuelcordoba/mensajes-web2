@@ -545,51 +545,9 @@ test('the client search answers nothing when nothing was typed', function () {
         ->assertExactJson([]);
 });
 
-test('the cadete search leaves out the blocked ones', function () {
-    // ⚠️ **Esto es la única parte del comportamiento viejo que no se replica, y a propósito.**
-    // Allá `recargarCadetesActivos()` llena el selector con `Cadete::all()`: 220 cadetes, de
-    // los que 86 tienen el usuario bloqueado. O sea que se le podía asignar un pedido a
-    // alguien bloqueado.
-    $libre = Cadete::factory()->create(['numero_movil' => 31, 'apellidos' => 'Gómez']);
-    $bloqueado = Cadete::factory()->create(['numero_movil' => 32, 'apellidos' => 'Gómez']);
-    $bloqueado->user?->update(['bloqueado' => 'otro-motivo']);
-
-    $encontrados = $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->getJson('/panel/cadetes/buscar?q=gómez')
-        ->assertOk();
-
-    expect(array_column($encontrados->json(), 'id'))->toBe([$libre->id]);
-});
-
-test('the cadete search says whether each one is in the queue', function () {
-    $enLaCola = Cadete::factory()->create([
-        'numero_movil' => 41,
-        'apellidos' => 'Luna',
-        'estado' => Cadete::ESTADO_ACTIVO_APP,
-        'orden_cola' => 1,
-    ]);
-    $afuera = Cadete::factory()->create([
-        'numero_movil' => 42,
-        'apellidos' => 'Luna',
-        'estado' => Cadete::ESTADO_INACTIVO,
-    ]);
-
-    $encontrados = $this->actingAs(usuarioCon(Rol::EMPLEADO))
-        ->getJson('/panel/cadetes/buscar?q=luna')
-        ->assertOk()
-        ->json();
-
-    $porId = array_column($encontrados, null, 'id');
-
-    expect($porId[$enLaCola->id]['en_la_cola'])->toBeTrue()
-        ->and($porId[$enLaCola->id]['en_la_app'])->toBeTrue()
-        ->and($porId[$afuera->id]['en_la_cola'])->toBeFalse();
-});
-
-test('a shop cannot search cadetes or clients', function () {
+test('a shop cannot search clients', function () {
     [, $cuenta] = unComercioConCuenta();
 
-    $this->actingAs($cuenta)->getJson('/panel/cadetes/buscar?q=luna')->assertForbidden();
     $this->actingAs($cuenta)->getJson('/panel/clientes/buscar?q=farmacia')->assertForbidden();
 });
 

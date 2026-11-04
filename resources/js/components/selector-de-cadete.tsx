@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 | teléfono o pasa por el mostrador. Los bloqueados no aparecen nunca.
 |
 | ⚠️ **El campo de al lado filtra la lista; ya no le pregunta al servidor.** Antes el resto
-| de los cadetes no viajaba y había que buscarlos contra `cadetes/buscar`, una consulta por
+| de los cadetes no viajaba y había que buscarlos contra el servidor, una consulta por
 | tecla. Ahora están todos acá: filtrar es mirar lo que la pantalla ya tiene.
 */
 

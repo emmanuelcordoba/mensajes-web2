@@ -10,6 +10,7 @@ use App\Models\Pedido;
 use App\Models\Rol;
 use App\Services\AltaDePedido;
 use App\Services\AsignacionDeCadete;
+use App\Support\MarcaDeImpresion;
 use App\Support\Momento;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
@@ -282,6 +283,10 @@ class PedidoController extends Controller
                 true,
             ),
             'cadete_id' => $pedido->cadete_id,
+
+            // Si alguien ya dejó marcado que este pedido se imprime al asignarlo. Ver
+            // `MarcaDeImpresion`: no es del pedido, es una nota de la oficina.
+            'imprimir' => MarcaDeImpresion::puesta($pedido),
         ];
     }
 
@@ -305,9 +310,36 @@ class PedidoController extends Controller
             $request->user()?->id,
         );
 
+        // Ya hay a quién darle el papel: la marca cumplió y se saca, imprima o no el
+        // navegador que mandó esto. Si no se asignó a nadie, el pedido sigue esperando y
+        // la marca con él.
+        if ($cadete !== null) {
+            MarcaDeImpresion::sacar($pedido);
+        }
+
         return back()->with('success', $cadete === null
             ? 'Pedido guardado.'
             : 'Pedido '.$pedido->numero.' asignado al móvil '.$cadete->numero_movil.'.');
+    }
+
+    /**
+     * Dejar marcado —o desmarcado— que al asignarle el cadete se imprime el cupón.
+     *
+     * ⚠️ **Lo que imprime es el navegador, no esto.** Acá sólo se recuerda la decisión, para
+     * que siga estando cuando el pedido se asigne más tarde, o lo asigne otra persona. Ver
+     * `MarcaDeImpresion`, que explica por qué va a la caché y no a la base.
+     */
+    public function impresion(Request $request, Pedido $pedido): RedirectResponse
+    {
+        // El mismo permiso que asignar: la marca no dice nada del pedido, dice qué va a
+        // pasar cuando se lo asignen, y eso lo decide quien puede asignarlo.
+        $this->authorize('asignarCadete', $pedido);
+
+        $datos = $request->validate(['imprimir' => ['required', 'boolean']]);
+
+        MarcaDeImpresion::poner($pedido, (bool) $datos['imprimir']);
+
+        return back();
     }
 
     /**

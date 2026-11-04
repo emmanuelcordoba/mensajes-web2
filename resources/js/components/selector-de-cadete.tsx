@@ -54,12 +54,15 @@ export function SelectorDeCadete({
     alElegir,
     nombre = 'cadete_id',
     id,
+    enLinea = false,
 }: {
     cola: CadeteElegible[];
     elegido: number | null;
     alElegir: (id: number | null) => void;
     nombre?: string;
     id?: string;
+    /** El buscador al lado del selector y no debajo, donde la fila sobra ancho. */
+    enLinea?: boolean;
 }) {
     const [buscado, setBuscado] = useState('');
     const [encontrados, setEncontrados] = useState<CadeteElegible[]>([]);
@@ -124,14 +127,22 @@ export function SelectorDeCadete({
         alElegir(elegidoId);
     };
 
+    /*
+    | ⚠️ `min-w-0` en los tres, y no es cosmético: el ancho mínimo de un `<select>` es el de
+    | su opción más larga, así que con un cadete de nombre largo en la cola se desbordaba de
+    | su columna y se salía del modal —se veía—. El `min-width: auto` que traen los hijos de
+    | una grilla es justo lo que hay que apagar.
+    */
     return (
-        <div className="grid gap-1">
+        <div
+            className={`grid min-w-0 gap-1 ${enLinea ? 'sm:grid-cols-2 sm:items-start sm:gap-2' : ''}`}
+        >
             <select
                 id={id}
                 name={nombre}
                 value={elegido === null ? '' : String(elegido)}
                 onChange={(e) => cambiar(e.target.value)}
-                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+                className="border-input bg-background h-9 w-full min-w-0 rounded-md border px-3 text-sm"
             >
                 <option value="">Ninguno</option>
 
@@ -161,19 +172,23 @@ export function SelectorDeCadete({
                 onChange={(e) => setBuscado(e.target.value)}
                 placeholder="Buscar otro cadete por móvil o nombre"
                 autoComplete="off"
-                className="h-8 text-xs"
+                className={`min-w-0 text-xs ${enLinea ? 'h-9' : 'h-8'}`}
                 aria-label="Buscar un cadete que no está en la cola"
             />
 
             {/* Que no haya resultados es información: si no, el campo parece no funcionar. */}
             {buscado.trim() !== '' && !buscando && afuera.length === 0 && (
-                <span className="text-muted-foreground text-xs">
+                <span
+                    className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
+                >
                     Ningún cadete coincide. Los bloqueados no se pueden elegir.
                 </span>
             )}
 
             {cola.length === 0 && (
-                <span className="text-muted-foreground text-xs">
+                <span
+                    className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
+                >
                     No hay nadie en la cola.
                 </span>
             )}

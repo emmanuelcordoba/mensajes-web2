@@ -8,6 +8,7 @@ use App\Models\LogEstadoPedido;
 use App\Models\MovimientoCobranzaSaldo;
 use App\Models\Pedido;
 use App\Models\Rol;
+use App\Support\MarcaDeImpresion;
 use Illuminate\Support\Facades\Queue;
 
 /*
@@ -599,4 +600,90 @@ test('showing the waiting list is a rule about orders, not about cadetes', funct
 
     expect(usuarioCon(Rol::RESTRINGIDO, Cliente::factory()->create())
         ->can('verListaDeEspera', Pedido::class))->toBeFalse();
+});
+
+/*
+| La tilde de «Imprimir pedido», que no tiene equivalente en el sistema viejo.
+|
+| Lo que hay que garantizar es que la marca sobreviva a que el cadete aparezca más tarde
+| —que es para lo único que se la guarda— y que se vaya sola cuando ya cumplió. Lo que
+| imprime es el navegador; acá se prueba la nota que le queda al servidor.
+*/
+
+test('the print mark is remembered, and travels with the order detail', function () {
+    // ⚠️ El caso que importa: se marca ahora y el cadete aparece dentro de dos horas,
+    // quizá puesto por otra persona. Si la marca viviera en el navegador que la puso, en
+    // ese caso —el único para el que se la guarda— se habría perdido.
+    $pedido = unPedidoEnEspera();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->getJson("/panel/pedidos/{$pedido->id}/detalle")
+        ->assertJsonPath('imprimir', false);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->put("/panel/pedidos/{$pedido->id}/impresion", ['imprimir' => true])
+        ->assertSessionHasNoErrors();
+
+    expect(MarcaDeImpresion::puesta($pedido))->toBeTrue();
+
+    // Otra persona, otra sesión: la ve igual.
+    $this->actingAs(usuarioCon(Rol::ADMIN))
+        ->getJson("/panel/pedidos/{$pedido->id}/detalle")
+        ->assertJsonPath('imprimir', true);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->put("/panel/pedidos/{$pedido->id}/impresion", ['imprimir' => false]);
+
+    expect(MarcaDeImpresion::puesta($pedido))->toBeFalse();
+});
+
+test('the mark waits for the cadete, and is dropped once there is one', function () {
+    $pedido = unPedidoEnEspera();
+    $cadete = unCadeteParaAsignar(Cadete::ESTADO_ACTIVO_WEB);
+
+    MarcaDeImpresion::poner($pedido, true);
+
+    // Guardar sin cadete no es asignar: el pedido sigue esperando y la marca con él.
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->patch("/panel/pedidos/{$pedido->id}/asignacion", loQueMandaElModal());
+
+    expect(MarcaDeImpresion::puesta($pedido))->toBeTrue();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->patch("/panel/pedidos/{$pedido->id}/asignacion", loQueMandaElModal([
+            'cadete_id' => $cadete->id,
+        ]))
+        ->assertSessionHasNoErrors();
+
+    // Ya hay a quién darle el papel: la marca cumplió. Si se quedara, el pedido volvería a
+    // salir impreso la próxima vez que alguien lo abra y lo guarde.
+    expect($pedido->fresh()->cadete_id)->toBe($cadete->id)
+        ->and(MarcaDeImpresion::puesta($pedido))->toBeFalse();
+});
+
+test('marking an order for printing is for whoever can assign it', function () {
+    // El mismo permiso que asignar: la marca dice qué va a pasar cuando se lo asignen.
+    $comercio = Cliente::factory()->create();
+    $pedido = unPedidoEnEspera();
+    $pedido->update(['cliente_id' => $comercio->id]);
+
+    $this->actingAs(usuarioCon(Rol::RESTRINGIDO, $comercio))
+        ->put("/panel/pedidos/{$pedido->id}/impresion", ['imprimir' => true])
+        ->assertForbidden();
+
+    expect(MarcaDeImpresion::puesta($pedido))->toBeFalse();
+});
+
+test('the mark is a yes or a no, and nothing else', function () {
+    $pedido = unPedidoEnEspera();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->put("/panel/pedidos/{$pedido->id}/impresion", ['imprimir' => 'cuando pueda'])
+        ->assertSessionHasErrors('imprimir');
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->put("/panel/pedidos/{$pedido->id}/impresion", [])
+        ->assertSessionHasErrors('imprimir');
+
+    expect(MarcaDeImpresion::puesta($pedido))->toBeFalse();
 });

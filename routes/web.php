@@ -179,6 +179,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('pedidos/{pedido}/detalle', [PedidoController::class, 'detalle'])->name('pedidos.detalle');
                 Route::patch('pedidos/{pedido}/asignacion', [PedidoController::class, 'asignar'])->name('pedidos.asignar');
 
+                /*
+                | La tilde de «Imprimir pedido» del modal, que no tiene equivalente viejo.
+                |
+                | ⚠️ No guarda nada del pedido: deja la marca en la caché para que siga
+                | estando si el cadete se asigna más tarde, o lo asigna otra persona. Ver
+                | `App\Support\MarcaDeImpresion`.
+                */
+                Route::put('pedidos/{pedido}/impresion', [PedidoController::class, 'impresion'])->name('pedidos.impresion');
+
                 Route::get('mensajes/cadetes', [MensajeController::class, 'cadetes'])->name('mensajes.cadetes');
                 Route::get('mensajes/{cadete?}', [MensajeController::class, 'index'])->name('mensajes.index');
                 Route::post('mensajes/{cadete}', [MensajeController::class, 'enviar'])->name('mensajes.enviar');

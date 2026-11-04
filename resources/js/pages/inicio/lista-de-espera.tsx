@@ -81,6 +81,8 @@ type DetalleDePedido = {
     valor_declarado: string | null;
     editable: boolean;
     cadete_id: number | null;
+    /** Si ya quedó marcado que al asignarlo se imprime el cupón. Ver `MarcaDeImpresion`. */
+    imprimir: boolean;
 };
 
 /*
@@ -252,6 +254,33 @@ function FilaDeEspera({
 }
 
 /**
+ * Mandar el cupón a la impresora sin que se vea nada.
+ *
+ * ⚠️ **Un marco escondido y no una pestaña.** El cupón ya se imprime solo al cargar —el
+ * `window.print()` del final de `cupon.blade.php`—, así que alcanza con cargarlo; y abrirlo
+ * con `window.open()` después de que contesta el servidor es justo lo que los navegadores
+ * tratan como una ventana emergente, porque el clic que lo pidió ya pasó. Desde el listado
+ * se sigue abriendo en una pestaña, que ahí sí lo pide una persona en el momento.
+ *
+ * El marco se saca a los dos minutos y no al volver de imprimir: en Chrome `print()` corta
+ * la ejecución hasta que alguien cierra el diálogo, y para cuando esto se entera, el aviso
+ * de que terminó ya pasó.
+ */
+function imprimirElCupon(id: number): void {
+    const marco = document.createElement('iframe');
+
+    marco.setAttribute('aria-hidden', 'true');
+    marco.setAttribute('title', `Cupón del pedido ${id}`);
+    marco.style.cssText =
+        'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    marco.src = `/panel/pedidos/${id}/cupon`;
+
+    document.body.appendChild(marco);
+
+    window.setTimeout(() => marco.remove(), 120000);
+}
+
+/**
  * El modal del pedido: lo que se puede editar, y a quién dárselo.
  *
  * Es el `modalAsignarCadete` del panel viejo. Los campos de un pedido de la app van de sólo
@@ -278,9 +307,34 @@ function ElModalDelPedido({
     */
     const [cadete, setCadete] = useState<number | null>(null);
 
+    /*
+    | Si al asignar hay que imprimir el cupón.
+    |
+    | ⚠️ El valor de arranque lo trae el servidor y no es `false`: la tilde se puede poner a
+    | la mañana y el cadete aparecer a la tarde, puesto por otra persona. Ver
+    | `App\Support\MarcaDeImpresion`, que es donde se guarda y por qué.
+    */
+    const [imprimir, setImprimir] = useState(false);
+
     useEffect(() => {
         setCadete(null);
-    }, [pedido?.id]);
+        setImprimir(pedido?.imprimir ?? false);
+    }, [pedido?.id, pedido?.imprimir]);
+
+    /* La tilde se guarda sola, en el momento: para eso existe. */
+    const marcar = (valor: boolean) => {
+        setImprimir(valor);
+
+        if (pedido === null) {
+            return;
+        }
+
+        router.put(
+            `/panel/pedidos/${pedido.id}/impresion`,
+            { imprimir: valor },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
 
     return (
         <Dialog open={abierto} onOpenChange={(abre) => !abre && cerrar()}>
@@ -324,7 +378,15 @@ function ElModalDelPedido({
                         action={`/panel/pedidos/${pedido.id}/asignacion`}
                         method="patch"
                         options={{ preserveScroll: true }}
-                        onSuccess={cerrar}
+                        onSuccess={() => {
+                            // Sólo si se le dio a alguien: el cupón es el papel del
+                            // cadete, y sin cadete saldría uno que dice «sin asignar».
+                            if (imprimir && cadete !== null) {
+                                imprimirElCupon(pedido.id);
+                            }
+
+                            cerrar();
+                        }}
                         className="grid gap-3"
                     >
                         {({ errors, processing }) => (
@@ -414,29 +476,35 @@ function ElModalDelPedido({
                                         tipo="number"
                                         soloLectura={!pedido.editable}
                                     />
-
-                                    {/* ⚠️ La cola arriba y el resto buscando contra el
-                                        servidor. El panel viejo ofrece acá los 220 cadetes
-                                        vivos —bloqueados incluidos— y los manda enteros
-                                        cada cinco segundos. El selector es el mismo que el
-                                        del alta, porque la regla de a quién se le puede dar
-                                        un pedido es una sola. */}
-                                    <label
-                                        className="grid gap-1 text-sm"
-                                        htmlFor="asignar-cadete"
-                                    >
-                                        <span className="text-muted-foreground">
-                                            Asignar cadete
-                                        </span>
-                                        <SelectorDeCadete
-                                            id="asignar-cadete"
-                                            cola={paraAsignar}
-                                            elegido={cadete}
-                                            alElegir={setCadete}
-                                        />
-                                        <InputError message={errors.cadete_id} />
-                                    </label>
                                 </div>
+
+                                {/* ⚠️ La cola arriba y el resto buscando contra el
+                                    servidor. El panel viejo ofrece acá los 220 cadetes
+                                    vivos —bloqueados incluidos— y los manda enteros cada
+                                    cinco segundos. El selector es el mismo que el del
+                                    alta, porque la regla de a quién se le puede dar un
+                                    pedido es una sola.
+
+                                    Va en su propia fila y no en un tercio junto al valor:
+                                    son dos campos —el selector y su buscador— y ahí
+                                    entraban uno debajo del otro, apretados contra el
+                                    borde. */}
+                                <label
+                                    className="grid min-w-0 gap-1 text-sm"
+                                    htmlFor="asignar-cadete"
+                                >
+                                    <span className="text-muted-foreground">
+                                        Asignar cadete
+                                    </span>
+                                    <SelectorDeCadete
+                                        id="asignar-cadete"
+                                        cola={paraAsignar}
+                                        elegido={cadete}
+                                        alElegir={setCadete}
+                                        enLinea
+                                    />
+                                    <InputError message={errors.cadete_id} />
+                                </label>
 
                                 {(pedido.tipo_paquete !== null ||
                                     pedido.peso_paquete !== null ||
@@ -448,12 +516,28 @@ function ElModalDelPedido({
                                     </p>
                                 )}
 
-                                <div className="flex items-center justify-between gap-2 pt-1">
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                     <Borrar pedido={pedido} alTerminar={cerrar} />
 
-                                    <Button type="submit" disabled={processing}>
-                                        Guardar y asignar
-                                    </Button>
+                                    <div className="flex items-center gap-4">
+                                        {/* Al lado del botón porque es lo que cambia lo
+                                            que el botón hace; y destildada de entrada,
+                                            porque la mayoría de los pedidos no llevan
+                                            papel. */}
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={imprimir}
+                                                onChange={(e) => marcar(e.target.checked)}
+                                                className="accent-primary size-4"
+                                            />
+                                            Imprimir pedido
+                                        </label>
+
+                                        <Button type="submit" disabled={processing}>
+                                            Guardar y asignar
+                                        </Button>
+                                    </div>
                                 </div>
                             </>
                         )}

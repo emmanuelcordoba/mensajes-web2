@@ -12,6 +12,7 @@ import {
     NuevoPedido,
     type ParaImprimir,
 } from '@/pages/inicio/nuevo-pedido';
+import { ProveedorDePausaDeRefresco } from '@/hooks/use-pausa-de-refresco';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -133,12 +134,17 @@ export default function InicioIndex({
         }
     };
 
-    usePoll(refresco, {
+    /*
+    | ⚠️ `stop` y `start` no son para apagar el refresco: son para pausarlo mientras alguien
+    | tiene desplegada una lista de cadetes, en el alta o en el modal de la lista de espera.
+    | El porqué está en el hook.
+    */
+    const { stop, start } = usePoll(refresco, {
         only: ['cola', 'porQueNoLimpiar', 'espera', 'paraAsignar'],
     });
 
     return (
-        <>
+        <ProveedorDePausaDeRefresco parar={stop} seguir={start}>
             <Head title="Inicio" />
 
             <div className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-12">
@@ -182,7 +188,7 @@ export default function InicioIndex({
                 error={error}
                 mapa={mapa}
             />
-        </>
+        </ProveedorDePausaDeRefresco>
     );
 }
 

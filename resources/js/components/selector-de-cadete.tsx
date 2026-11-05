@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
+import { usePausaMientrasEstaAbierto } from '@/hooks/use-pausa-de-refresco';
 
 /*
 | A qué cadete se le da el pedido.
@@ -74,6 +75,15 @@ export function SelectorDeCadete({
     const [buscado, setBuscado] = useState('');
 
     /*
+    | ⚠️ **Mientras la lista está desplegada, la pantalla no se refresca.** Si no, lo que el
+    | navegador está mostrando cambia abajo —entra o sale alguien de la cola— y en el
+    | celular elegir no sale: la lista se cierra sola o queda apuntando a otro cadete. Es
+    | el mismo arreglo que tiene el panel viejo. Quién para el refresco y cuándo vuelve
+    | está en el hook; acá sólo se avisa.
+    */
+    const abierta = usePausaMientrasEstaAbierto<HTMLSelectElement>();
+
+    /*
     | Los dos grupos, ya filtrados.
     |
     | ⚠️ **El elegido se muestra aunque el filtro lo deje afuera.** Si no, al seguir tipeando
@@ -106,12 +116,16 @@ export function SelectorDeCadete({
             className={`grid min-w-0 gap-1 ${enLinea ? 'sm:grid-cols-2 sm:items-start sm:gap-2' : ''}`}
         >
             <select
+                ref={abierta.ref}
                 id={id}
                 name={nombre}
                 value={elegido === null ? '' : String(elegido)}
-                onChange={(e) =>
-                    alElegir(e.target.value === '' ? null : Number(e.target.value))
-                }
+                onFocus={abierta.onFocus}
+                onBlur={abierta.onBlur}
+                onChange={(e) => {
+                    abierta.seCerro();
+                    alElegir(e.target.value === '' ? null : Number(e.target.value));
+                }}
                 className="border-input bg-background h-9 w-full min-w-0 rounded-md border px-3 text-sm"
             >
                 <option value="">Ninguno</option>

@@ -137,10 +137,11 @@ export function usePausaDeRefresco(): PausaDeRefresco {
  */
 export function usePausaMientrasEstaAbierto<T extends HTMLElement>(): {
     ref: RefObject<T | null>;
+    /** Si la lista está desplegada ahora mismo, por lo que el componente quiera hacer. */
+    estaAbierta: boolean;
     onFocus: () => void;
+    /** También para el `onChange`: elegir cierra la lista. */
     onBlur: () => void;
-    /** Para llamar junto con lo que haga el `onChange` del `<select>`. */
-    seCerro: () => void;
 } {
     const { pausar, reanudar } = usePausaDeRefresco();
     const elemento = useRef<T | null>(null);
@@ -183,5 +184,10 @@ export function usePausaMientrasEstaAbierto<T extends HTMLElement>(): {
         };
     }, [abierta, pausar, reanudar]);
 
-    return { ref: elemento, onFocus: abrir, onBlur: cerrar, seCerro: cerrar };
+    return {
+        ref: elemento,
+        estaAbierta: abierta,
+        onFocus: abrir,
+        onBlur: cerrar,
+    };
 }

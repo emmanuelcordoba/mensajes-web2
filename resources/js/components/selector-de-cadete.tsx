@@ -84,6 +84,30 @@ export function SelectorDeCadete({
     const abierta = usePausaMientrasEstaAbierto<HTMLSelectElement>();
 
     /*
+    | ⚠️ **Y mientras está desplegada se dibujan los cadetes de cuando se abrió.** Parar el
+    | refresco no alcanza: una respuesta puede venir en camino desde antes de abrirla, y la
+    | pantalla también se refresca por su cuenta cuando se asigna o se borra un pedido. Si
+    | la lista cambia abajo, en el celular elegir no sale. Es el mismo chequeo que el panel
+    | viejo hace antes de pisar las opciones.
+    |
+    | Al cerrarse vuelve la lista de verdad, que para entonces ya está al día.
+    */
+    const [foto, setFoto] = useState<CadeteElegible[] | null>(null);
+
+    const alAbrirse = () => {
+        setFoto(cadetes);
+        abierta.onFocus();
+    };
+
+    const alCerrarse = () => {
+        setFoto(null);
+        abierta.onBlur();
+    };
+
+    /* La lista se cierra sola con un toque afuera, y entonces la foto ya no manda. */
+    const losQueSeVen = abierta.estaAbierta && foto !== null ? foto : cadetes;
+
+    /*
     | Los dos grupos, ya filtrados.
     |
     | ⚠️ **El elegido se muestra aunque el filtro lo deje afuera.** Si no, al seguir tipeando
@@ -93,7 +117,7 @@ export function SelectorDeCadete({
     const { enLaCola, afuera } = useMemo(() => {
         const texto = buscado.trim().toLocaleLowerCase();
 
-        const queVan = cadetes.filter(
+        const queVan = losQueSeVen.filter(
             (c) => texto === '' || c.id === elegido || coincide(c, texto),
         );
 
@@ -101,9 +125,9 @@ export function SelectorDeCadete({
             enLaCola: queVan.filter((c) => c.en_la_cola),
             afuera: queVan.filter((c) => !c.en_la_cola),
         };
-    }, [cadetes, buscado, elegido]);
+    }, [losQueSeVen, buscado, elegido]);
 
-    const hayCola = cadetes.some((c) => c.en_la_cola);
+    const hayCola = losQueSeVen.some((c) => c.en_la_cola);
 
     /*
     | ⚠️ `min-w-0` en los tres, y no es cosmético: el ancho mínimo de un `<select>` es el de
@@ -120,10 +144,10 @@ export function SelectorDeCadete({
                 id={id}
                 name={nombre}
                 value={elegido === null ? '' : String(elegido)}
-                onFocus={abierta.onFocus}
-                onBlur={abierta.onBlur}
+                onFocus={alAbrirse}
+                onBlur={alCerrarse}
                 onChange={(e) => {
-                    abierta.seCerro();
+                    alCerrarse();
                     alElegir(e.target.value === '' ? null : Number(e.target.value));
                 }}
                 className="border-input bg-background h-9 w-full min-w-0 rounded-md border px-3 text-sm"

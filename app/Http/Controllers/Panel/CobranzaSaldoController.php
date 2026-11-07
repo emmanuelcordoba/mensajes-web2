@@ -10,6 +10,7 @@ use App\Models\MovimientoCobranzaSaldo;
 use App\Models\Pedido;
 use App\Services\CambioDeModalidadDeCobranza;
 use App\Support\Momento;
+use App\Support\NumeroBuscado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,9 +57,10 @@ class CobranzaSaldoController extends Controller
                     $w->where('apellidos', 'ilike', '%'.$buscado.'%')
                         ->orWhere('nombres', 'ilike', '%'.$buscado.'%');
 
-                    // Por móvil sólo si lo escrito es un número, como en el resto.
-                    if (ctype_digit($buscado)) {
-                        $w->orWhere('numero_movil', (int) $buscado);
+                    // Por móvil sólo si lo escrito es un número que pueda ser uno,
+                    // como en el resto. Ver App\Support\NumeroBuscado.
+                    if (($movil = NumeroBuscado::deTexto($buscado)) !== null) {
+                        $w->orWhere('numero_movil', $movil);
                     }
                 },
             ))

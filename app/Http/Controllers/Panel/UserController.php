@@ -7,6 +7,7 @@ use App\Http\Requests\Panel\GuardarUsuarioRequest;
 use App\Models\Cliente;
 use App\Models\Rol;
 use App\Models\User;
+use App\Support\NumeroBuscado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -193,13 +194,15 @@ class UserController extends Controller
                 function (Builder $w) use ($buscado): void {
                     $w->where('nombre_mostrado', 'ilike', '%'.$buscado.'%');
 
-                    // ⚠️ Por número SÓLO si lo que se escribió es un número. Antes esto
-                    // era un `orWhere('numero', (int) $buscado)` suelto, y `(int)` sobre
-                    // un texto da 0: buscar «farmacia» traía además al cliente número 0,
-                    // que es un banco. Un resultado de más en una lista de la que se
-                    // elige a quién le va a ver los pedidos una cuenta.
-                    if (ctype_digit($buscado)) {
-                        $w->orWhere('numero', (int) $buscado);
+                    // ⚠️ Por número SÓLO si lo que se escribió es un número, y uno que
+                    // pueda ser un número de cliente. Antes esto era un
+                    // `orWhere('numero', (int) $buscado)` suelto, y `(int)` sobre un texto
+                    // da 0: buscar «farmacia» traía además al cliente número 0, que es un
+                    // banco. Un resultado de más en una lista de la que se elige a quién
+                    // le va a ver los pedidos una cuenta. Lo del tamaño está en
+                    // App\Support\NumeroBuscado.
+                    if (($numero = NumeroBuscado::deTexto($buscado)) !== null) {
+                        $w->orWhere('numero', $numero);
                     }
                 },
             ))

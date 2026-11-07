@@ -122,6 +122,20 @@ test('searching by name does not drag in the ones already hired', function () {
         });
 });
 
+test('a number too big for the column does not blow up the search', function () {
+    // ⚠️ Apareció buscando por DNI en Cloud el 2026-11-07, y pasaba igual en local: `dni`
+    // es `integer`, y comparar la columna contra un número más grande que su máximo no
+    // devuelve «ningún resultado», hace fallar la consulta con
+    // SQLSTATE[22003] value out of range. Un CUIT pegado en la caja de búsqueda era un
+    // 500. Ver App\Support\NumeroBuscado.
+    Postulacion::factory()->create(['dni' => 26267164]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/cadetes/postulaciones?buscar=20262671649')
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->where('postulaciones.total', 0));
+});
+
 test('the hired ones can be looked up, with the mobile they became', function () {
     // El listado viejo no las mostraba nunca, y ahí viven los documentos de esa persona.
     $cadete = Cadete::factory()->create(['numero_movil' => 77]);

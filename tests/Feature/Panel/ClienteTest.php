@@ -106,6 +106,17 @@ test('searching by number with text does not fall back to zero', function () {
         ->assertInertia(fn ($pagina) => $pagina->where('clientes.total', 0));
 });
 
+test('searching by a number too big for the column does not blow up either', function () {
+    // La otra mitad de lo mismo: acá el número no es un OR sino el campo exacto, y el
+    // centinela -1 es el que tiene que entrar. Ver App\Support\NumeroBuscado.
+    Cliente::factory()->create(['numero' => 820]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/clientes?campo=numero&buscar=20262671649')
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->where('clientes.total', 0));
+});
+
 test('the origin filter separates the app from the office', function () {
     $deLaApp = Cliente::factory()->deLaApp()->create();
     $delPanel = Cliente::factory()->create();

@@ -13,6 +13,7 @@ use App\Services\BorradoDefinitivoDeCadete;
 use App\Services\ColaDeCadetes;
 use App\Services\NotificacionesAlTelefono;
 use App\Support\Momento;
+use App\Support\NumeroBuscado;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,12 +72,14 @@ class CadeteController extends Controller
                     $w->where('apellidos', 'ilike', '%'.$buscado.'%')
                         ->orWhere('nombres', 'ilike', '%'.$buscado.'%');
 
-                    // ⚠️ Por móvil SÓLO si lo que se escribió es un número. El listado
-                    // viejo hacía `orWhere('numero_movil', intval($buscar))` suelto, y
-                    // `intval` sobre un texto da 0: buscar «juan» traía además al móvil 0,
-                    // si existiera. Es el mismo descuido que en la búsqueda de comercios.
-                    if (ctype_digit($buscado)) {
-                        $w->orWhere('numero_movil', (int) $buscado);
+                    // ⚠️ Por móvil SÓLO si lo que se escribió es un número, y uno que
+                    // pueda ser un móvil. El listado viejo hacía
+                    // `orWhere('numero_movil', intval($buscar))` suelto, y `intval` sobre
+                    // un texto da 0: buscar «juan» traía además al móvil 0, si existiera.
+                    // Es el mismo descuido que en la búsqueda de comercios. Y el tamaño
+                    // importa tanto como el tipo: ver App\Support\NumeroBuscado.
+                    if (($movil = NumeroBuscado::deTexto($buscado)) !== null) {
+                        $w->orWhere('numero_movil', $movil);
                     }
                 },
             ))

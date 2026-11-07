@@ -11,6 +11,7 @@ use App\Models\PostulacionDocumento;
 use App\Services\ContratacionDePostulacion;
 use App\Services\DocumentosDePostulacion;
 use App\Support\Momento;
+use App\Support\NumeroBuscado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,9 +65,12 @@ class PostulacionController extends Controller
                     $w->where('nombres', 'ilike', '%'.$buscado.'%')
                         ->orWhere('apellidos', 'ilike', '%'.$buscado.'%');
 
-                    // Por DNI sólo si lo que se escribió es un número, como en cadetes.
-                    if (ctype_digit($buscado)) {
-                        $w->orWhere('dni', (int) $buscado);
+                    // Por DNI sólo si lo que se escribió es un número que pueda ser
+                    // uno, como en cadetes. Que sean todos dígitos no alcanza: la columna
+                    // es `integer`, y un número más grande que su máximo no da «ningún
+                    // resultado» sino un 500. Ver App\Support\NumeroBuscado.
+                    if (($dni = NumeroBuscado::deTexto($buscado)) !== null) {
+                        $w->orWhere('dni', $dni);
                     }
                 },
             ))

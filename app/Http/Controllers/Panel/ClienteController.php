@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Panel\GuardarClienteRequest;
 use App\Models\Cliente;
 use App\Services\BajaDeCliente;
+use App\Support\NumeroBuscado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,9 @@ class ClienteController extends Controller
             // Los cargados desde el panel tienen la columna en NULL.
             ->when($origen === 'panel', fn (Builder $q) => $q->whereNull('plataforma'))
             ->when($buscado !== '', fn (Builder $q) => match ($campo) {
-                'numero' => $q->where('numero', ctype_digit($buscado) ? (int) $buscado : -1),
+                // -1 no existe: buscar por número algo que no puede ser uno no
+                // encuentra nada, en vez de hacer fallar la consulta con un 500.
+                'numero' => $q->where('numero', NumeroBuscado::deTexto($buscado) ?? -1),
                 'nombre' => $q->where('nombre_mostrado', 'ilike', '%'.$buscado.'%'),
                 default => $q->where($campo, 'ilike', '%'.$buscado.'%'),
             })
@@ -120,13 +123,13 @@ class ClienteController extends Controller
                 // por separado.
                 $w->where('nombre_mostrado', 'ilike', '%'.$buscado.'%');
 
-                if (ctype_digit($buscado)) {
-                    $w->orWhere('numero', (int) $buscado);
+                if (($numero = NumeroBuscado::deTexto($buscado)) !== null) {
+                    $w->orWhere('numero', $numero);
                 }
             })
             // El número exacto primero: si alguien escribe «820» quiere el comercio 820,
             // no el primero que tenga un 820 en el nombre.
-            ->orderByRaw('case when numero = ? then 0 else 1 end', [ctype_digit($buscado) ? (int) $buscado : -1])
+            ->orderByRaw('case when numero = ? then 0 else 1 end', [NumeroBuscado::deTexto($buscado) ?? -1])
             ->orderBy('nombre_mostrado')
             ->orderBy('numero')
             ->limit(self::CUANTOS_AL_BUSCAR)

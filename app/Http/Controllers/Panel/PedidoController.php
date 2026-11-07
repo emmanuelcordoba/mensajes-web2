@@ -12,6 +12,7 @@ use App\Services\AltaDePedido;
 use App\Services\AsignacionDeCadete;
 use App\Support\MarcaDeImpresion;
 use App\Support\Momento;
+use App\Support\NumeroBuscado;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
 use Closure;
@@ -226,8 +227,8 @@ class PedidoController extends Controller
             $c->where('nombres', 'ilike', $como)
                 ->orWhere('apellidos', 'ilike', $como);
 
-            if (ctype_digit($texto)) {
-                $c->orWhere('numero_movil', (int) $texto);
+            if (($movil = NumeroBuscado::deTexto($texto)) !== null) {
+                $c->orWhere('numero_movil', $movil);
             }
         });
     }

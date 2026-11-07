@@ -10,6 +10,7 @@ use App\Models\MontoSemanal;
 use App\Models\Pedido;
 use App\Services\CobranzaSemanal;
 use App\Support\Momento;
+use App\Support\NumeroBuscado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,8 +48,8 @@ class CobranzaSemanalController extends Controller
                     $w->where('apellidos', 'ilike', '%'.$buscado.'%')
                         ->orWhere('nombres', 'ilike', '%'.$buscado.'%');
 
-                    if (ctype_digit($buscado)) {
-                        $w->orWhere('numero_movil', (int) $buscado);
+                    if (($movil = NumeroBuscado::deTexto($buscado)) !== null) {
+                        $w->orWhere('numero_movil', $movil);
                     }
                 },
             ))

@@ -9,6 +9,7 @@ use App\Models\Mensaje;
 use App\Models\User;
 use App\Services\ConversacionConElCadete;
 use App\Support\Momento;
+use App\Support\NumeroBuscado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -114,8 +115,8 @@ class MensajeController extends Controller
                     $w->where('apellidos', 'ilike', '%'.$buscado.'%')
                         ->orWhere('nombres', 'ilike', '%'.$buscado.'%');
 
-                    if (ctype_digit($buscado)) {
-                        $w->orWhere('numero_movil', (int) $buscado);
+                    if (($movil = NumeroBuscado::deTexto($buscado)) !== null) {
+                        $w->orWhere('numero_movil', $movil);
                     }
                 },
             ))

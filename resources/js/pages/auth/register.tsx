@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
-import { store } from '@/routes/register';
 
 type Props = {
     passwordRules: string;
@@ -17,8 +16,13 @@ export default function Register({ passwordRules }: Props) {
     return (
         <>
             <Head title="Register" />
+            {/* ⚠️ `action` y `method` escritos a mano, no `store.form()`: Wayfinder no
+                genera el ayudante de una ruta que no está registrada, y el registro va
+                cerrado salvo que `REGISTRO_ABIERTO` diga otra cosa. Importarlo rompía el
+                build. Ver el comentario largo en `login.tsx`. */}
             <Form
-                {...store.form()}
+                action="/register"
+                method="post"
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
                 className="flex flex-col gap-6"

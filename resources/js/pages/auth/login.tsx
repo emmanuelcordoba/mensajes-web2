@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import PasskeyVerify from '@/components/passkey-verify';
@@ -94,11 +93,20 @@ export default function Login({ status, canResetPassword, canRegister }: Props) 
                         </div>
 
                         {/* El enlace sigue a la variable: con el registro cerrado la ruta
-                            no existe, y mostrarlo sería un 404 a la vista de todos. */}
+                            no existe, y mostrarlo sería un 404 a la vista de todos.
+
+                            ⚠️ La dirección va escrita a mano y no con el ayudante de
+                            Wayfinder —`register()`— a propósito: Wayfinder genera un
+                            ayudante por cada ruta REGISTRADA, y con el registro cerrado
+                            la ruta no existe, así que el archivo que se importaba no se
+                            genera y el build se cae con UNLOADABLE_DEPENDENCY. En local
+                            no se notaba porque `resources/js/routes` está en el
+                            .gitignore y el archivo viejo seguía en disco; en Cloud el
+                            checkout es limpio. Pasó el 2026-11-08, desplegando el corte. */}
                         {canRegister && (
                             <div className="text-muted-foreground text-center text-sm">
                                 ¿No tenés cuenta?{' '}
-                                <TextLink href={register()} tabIndex={5}>
+                                <TextLink href="/register" tabIndex={5}>
                                     Registrate
                                 </TextLink>
                             </div>

@@ -24,6 +24,9 @@ use Illuminate\Support\Collection;
  *
  * ⚠️ La pantalla se refresca sola cada diez segundos —`wire:poll` en la vista—, así que
  * sirve para mirarla mientras se asigna un pedido del otro lado y ver el reloj aparecer.
+ *
+ * @phpstan-import-type TrabajoEnCola from EstadoDeLaCola
+ * @phpstan-import-type TrabajoFallado from EstadoDeLaCola
  */
 class Cola extends Page
 {
@@ -61,13 +64,13 @@ class Cola extends Page
         return $this->estado()->resumen();
     }
 
-    /** @return Collection<int, array<string, mixed>> */
+    /** @return Collection<int, TrabajoEnCola> */
     public function pendientes(): Collection
     {
         return $this->estado()->pendientes();
     }
 
-    /** @return Collection<int, array<string, mixed>> */
+    /** @return Collection<int, TrabajoFallado> */
     public function fallados(): Collection
     {
         return $this->estado()->fallados();

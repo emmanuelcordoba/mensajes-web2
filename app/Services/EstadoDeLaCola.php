@@ -26,6 +26,13 @@ use Illuminate\Support\Facades\DB;
  * ⚠️ Lee las tablas y no modelos: `jobs` y `failed_jobs` son de Laravel y no tienen modelo
  * propio acá. El nombre del trabajo sale de `payload->displayName`, que es el único campo
  * del payload pensado para leerse.
+ *
+ * Las dos formas van con nombre para no repetirlas en la pantalla que las muestra:
+ * `Collection` no es covariante en su valor, así que anotar `array<string, mixed>` del
+ * otro lado no es «lo mismo pero más flojo» sino otro tipo, y el análisis lo marca.
+ *
+ * @phpstan-type TrabajoEnCola array{id: int, trabajo: string, cola: string, intentos: int, enCurso: bool, encolado: Carbon, vence: Carbon, pedidoId: int|null}
+ * @phpstan-type TrabajoFallado array{uuid: string, trabajo: string, cola: string, fallo: Carbon, motivo: string}
  */
 class EstadoDeLaCola
 {
@@ -76,7 +83,11 @@ class EstadoDeLaCola
     /**
      * Los trabajos que están en la cola.
      *
-     * @return Collection<int, array<string, mixed>>
+     * La forma va escrita entera y no como `array<string, mixed>`: `Collection` no es
+     * covariante en su valor, así que la versión floja no es más permisiva sino
+     * directamente otro tipo, y el análisis estático lo marca.
+     *
+     * @return Collection<int, TrabajoEnCola>
      */
     public function pendientes(int $limite = 50): Collection
     {
@@ -99,7 +110,7 @@ class EstadoDeLaCola
     /**
      * Los que fallaron, el último primero.
      *
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, TrabajoFallado>
      */
     public function fallados(int $limite = 50): Collection
     {

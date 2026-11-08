@@ -173,7 +173,19 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // ⚠️ El registro web va cerrado, y el valor por defecto es el cerrado a propósito:
+        // acá adentro están los datos personales de 9.075 personas y 1.734 imágenes de
+        // DNI, en una URL pública. Un entorno nuevo, o uno al que se le olvidó la
+        // variable, queda cerrado y no abierto. Las cuentas de la oficina las hace un
+        // admin desde Usuarios, y los comercios no entran por acá.
+        //
+        // Se abre con `REGISTRO_ABIERTO=true` en el `.env` —en local, para probar— y la
+        // pantalla de ingreso vuelve a mostrar el enlace sola: `canRegister` sale de esta
+        // misma lista, en FortifyServiceProvider.
+        //
+        // Esto NO cierra el alta de la app de clientes, que tiene su propia puerta en
+        // `api/cliente-app/v1/registro` y no pasa por Fortify.
+        ...(env('REGISTRO_ABIERTO', false) ? [Features::registration()] : []),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

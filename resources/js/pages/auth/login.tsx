@@ -15,9 +15,10 @@ import PasskeyVerify from '@/components/passkey-verify';
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    canRegister: boolean;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({ status, canResetPassword, canRegister }: Props) {
     return (
         <>
             <Head title="Log in" />
@@ -92,12 +93,16 @@ export default function Login({ status, canResetPassword }: Props) {
                             </Button>
                         </div>
 
-                        <div className="text-muted-foreground text-center text-sm">
-                            Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                Sign up
-                            </TextLink>
-                        </div>
+                        {/* El enlace sigue a la variable: con el registro cerrado la ruta
+                            no existe, y mostrarlo sería un 404 a la vista de todos. */}
+                        {canRegister && (
+                            <div className="text-muted-foreground text-center text-sm">
+                                Don't have an account?{' '}
+                                <TextLink href={register()} tabIndex={5}>
+                                    Sign up
+                                </TextLink>
+                            </div>
+                        )}
                     </>
                 )}
             </Form>

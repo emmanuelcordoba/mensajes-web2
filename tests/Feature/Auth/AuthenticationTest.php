@@ -79,6 +79,24 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
+test('the screen answers in spanish', function () {
+    // ⚠️ `APP_LOCALE=es` no alcanza: Laravel no trae los idiomas adentro, y sin los
+    // archivos de `lang/es` esto contesta «These credentials do not match our records.».
+    // Era así hasta el 2026-11-07. El mensaje no dice cuál de los dos está mal.
+    $user = User::factory()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'wrong-password',
+    ])->assertSessionHasErrors(['email' => 'El email o la contraseña no son correctos.']);
+
+    $this->post(route('login.store'), [])
+        ->assertSessionHasErrors([
+            'email' => 'Hace falta completar el email.',
+            'password' => 'Hace falta completar la contraseña.',
+        ]);
+});
+
 test('users can logout', function () {
     $user = User::factory()->create();
 

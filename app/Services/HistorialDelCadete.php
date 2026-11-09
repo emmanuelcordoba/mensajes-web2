@@ -185,6 +185,19 @@ class HistorialDelCadete
      *
      * Puede haber más de un tramo abierto —los 113.065 de PANEL-17—, pero sólo se miran los
      * que empezaron hoy, que es como mucho el de esta sesión.
+     *
+     * ⚠️ **PENDIENTE (anotado el 2026-11-09): el tramo que cruza la medianoche lee 0m.** El
+     * filtro `inicio >= $hoy` deja afuera el tramo que sigue abierto pero empezó ayer, así
+     * que un cadete que se puso activo a las 22:00 y mira la app a la 01:00 ve 0m mientras
+     * está trabajando. En una cadetería que trabaja de noche eso pasa todas las madrugadas.
+     *
+     * Está anotado y no corregido porque no es de una línea: el filtro está puesto
+     * justamente por los 113.065 tramos que PANEL-17 dejó abiertos, algunos de hace años. Si
+     * se saca, cada uno de esos empieza a sumar desde la medianoche de hoy y el número se
+     * vuelve delirante —hay una prueba que protege eso, «a stretch left open years ago…»—.
+     * Lo correcto es contar desde `max(inicio, medianoche)` hasta ahora **sólo para el tramo
+     * de esta sesión**, y falta decidir cómo se lo reconoce: el más reciente nada más, los
+     * que empezaron en las últimas N horas, o sólo cuando el cadete está activo.
      */
     protected function segundosDelTramoAbiertoDeHoy(Cadete $cadete, CarbonImmutable $hoy): int
     {

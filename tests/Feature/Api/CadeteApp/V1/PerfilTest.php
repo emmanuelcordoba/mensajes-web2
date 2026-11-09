@@ -385,7 +385,14 @@ test('tiempo_activo keeps the names and types the app declares', function () {
 });
 
 test('the day in progress counts, so a cadete at work does not read 0m', function () {
-    $this->freezeTime();
+    // ⚠️ La hora va clavada al mediodía, y no es decoración: con `freezeTime()` a secas
+    // esta prueba falla entre las 00:00 y las 02:15, porque el tramo arranca `ahora − 2h15m`
+    // y antes de las 02:15 eso cae ayer. Que falle justo ahí no es casualidad: es el agujero
+    // anotado en `HistorialDelCadete::segundosDelTramoAbiertoDeHoy()` —un tramo abierto que
+    // empezó antes de la medianoche no se cuenta—, y esta prueba no lo puede atrapar porque
+    // arma el tramo relativo a `now`. Cuando eso se arregle, acá va una prueba nueva con el
+    // tramo cruzando la medianoche a propósito.
+    $this->travelTo(Carbon::parse('2026-03-03 12:00:00'));
 
     $cadete = unCadeteDelPerfil(['estado' => Cadete::ESTADO_ACTIVO_APP]);
 

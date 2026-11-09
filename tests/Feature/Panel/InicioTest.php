@@ -86,6 +86,33 @@ test('the queue does not carry the name of anybody', function () {
         )->toBe(['id', 'movil', 'vehiculo', 'vehiculo_entero', 'en_la_app']));
 });
 
+test('the queue shows the vehicle as one letter, with the whole word behind it', function () {
+    // ⚠️ Esto fija un ancho, no una preferencia. La columna «Cadetes activos» tiene dos
+    // doceavos: medido el 2026-11-09, su tabla pedía 204 px y a 1366 de pantalla la tarjeta
+    // le daba 161 y la recortaba con `overflow-hidden`, SIN barra para desplazarse. Los
+    // últimos botones de la fila no quedaban escondidos: no se dibujaban. Alargar esto a
+    // «Moto» o a «Motocicleta» vuelve a empujarlos afuera, y la pantalla no avisa.
+    //
+    // Por eso va también `vehiculo_entero`: una «M» sola no se lee, y es lo que la fila
+    // muestra en el `title` y en el `aria-label`.
+    $bici = unCadeteEnLaCola(11, 1000);
+    $bici->update(['tipo_vehiculo' => Cadete::VEHICULO_BICICLETA]);
+
+    $moto = unCadeteEnLaCola(22, 2000);
+    $moto->update(['tipo_vehiculo' => Cadete::VEHICULO_MOTOCICLETA]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel')
+        ->assertInertia(function ($pagina) {
+            $cola = collect($pagina->toArray()['props']['cola'])->keyBy('movil');
+
+            expect($cola[11]['vehiculo'])->toBe('B')
+                ->and($cola[11]['vehiculo_entero'])->toBe('Bicicleta')
+                ->and($cola[22]['vehiculo'])->toBe('M')
+                ->and($cola[22]['vehiculo_entero'])->toBe('Motocicleta');
+        });
+});
+
 test('a cadete sent to the end of the queue goes last', function () {
     $this->travelTo('2026-10-05 12:00:00');
 

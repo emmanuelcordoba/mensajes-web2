@@ -224,8 +224,8 @@ function LaCola({
             <table className="w-full text-sm">
                 <thead className="text-muted-foreground text-left">
                     <tr>
-                        <th className="px-2 py-1.5 font-medium">Móvil</th>
-                        <th className="px-2 py-1.5 font-medium">Vehículo</th>
+                        <th className="px-1 py-1.5 font-medium">Móvil</th>
+                        <th className="px-1 py-1.5 font-medium">Veh.</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -243,7 +243,7 @@ function LaCola({
                         <tr>
                             <td
                                 colSpan={2}
-                                className="text-muted-foreground px-2 py-6 text-center"
+                                className="text-muted-foreground px-1 py-6 text-center"
                             >
                                 No hay nadie en la cola.
                             </td>
@@ -283,14 +283,18 @@ function Fila({
                 }
             }}
         >
-            <td className="px-2 py-1.5 font-medium tabular-nums">{cadete.movil}</td>
-            <td className="px-2 py-1.5">
+            <td className="px-1 py-1.5 font-medium tabular-nums">{cadete.movil}</td>
+            <td className="px-1 py-1.5">
                 <div className="flex items-center justify-between gap-1">
-                    {/* Acortado, con el nombre entero al pasar el mouse: la columna tiene
-                        dos doceavos y el nombre completo echa los botones afuera. */}
+                    {/* ⚠️ Una letra, con el nombre entero al pasar el mouse. La columna
+                        tiene dos doceavos y hasta «Moto» echaba los botones afuera: medido
+                        el 2026-11-09, la tabla pedía 204 px y a 1366 de pantalla la tarjeta
+                        le daba 161 y recortaba sin dejar desplazarse. El `aria-label` va
+                        porque una «M» sola no se puede leer en voz alta. */}
                     <span
                         className="text-muted-foreground"
                         title={cadete.vehiculo_entero}
+                        aria-label={cadete.vehiculo_entero}
                     >
                         {cadete.vehiculo}
                     </span>

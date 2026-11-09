@@ -188,17 +188,27 @@ class Cadete extends Model
     ];
 
     /**
-     * Los mismos dos, para una columna angosta.
+     * Los mismos dos, en una letra, para una columna angosta.
      *
-     * ⚠️ Existe por la columna «Cadetes activos» de Inicio, que en el panel viejo tiene dos
-     * doceavos de ancho. Allá entraba porque la celda imprime `tipo_vehiculo` **crudo**, o
-     * sea la letra: la tabla dice «M» y «B» y hay que saberlo de memoria. Con el nombre
-     * entero no entran los botones de la fila, así que acá se acorta en vez de ensanchar la
-     * columna o dejar la letra sola. El nombre completo va en el `title`.
+     * ⚠️ **Es la letra y no «Bici»/«Moto», y la vuelta atrás fue deliberada.** Existe por la
+     * columna «Cadetes activos» de Inicio, que tiene dos doceavos de ancho. Medido el
+     * 2026-11-09: la tabla de esa columna necesita 204 px y a 1366 de pantalla la tarjeta le
+     * da 161 y la recorta con `overflow-hidden`, **sin barra para desplazarse**. O sea que
+     * los últimos botones de la fila no quedaban escondidos: no se dibujaban, y nadie en el
+     * mostrador podía llegar a ellos.
+     *
+     * Esto nació como «Bici»/«Moto» para no obligar a saberse la letra de memoria, que es lo
+     * que pasaba en el panel viejo —imprimía `tipo_vehiculo` crudo—. El argumento no se
+     * sostuvo: las personas que usan esta pantalla vienen de años de ese panel y leen M y B
+     * sin pensarlo. El nombre entero sigue estando en el `title` y en `aria-label`.
+     *
+     * ⚠️ Hoy el valor coincide con lo que guarda la columna, y aun así el mapa se escribe:
+     * lo que la pantalla muestra no tiene por qué seguir a lo que la base codifica, y el día
+     * que esos códigos cambien esto no debería cambiar con ellos.
      */
     public const VEHICULOS_CORTOS = [
-        self::VEHICULO_BICICLETA => 'Bici',
-        self::VEHICULO_MOTOCICLETA => 'Moto',
+        self::VEHICULO_BICICLETA => 'B',
+        self::VEHICULO_MOTOCICLETA => 'M',
     ];
 
     /**

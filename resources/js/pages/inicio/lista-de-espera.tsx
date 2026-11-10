@@ -12,6 +12,7 @@ import { Form, router } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { COLOR_DE_ESTADO } from '@/components/pedido';
 import { SelectorDeCadete } from '@/components/selector-de-cadete';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -85,19 +86,6 @@ type DetalleDePedido = {
     cadete_id: number | null;
     /** Si ya quedó marcado que al asignarlo se imprime el cupón. Ver `MarcaDeImpresion`. */
     imprimir: boolean;
-};
-
-/*
-| Los mismos seis colores del panel viejo, traducidos a las clases de acá. Lo que importa de
-| cada uno es que se distingan entre sí de un vistazo, no cuál es.
-*/
-const COLOR_DE_ESTADO: Record<string, string> = {
-    'Sin asignar': 'bg-muted/40',
-    Asignado: 'bg-slate-500/15',
-    'En curso': 'bg-blue-500/15',
-    Rechazado: 'bg-amber-500/20',
-    Cancelado: 'bg-red-500/20',
-    Finalizado: 'bg-green-500/15',
 };
 
 const COLOR_DE_PLATAFORMA: Record<string, string> = {

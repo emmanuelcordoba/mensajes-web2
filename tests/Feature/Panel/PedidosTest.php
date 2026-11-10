@@ -157,6 +157,110 @@ test('it searches a cadete by name and by the number on the bike', function (str
     'por el móvil' => '777',
 ]);
 
+/*
+| El filtro por estado.
+|
+| ⚠️ «Cancelado» ES la cancelación automática: el único lugar del sistema que escribe ese
+| estado es `CancelarPedidoSinConfirmar`, el reloj de los cinco minutos, y en el sistema
+| viejo era su único `Jobs\CancelarPedido`. Por eso no hay un filtro aparte para ella. Lo
+| que sí hay que tener presente es que mira el estado de HOY: la cancelación devuelve el
+| pedido a la lista de espera, así que del último mes de producción 760 pedidos pasaron por
+| una y 756 están Finalizados. Este filtro trae los que quedaron cancelados.
+*/
+
+test('the state filter narrows the listing to that one state', function () {
+    $cancelado = Pedido::factory()->enEstado(Pedido::ESTADO_CANCELADO)->create();
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create();
+    Pedido::factory()->enEstado(Pedido::ESTADO_RECHAZADO)->create();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?estado='.urlencode(Pedido::ESTADO_CANCELADO))
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $cancelado->id)
+            // Y vuelve elegido, para que el formulario no se olvide de lo que se pidió.
+            ->where('filtros.estado', Pedido::ESTADO_CANCELADO)
+        );
+});
+
+test('the filter keeps the date range instead of replacing it', function () {
+    // Un filtro no es un criterio nuevo: es uno más sobre el del listado.
+    Pedido::factory()->enEstado(Pedido::ESTADO_CANCELADO)
+        ->create(['created_at' => now()->subMonths(6)]);
+    $dentro = Pedido::factory()->enEstado(Pedido::ESTADO_CANCELADO)
+        ->create(['created_at' => now()->subDay()]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?estado='.urlencode(Pedido::ESTADO_CANCELADO))
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $dentro->id)
+        );
+});
+
+test('a state that is not one of the seven is ignored instead of emptying the listing', function () {
+    // La misma red que la de las fechas: `?estado=hola` devuelve el recorte entero y no
+    // cero filas ni un 500.
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create();
+    Pedido::factory()->enEstado(Pedido::ESTADO_CANCELADO)->create();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?estado=hola')
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 2)
+            ->where('filtros.estado', '')
+        );
+});
+
+test('a state the listing does not show cannot be reached through the URL', function () {
+    // «Sin asignar» existe, pero se atiende en la lista de espera de Inicio. Pedirlo por
+    // la URL no lo trae: cae al recorte entero, que es justamente el que lo deja afuera.
+    Pedido::factory()->enEstado(Pedido::ESTADO_SIN_ASIGNAR)->create();
+    $finalizado = Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create();
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos?estado='.urlencode(Pedido::ESTADO_SIN_ASIGNAR))
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('pedidos.total', 1)
+            ->where('pedidos.data.0.id', $finalizado->id)
+        );
+});
+
+test('the seven states come from the server, so the filter cannot offer one the query drops', function () {
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/pedidos')
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('estados', [
+                Pedido::ESTADO_COTIZADO,
+                Pedido::ESTADO_ACEPTADO,
+                Pedido::ESTADO_ASIGNADO,
+                Pedido::ESTADO_EN_CURSO,
+                Pedido::ESTADO_RECHAZADO,
+                Pedido::ESTADO_CANCELADO,
+                Pedido::ESTADO_FINALIZADO,
+            ])
+        );
+});
+
+test('the state filter does not reach a shop, which keeps seeing all of its orders', function () {
+    // La rama del comercio no filtra por nada, así que un estado en la URL no le recorta
+    // el listado: ve los suyos, como en el panel viejo.
+    $comercio = Cliente::factory()->create();
+
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)
+        ->create(['cliente_id' => $comercio->id]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_CANCELADO)
+        ->create(['cliente_id' => $comercio->id]);
+
+    $this->actingAs(usuarioCon(Rol::RESTRINGIDO, $comercio))
+        ->get('/panel/pedidos?estado='.urlencode(Pedido::ESTADO_CANCELADO))
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->where('pedidos.total', 2));
+});
+
 test('a shop sees all of its orders, with no cut by state or by date', function () {
     // ⚠️ El sistema viejo le muestra a un comercio TODOS sus pedidos: la rama del
     // `restringido` no filtra por estado ni por fecha. Un comercio que entra a ver un

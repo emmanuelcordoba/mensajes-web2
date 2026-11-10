@@ -132,6 +132,9 @@ export function NuevoPedido({
     const [nombre, setNombre] = useState('');
     const [direccion, setDireccion] = useState('');
     const [destino, setDestino] = useState('');
+    const [direccionDetalle, setDireccionDetalle] = useState('');
+    const [destinoDetalle, setDestinoDetalle] = useState('');
+    const [detalle, setDetalle] = useState('');
     const [responsable, setResponsable] = useState('');
     const [telefono, setTelefono] = useState('');
     const [garantia, setGarantia] = useState('');
@@ -148,12 +151,24 @@ export function NuevoPedido({
 
     const { listo, api } = useApiDeGoogleMaps(deLaOficina ? (mapa?.clave ?? null) : null);
 
+    /**
+     * Vaciar el alta después de cargar, para que el pedido siguiente arranque limpio.
+     *
+     * ⚠️ **Tiene que estar acá TODO campo del formulario, incluso el que el JavaScript no
+     * lee.** «Detalle» y los dos «Depto. / Oficina» no tenían estado justamente porque nadie
+     * los lee —sólo se envían—, y así quedaban afuera de esta función: el navegador se
+     * guardaba lo escrito y el pedido siguiente salía con el detalle y el depto del anterior.
+     * Lo tienen para poder vaciarse desde un solo lugar, que es éste.
+     */
     const limpiar = () => {
         setComercio(null);
         setNumero('');
         setNombre('');
         setDireccion('');
         setDestino('');
+        setDireccionDetalle('');
+        setDestinoDetalle('');
+        setDetalle('');
         setResponsable('');
         setTelefono('');
         setGarantia('');
@@ -325,6 +340,8 @@ export function NuevoPedido({
                                 id="direccion_detalle"
                                 titulo="Depto. / Oficina"
                                 nombre="direccion_detalle"
+                                valor={direccionDetalle}
+                                setValor={setDireccionDetalle}
                                 maximo={10}
                                 error={errors.direccion_detalle}
                             />
@@ -352,6 +369,8 @@ export function NuevoPedido({
                                 id="destino_detalle"
                                 titulo="Depto. / Oficina"
                                 nombre="destino_detalle"
+                                valor={destinoDetalle}
+                                setValor={setDestinoDetalle}
                                 maximo={10}
                                 error={errors.destino_detalle}
                             />
@@ -399,6 +418,8 @@ export function NuevoPedido({
                                 name="detalle"
                                 rows={3}
                                 maxLength={1000}
+                                value={detalle}
+                                onChange={(e) => setDetalle(e.target.value)}
                                 className="border-input bg-background rounded-md border px-3 py-2 text-sm"
                             />
                             <InputError message={errors.detalle} />

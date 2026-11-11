@@ -29,7 +29,13 @@ import {
 |
 | Tres columnas, las mismas tres del panel viejo y en el mismo orden: la cola de cadetes, la
 | carga de un pedido y la lista de espera. Las proporciones también son las de allá —2, 5 y 5
-| de doce—, porque es la pantalla que la gente tiene memorizada.
+| de doce—, porque es la pantalla que la gente tiene memorizada. Medido en el panel viejo a
+| 1360 px, que es la pantalla del cliente: 183, 457 y 457 sobre 1097 px de fila.
+|
+| ⚠️ **El `min-w-0` de cada columna no es adorno.** Un hijo de grilla trae `min-width: auto`,
+| así que un contenido que no se puede encoger —una tabla con `nowrap`, un campo con su
+| etiqueta— agranda su columna y se lo saca a las otras dos. Con `min-w-0` las tres valen lo
+| que dice la grilla, y la que no entra la recorta quien no entra y no el vecino.
 |
 | ⚠️ La primera y la tercera columna son de oficina. Un comercio entra acá sólo por la del
 | medio, y entonces no se le dibuja un hueco donde no va nada: se le da el ancho a lo que sí
@@ -147,9 +153,14 @@ export default function InicioIndex({
         <ProveedorDePausaDeRefresco parar={stop} seguir={start}>
             <Head title="Inicio" />
 
-            <div className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-12">
+            {/* ⚠️ `gap-2` y no `gap-4`: once separaciones de 16 px se comen 176 px de una
+                fila de 1081, y eso es lo que dejaba a «Cadetes activos» con 162 px donde el
+                panel viejo le daba 183 y su tabla pide 170. Allá las tres tarjetas casi se
+                tocaban —`px-0`, `px-1`, `px-0`—, así que 8 px es además lo que se parece a
+                la pantalla que la gente tiene memorizada. */}
+            <div className="grid flex-1 grid-cols-1 gap-2 p-4 lg:grid-cols-12">
                 {cola !== null && (
-                    <div className="lg:col-span-2">
+                    <div className="min-w-0 lg:col-span-2">
                         <LaCola
                             cola={cola}
                             porQueNoLimpiar={porQueNoLimpiar}
@@ -160,7 +171,9 @@ export default function InicioIndex({
                     </div>
                 )}
 
-                <div className={cola === null ? 'lg:col-span-7' : 'lg:col-span-5'}>
+                <div
+                    className={`min-w-0 ${cola === null ? 'lg:col-span-7' : 'lg:col-span-5'}`}
+                >
                     <NuevoPedido
                         deLaOficina={deLaOficina}
                         cadetes={paraAsignar}
@@ -172,7 +185,7 @@ export default function InicioIndex({
                 </div>
 
                 {espera !== null && (
-                    <div className="lg:col-span-5">
+                    <div className="min-w-0 lg:col-span-5">
                         <ListaDeEspera
                             espera={espera}
                             paraAsignar={paraAsignar ?? []}
@@ -290,7 +303,12 @@ function Fila({
                         tiene dos doceavos y hasta «Moto» echaba los botones afuera: medido
                         el 2026-11-09, la tabla pedía 204 px y a 1366 de pantalla la tarjeta
                         le daba 161 y recortaba sin dejar desplazarse. El `aria-label` va
-                        porque una «M» sola no se puede leer en voz alta. */}
+                        porque una «M» sola no se puede leer en voz alta.
+
+                        Los tres botones miden 16 y no 20 px por lo mismo: con el móvil más
+                        largo que hay —100152, seis cifras— y la barra lateral desplegada,
+                        la tabla pedía 182 px y la tarjeta daba 160. El ícono sigue midiendo
+                        12, así que lo que se achicó es el aire alrededor. */}
                     <span
                         className="text-muted-foreground"
                         title={cadete.vehiculo_entero}
@@ -299,17 +317,19 @@ function Fila({
                         {cadete.vehiculo}
                     </span>
 
-                    <div className="flex items-center gap-0.5">
+                    {/* `flex-wrap` de red: si algún día no entran, bajan a un renglón en
+                        lugar de desaparecer debajo del borde de la tarjeta. */}
+                    <div className="flex flex-wrap items-center gap-px">
                         <Badge
                             variant={cadete.en_la_app ? 'default' : 'secondary'}
-                            className="mr-0.5 px-1 py-0 text-[10px]"
+                            className="px-0.5 py-0 text-[10px]"
                         >
                             {cadete.en_la_app ? 'APP' : 'WEB'}
                         </Badge>
 
                         <AlFinal cadete={cadete} />
 
-                        <Button asChild size="icon" variant="ghost" className="size-5">
+                        <Button asChild size="icon" variant="ghost" className="size-4">
                             <Link
                                 href={`/panel/mensajes/${cadete.id}`}
                                 title={`Chat con el móvil ${cadete.movil}`}
@@ -321,7 +341,7 @@ function Fila({
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="size-5"
+                            className="size-4"
                             title={`Detalle del móvil ${cadete.movil}`}
                             onClick={() => verDetalle(cadete.id)}
                         >
@@ -349,7 +369,7 @@ function AlFinal({ cadete }: { cadete: EnLaCola }) {
                     type="submit"
                     size="icon"
                     variant="ghost"
-                    className="size-5"
+                    className="size-4"
                     disabled={processing}
                     title={`Mandar el móvil ${cadete.movil} al final de la cola`}
                 >

@@ -338,7 +338,8 @@ export function NuevoPedido({
 
                             <Campo
                                 id="direccion_detalle"
-                                titulo="Depto. / Oficina"
+                                titulo="Depto."
+                                aclaracion="Depto. / Oficina"
                                 nombre="direccion_detalle"
                                 valor={direccionDetalle}
                                 setValor={setDireccionDetalle}
@@ -367,7 +368,8 @@ export function NuevoPedido({
 
                             <Campo
                                 id="destino_detalle"
-                                titulo="Depto. / Oficina"
+                                titulo="Depto."
+                                aclaracion="Depto. / Oficina"
                                 nombre="destino_detalle"
                                 valor={destinoDetalle}
                                 setValor={setDestinoDetalle}
@@ -485,9 +487,27 @@ export function NuevoPedido({
     );
 }
 
-/** Las dos columnas del panel viejo: 8 y 4 de doce. */
+/**
+ * La dirección y su «Depto. / Oficina».
+ *
+ * El panel viejo las repartía 8 y 4 de doce —medido a 1360 px: 263 y 120—, pero el «Depto. /
+ * Oficina» casi no se usa y 120 px es mucho para lo que entra: el campo acepta 10 caracteres
+ * y lo que se escribe es «4B» o «Piso 3». Así que acá la dirección se lleva todo lo que hay
+ * y el detalle queda en un carril fijo de 6rem, el ancho de esos 10 caracteres.
+ *
+ * ⚠️ Por eso también la etiqueta dice «Depto.» y el resto está en el `title`: con el texto
+ * entero no hay carril angosto posible, porque una etiqueta de 108 px es el piso del carril.
+ *
+ * ⚠️ `minmax(0, 1fr)` y no `1fr`: un carril de grilla no baja de su contenido, y la dirección
+ * con una predicción larga de Google ensanchaba la columna del medio y le robaba el ancho a la
+ * lista de espera. Es el mismo cuidado que el `min-w-0` de las tres columnas de `index.tsx`.
+ */
 function DosLineas({ children }: { children: React.ReactNode }) {
-    return <div className="grid gap-3 sm:grid-cols-3">{children}</div>;
+    return (
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_6rem]">
+            {children}
+        </div>
+    );
 }
 
 /**
@@ -735,7 +755,7 @@ function DireccionConLugar({
     };
 
     return (
-        <label className="relative grid gap-1 text-sm sm:col-span-2">
+        <label className="relative grid min-w-0 gap-1 text-sm">
             <span className="text-muted-foreground">
                 {titulo}
                 {lugar !== null && (
@@ -795,6 +815,7 @@ function DireccionConLugar({
 function Campo({
     id,
     titulo,
+    aclaracion,
     nombre,
     tipo = 'text',
     valor,
@@ -805,6 +826,8 @@ function Campo({
 }: {
     id: string;
     titulo: string;
+    /** El título entero, para el campo que no tiene lugar para escribirlo. */
+    aclaracion?: string;
     nombre: string;
     tipo?: string;
     valor?: string;
@@ -814,7 +837,11 @@ function Campo({
     prefijo?: string;
 }) {
     return (
-        <label className="grid gap-1 text-sm" htmlFor={id}>
+        <label
+            className="grid min-w-0 gap-1 text-sm"
+            htmlFor={id}
+            title={aclaracion}
+        >
             <span className="text-muted-foreground">{titulo}</span>
 
             <div className="flex items-center gap-1">

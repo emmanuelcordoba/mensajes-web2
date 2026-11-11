@@ -4,6 +4,18 @@
 | ⚠️ El color de la fila dice el estado, como el panel viejo: lo que la oficina mira de reojo
 | es si un pedido se canceló o lo rechazaron, y eso tiene que verse sin leer.
 |
+| ⚠️ **El texto va en varias líneas y no recortado con puntos suspensivos**, que es lo que
+| hace el panel viejo y por la razón de siempre: la oficina lee la dirección de acá para
+| decirle al cadete adónde va, y «24 de sept…» no sirve para eso. Además es lo único que
+| deja a la tabla entrar en su columna sin barra horizontal: un `truncate` es `nowrap`, y
+| una celda que no corta el texto no se puede encoger, así que la tabla pedía 543 px y la
+| columna le daba 430 —medido a 1366 px, el tamaño de la pantalla del cliente—. El
+| `max-width` de la celda no la salvaba: en una tabla de ancho automático se ignora.
+|
+| El aire de las celdas —`px-2`— es el del `table-sm` de allá, y el ancho de cada columna lo
+| reparte el navegador con el contenido, también como allá: a 1360 px la tabla del panel viejo
+| medía 455 y daba 33, 121, 148, 110 y 43.
+|
 | ⚠️ El doble clic abre el modal. Es como se usa hoy y la gente lo tiene en los dedos; va
 | además un botón, porque un doble clic no se descubre ni se alcanza con el teclado.
 */
@@ -142,15 +154,19 @@ export function ListaDeEspera({
                     </span>
                 </div>
 
+                {/* El `overflow-x-auto` queda de red: con el texto en varias líneas la
+                    tabla no tiene ancho mínimo que la desborde, pero si alguien mañana le
+                    pone un `nowrap` a una celda, es mejor una barra que una tarjeta
+                    cortada. */}
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="text-muted-foreground text-left">
                             <tr>
-                                <th className="px-3 py-1.5 font-medium">#</th>
-                                <th className="px-3 py-1.5 font-medium">Cliente</th>
-                                <th className="px-3 py-1.5 font-medium">Dirección</th>
-                                <th className="px-3 py-1.5 font-medium">Destino</th>
-                                <th className="px-3 py-1.5" />
+                                <th className="px-2 py-1.5 font-medium">#</th>
+                                <th className="px-2 py-1.5 font-medium">Cliente</th>
+                                <th className="px-2 py-1.5 font-medium">Dirección</th>
+                                <th className="px-2 py-1.5 font-medium">Destino</th>
+                                <th className="px-2 py-1.5" />
                             </tr>
                         </thead>
                         <tbody>
@@ -166,7 +182,7 @@ export function ListaDeEspera({
                                 <tr>
                                     <td
                                         colSpan={5}
-                                        className="text-muted-foreground px-3 py-6 text-center"
+                                        className="text-muted-foreground px-2 py-6 text-center"
                                     >
                                         No hay pedidos esperando cadete.
                                     </td>
@@ -203,19 +219,21 @@ function FilaDeEspera({
             onDoubleClick={() => abrir(fila.id)}
             title={`${fila.estado}${fila.numero === null ? '' : ` · pedido ${fila.numero}`}`}
         >
-            <td className="px-3 py-1.5 font-medium tabular-nums">
+            <td className="px-2 py-1.5 font-medium tabular-nums">
                 {fila.numero_corto ?? '—'}
             </td>
-            <td className="max-w-40 truncate px-3 py-1.5" title={fila.cliente ?? ''}>
-                {fila.cliente ?? '—'}
-            </td>
-            <td className="max-w-48 truncate px-3 py-1.5" title={fila.direccion ?? ''}>
-                {fila.direccion ?? '—'}
-            </td>
-            <td className="max-w-48 truncate px-3 py-1.5" title={fila.destino ?? ''}>
-                {fila.destino ?? '—'}
-            </td>
-            <td className="px-3 py-1.5">
+            {/* Sin `title`: el texto se ve entero, y el de la celda tapaba el de la fila,
+                que es el que dice el estado y el número del pedido.
+
+                `wrap-anywhere` y no `break-words`: lo que se escribe en estos tres campos
+                es texto libre, y basta una sola palabra larga sin espacios para que la
+                celda no pueda partirla y la tabla vuelva a pedir más de lo que hay. Las
+                dos cortan la palabra al dibujarla, pero sólo `overflow-wrap: anywhere`
+                cuenta para el ancho mínimo, que es el que decide si aparece la barra. */}
+            <td className="px-2 py-1.5 wrap-anywhere">{fila.cliente ?? '—'}</td>
+            <td className="px-2 py-1.5 wrap-anywhere">{fila.direccion ?? '—'}</td>
+            <td className="px-2 py-1.5 wrap-anywhere">{fila.destino ?? '—'}</td>
+            <td className="px-2 py-1.5">
                 <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                     <ElDistintivo distintivo={fila.distintivo} />
 

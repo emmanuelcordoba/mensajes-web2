@@ -66,7 +66,7 @@ class PedidoController extends Controller
      * El criterio, tal como está en `PedidoController@index` del sistema viejo:
      *
      * - **El último mes**, o el rango que venga en `desde`/`hasta`.
-     * - Los siete estados de `ESTADOS_DEL_LISTADO`.
+     * - Los siete estados de `ESTADOS_DEL_LISTADO`, o el uno que venga en `estado`.
      * - Del más nuevo al más viejo, de a diez.
      * - Con búsqueda por cliente, por direcciones o por cadete.
      *
@@ -85,6 +85,7 @@ class PedidoController extends Controller
         [$desde, $hasta] = $this->rango($request);
         $buscar = trim((string) $request->query('buscar', ''));
         $campo = trim((string) $request->query('campo', ''));
+        $estado = $this->estadoElegido($request);
 
         $consulta = Pedido::query()
             ->alcanzablesPor($usuario)
@@ -96,7 +97,9 @@ class PedidoController extends Controller
 
         if (! $esComercio) {
             $consulta
-                ->whereIn('estado', self::ESTADOS_DEL_LISTADO)
+                // Con un estado elegido se filtra por ese uno, que sigue siendo del
+                // recorte: la lista de espera no se cuela por la URL.
+                ->whereIn('estado', $estado === null ? self::ESTADOS_DEL_LISTADO : [$estado])
                 ->whereBetween('created_at', [$desde, $hasta]);
 
             if ($buscar !== '') {
@@ -114,15 +117,50 @@ class PedidoController extends Controller
             'filtros' => [
                 'buscar' => $buscar,
                 'campo' => $campo,
+                'estado' => $estado ?? '',
                 'desde' => $desde->toDateString(),
                 'hasta' => $hasta->toDateString(),
             ],
+            // Los siete los dice el servidor, que es quien los recorta: si la pantalla
+            // los escribiera también, el día que cambie el recorte habría un filtro que
+            // ofrece un estado que la consulta no trae.
+            'estados' => self::ESTADOS_DEL_LISTADO,
             // Un comercio no tiene formulario de búsqueda, igual que en el panel viejo:
             // ve todos los suyos y no hay nada que recortar.
             'puede_buscar' => ! $esComercio,
             // Y tampoco ve el botón de los borrados, que es administrativo.
             'puede_ver_eliminados' => $request->user()?->can('verEliminados', Pedido::class) ?? false,
         ]);
+    }
+
+    /**
+     * El estado por el que filtrar, o null para los siete.
+     *
+     * ⚠️ **Un estado que no es uno de los siete se ignora, no vacía el listado.** Es la
+     * misma red que la del rango de fechas: `?estado=hola` devuelve los siete y no cero
+     * filas ni un 500. Y por eso se compara contra `ESTADOS_DEL_LISTADO` y no contra
+     * `Pedido::ESTADOS`: `?estado=Sin+asignar` es un estado que existe pero que esta
+     * pantalla no muestra —se atiende en la lista de espera de Inicio—, así que
+     * también cae al recorte entero.
+     *
+     * ⚠️ **«Cancelado» es la cancelación automática, y no hace falta un filtro aparte
+     * para ella.** El único lugar del sistema que pone un pedido en ese estado es
+     * `CancelarPedidoSinConfirmar`, el reloj de los cinco minutos; en el sistema viejo
+     * también era su único `Jobs\CancelarPedido`. No hay cancelación a mano desde
+     * ninguna pantalla ni desde la app. Medido en producción: de 7.416 pedidos en
+     * «Cancelado», uno solo tiene un log con usuario, de 2020.
+     *
+     * ⚠️ **Y mira el estado de HOY, no la historia.** La cancelación le saca el cadete y
+     * el pedido vuelve a la lista de espera, así que la mayoría la toma otro cadete y
+     * termina Finalizado: del último mes, 760 pedidos pasaron por una cancelación y 756
+     * de ellos están Finalizados. Este filtro trae el que quedó cancelado —uno—, no los
+     * 760. Es lo que se decidió; la otra pregunta pide cruzar `logs_estados_pedidos`.
+     */
+    private function estadoElegido(Request $request): ?string
+    {
+        $estado = trim((string) $request->query('estado', ''));
+
+        return in_array($estado, self::ESTADOS_DEL_LISTADO, true) ? $estado : null;
     }
 
     /**

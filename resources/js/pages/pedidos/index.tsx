@@ -27,18 +27,33 @@ import { Input } from '@/components/ui/input';
 type Filtros = {
     buscar: string;
     campo: string;
+    estado: string;
     desde: string;
     hasta: string;
+};
+
+/*
+ * ⚠️ «Cancelado» se muestra como automático porque lo es: el único lugar del sistema que
+ * pone un pedido en ese estado es el reloj de los cinco minutos
+ * (`CancelarPedidoSinConfirmar`), así que no hay cancelación a mano con la que confundirlo
+ * y no hace falta un filtro aparte. El valor que viaja es el estado tal cual; lo que cambia
+ * es lo que se lee.
+ */
+const COMO_SE_LEE: Record<string, string> = {
+    Cancelado: 'Cancelado (automático)',
 };
 
 export default function PedidosIndex({
     pedidos,
     filtros,
+    estados,
     puede_buscar,
     puede_ver_eliminados,
 }: {
     pedidos: Paginado<PedidoEnLista>;
     filtros: Filtros;
+    /** Los que el listado muestra, dichos por el servidor: son su recorte, no el de acá. */
+    estados: string[];
     puede_buscar: boolean;
     puede_ver_eliminados: boolean;
 }) {
@@ -119,6 +134,28 @@ export default function PedidosIndex({
                             </div>
 
                             <div className="grid gap-1">
+                                <label htmlFor="estado" className="text-sm font-medium">
+                                    Estado
+                                </label>
+                                <select
+                                    id="estado"
+                                    name="estado"
+                                    defaultValue={filtros.estado}
+                                    className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+                                >
+                                    {/* En blanco son los siete, que es como entra la
+                                        pantalla. El servidor ignora un estado que no
+                                        reconoce, así que esto no puede vaciar el listado. */}
+                                    <option value="">Todos</option>
+                                    {estados.map((estado) => (
+                                        <option key={estado} value={estado}>
+                                            {COMO_SE_LEE[estado] ?? estado}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid gap-1">
                                 <label htmlFor="desde" className="text-sm font-medium">
                                     Desde
                                 </label>
@@ -146,7 +183,7 @@ export default function PedidosIndex({
 
                             <Button type="submit">Buscar</Button>
 
-                            {filtros.buscar !== '' && (
+                            {(filtros.buscar !== '' || filtros.estado !== '') && (
                                 <Button asChild variant="ghost">
                                     <Link href="/panel/pedidos">Limpiar</Link>
                                 </Button>

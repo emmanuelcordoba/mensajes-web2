@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 
-import { EstadoBadge, Monto } from '@/components/pedido';
+import { COLOR_DE_ESTADO, EstadoBadge, Monto } from '@/components/pedido';
 import { Card } from '@/components/ui/card';
 
 /*
@@ -10,6 +10,13 @@ import { Card } from '@/components/ui/card';
  * dos pantallas es la columna de acciones y si hay casillas, y las dos cosas entran
  * por props: el servidor ya decidió qué se puede hacer con cada fila —`se_puede_borrar`—
  * y acá no se vuelve a preguntar cuál de los ocho estados es el final.
+ *
+ * ⚠️ **La fila cancelada va en rojo, y es la única pintada.** Un pedido en «Cancelado» lo
+ * canceló el reloj de los cinco minutos —es el único lugar del sistema que escribe ese
+ * estado—, o sea que nadie lo atendió y nadie se enteró: tiene que verse sin leer la
+ * columna de estado, como en la lista de espera de Inicio. Al resto no se le pone color a
+ * propósito: en el listado general 909.378 de 971.524 filas son Finalizado, y pintarlas
+ * todas deja una pantalla de colores donde no resalta nada.
  */
 
 export type PedidoEnLista = {
@@ -104,7 +111,11 @@ export function TablaDePedidos({
                         {pedidos.map((pedido) => (
                             <tr
                                 key={pedido.id}
-                                className="hover:bg-muted/40 border-b last:border-0"
+                                className={`hover:bg-muted/40 border-b last:border-0 ${
+                                    pedido.estado === 'Cancelado'
+                                        ? COLOR_DE_ESTADO.Cancelado
+                                        : ''
+                                }`}
                             >
                                 {seleccion !== undefined && (
                                     <td className="px-3 py-3">

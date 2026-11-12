@@ -78,6 +78,14 @@ class CobranzaSaldoController extends Controller
                 'deuda' => Pedido::comoMonto($cadete->monto_deuda),
                 'cambio' => self::decision('cambiarModalidad', $cadete),
                 'pasaria_a' => CambioDeModalidadDeCobranza::laOtra($cadete),
+                // Qué plata quedaría del otro lado si se cambiara. El cambio se permite
+                // igual: esto es lo que la pantalla dice antes de hacerlo.
+                'aviso' => CambioDeModalidadDeCobranza::aviso($cadete),
+                // ⚠️ Para que la fila muestre las dos columnas cuando hay algo dormido
+                // del otro lado. La comparación es con bccomp y no con un float, como
+                // toda cuenta de plata del sistema.
+                'tiene_saldo' => bccomp(Pedido::comoMonto($cadete->cobranza_saldo), '0', 2) !== 0,
+                'tiene_deuda' => bccomp(Pedido::comoMonto($cadete->monto_deuda), '0', 2) > 0,
             ]);
 
         $porcentaje = Configuracion::query()->where('nombre', 'COBRANZA_SALDO_PORCENTAJE')->first();
@@ -165,17 +173,22 @@ class CobranzaSaldoController extends Controller
      * Pasa al cadete de una modalidad a la otra.
      *
      * ⚠️ Sin esto la modalidad no se podía cambiar desde ninguna pantalla: el alta la pone
-     * en 'Semanal' y ahí quedaba. Es PANEL-8. La regla —no con plata en el medio— vive en
-     * el servicio, y la política pregunta la misma.
+     * en 'Semanal' y ahí quedaba. Es PANEL-8. Se puede siempre, y lo que queda del otro
+     * lado se avisa: el porqué está en el servicio.
      */
     public function cambiarModalidad(Cadete $cadete): RedirectResponse
     {
         $this->authorize('cambiarModalidad', $cadete);
 
+        // ⚠️ Antes de cambiar: después `aviso()` contesta por la modalidad nueva, que es
+        // la otra pregunta.
+        $aviso = CambioDeModalidadDeCobranza::aviso($cadete);
+
         $modalidad = (new CambioDeModalidadDeCobranza)->cambiar($cadete, request()->user());
 
         return back()->with('success',
-            'El móvil '.$cadete->numero_movil.' pasó a cobranza '.mb_strtolower($modalidad).'.');
+            'El móvil '.$cadete->numero_movil.' pasó a cobranza '.mb_strtolower($modalidad).'.'
+            .($aviso === null ? '' : ' '.$aviso));
     }
 
     /**

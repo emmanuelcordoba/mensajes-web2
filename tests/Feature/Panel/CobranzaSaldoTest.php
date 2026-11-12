@@ -12,7 +12,8 @@ use Illuminate\Database\UniqueConstraintViolationException;
 |
 | Es plata, así que lo que esta pantalla tiene que garantizar es aritmético: que un monto
 | no pase por float, que una carga escriba el movimiento Y el saldo o ninguno de los dos,
-| que quede firmada, y que nadie cambie de modalidad dejando plata fuera de todo listado.
+| que quede firmada, y que la plata que queda de la otra modalidad de cobranza siga a la
+| vista después de un cambio de modalidad.
 */
 
 /** El porcentaje y el costo mínimo con los que se calcula el saldo mínimo. */
@@ -159,34 +160,66 @@ test('the movements of a cadete are listed, newest first', function () {
         });
 });
 
-test('changing the modality is refused while there is money in the middle', function (string $modalidad, array $columnas, string $enElMotivo) {
-    // ⚠️ El `switch` del sistema viejo eran dos líneas —invertir y guardar— y no
-    // preguntaba nada. Un cadete con saldo a favor que pasaba a semanal dejaba ese saldo
-    // en su columna, fuera de todo listado: plata que nadie volvía a ver.
+test('the modality changes with money in the middle, and says what is left on the other side', function (string $desde, array $columnas, string $enElAviso, string $hasta) {
+    // ⚠️ Se cambia siempre, como en el sistema viejo. Acá hubo una versión que lo negaba
+    // mientras quedara saldo o deuda, y estaba mal medida: los 65 cadetes que cobran por
+    // saldo tienen saldo distinto de cero —es la plata que cargaron—, así que la regla no
+    // cubría un caso raro sino que bloqueaba la pantalla entera. Ahora avisa y cambia.
     configuracionDeSaldo();
-    $cadete = Cadete::factory()->create(array_merge(['modalidad_cobranza' => $modalidad], $columnas));
+    $cadete = Cadete::factory()->create(array_merge(['modalidad_cobranza' => $desde], $columnas));
 
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
         ->get('/panel/cadetes/cobranzas/saldo?modalidad=todas')
-        ->assertInertia(function ($pagina) use ($enElMotivo) {
+        ->assertInertia(function ($pagina) use ($enElAviso) {
             $fila = $pagina->toArray()['props']['cadetes']['data'][0];
 
-            expect($fila['cambio']['permitido'])->toBeFalse()
-                ->and($fila['cambio']['motivo'])->toContain($enElMotivo);
+            expect($fila['cambio']['permitido'])->toBeTrue()
+                ->and($fila['aviso'])->toContain($enElAviso);
         });
 
+    // El mensaje de vuelta repite el aviso: es la última vez que el sistema lo dice solo.
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->from('/panel/cadetes/cobranzas/saldo')
         ->patch("/panel/cadetes/cobranzas/saldo/{$cadete->id}/modalidad")
-        ->assertForbidden();
+        ->assertRedirect('/panel/cadetes/cobranzas/saldo');
 
-    expect($cadete->refresh()->modalidad_cobranza)->toBe($modalidad);
+    expect(session('success'))->toContain($enElAviso)
+        ->and($cadete->refresh()->modalidad_cobranza)->toBe($hasta);
 })->with([
-    'saldo a favor' => [Cadete::COBRANZA_SALDO, ['cobranza_saldo' => '1500.00'], 'a favor'],
-    'saldo en contra' => [Cadete::COBRANZA_SALDO, ['cobranza_saldo' => '-20.00'], 'en contra'],
-    'deuda semanal' => [Cadete::COBRANZA_SEMANAL, ['monto_deuda' => '800.00'], 'deuda'],
+    'saldo a favor' => [Cadete::COBRANZA_SALDO, ['cobranza_saldo' => '1500.00'], 'a favor', Cadete::COBRANZA_SEMANAL],
+    'saldo en contra' => [Cadete::COBRANZA_SALDO, ['cobranza_saldo' => '-20.00'], 'en contra', Cadete::COBRANZA_SEMANAL],
+    'deuda semanal' => [Cadete::COBRANZA_SEMANAL, ['monto_deuda' => '800.00'], 'deuda semanal', Cadete::COBRANZA_SALDO],
 ]);
 
-test('with the account closed, the modality does change', function (string $desde, array $columnas, string $hasta) {
+test('the money left by the other modality stays in sight', function () {
+    // ⚠️ Es la condición que hace que el cambio de modalidad con plata en el medio sea
+    // aceptable: el saldo de un cadete que pasó a semanal no se va a ninguna parte. Allá
+    // sí se iba, porque cada listado filtraba duro por su modalidad.
+    configuracionDeSaldo();
+    $cadete = Cadete::factory()->create([
+        'modalidad_cobranza' => Cadete::COBRANZA_SEMANAL,
+        'cobranza_saldo' => '1500.00',
+        'monto_deuda' => '800.00',
+    ]);
+
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get('/panel/cadetes/cobranzas/saldo?modalidad=todas')
+        ->assertInertia(function ($pagina) {
+            $fila = $pagina->toArray()['props']['cadetes']['data'][0];
+
+            expect($fila['por_saldo'])->toBeFalse()
+                ->and($fila['tiene_saldo'])->toBeTrue()
+                ->and($fila['saldo'])->toBe('1500.00')
+                ->and($fila['deuda'])->toBe('800.00');
+        });
+
+    // Y los movimientos que explican ese número siguen abiertos.
+    $this->actingAs(usuarioCon(Rol::EMPLEADO))
+        ->get("/panel/cadetes/cobranzas/saldo/{$cadete->id}")
+        ->assertOk();
+});
+
+test('without money in the middle, the modality changes without any warning', function (string $desde, array $columnas, string $hasta) {
     configuracionDeSaldo();
     $cadete = Cadete::factory()->create(array_merge(['modalidad_cobranza' => $desde], $columnas));
 

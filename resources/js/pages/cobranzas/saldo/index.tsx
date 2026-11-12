@@ -19,6 +19,12 @@ import { Label } from '@/components/ui/label';
 | pantalla del sistema nuevo —el alta la pone en «Semanal» y ahí quedaba, PANEL-8—, y acá
 | es donde esa decisión tiene sentido. Lo que se abre por omisión son los de saldo.
 |
+| ⚠️ **Esas tres vistas son lo que permite cambiar la modalidad con plata en el medio.**
+| En el sistema viejo cada listado filtraba duro por su modalidad, así que un cadete que
+| cambiaba con saldo a favor se llevaba esa plata fuera de todo listado y nadie la volvía
+| a ver. Acá no se va a ninguna parte: la fila muestra las dos columnas cuando hay algo
+| dormido del otro lado, «Movimientos» sigue abierto, y el cambio avisa qué queda.
+|
 | ⚠️ Los montos llegan como texto y se muestran como texto. No pasan por Number en ningún
 | punto: es la plata de una persona.
 */
@@ -33,6 +39,9 @@ type EnLista = {
     deuda: string;
     cambio: { permitido: boolean; motivo: string | null };
     pasaria_a: string;
+    aviso: string | null;
+    tiene_saldo: boolean;
+    tiene_deuda: boolean;
 };
 
 type Paginado<T> = {
@@ -183,24 +192,19 @@ export default function CobranzaSaldoIndex({
                                                 {cadete.modalidad}
                                             </Badge>
                                         </td>
-                                        <td
-                                            className="px-4 py-3 text-right tabular-nums"
-                                            title={cadete.cambio.motivo ?? undefined}
-                                        >
-                                            {cadete.por_saldo ? (
-                                                <Monto
-                                                    valor={cadete.saldo}
-                                                    minimo={saldo_minimo}
-                                                />
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    deuda ${cadete.deuda}
-                                                </span>
-                                            )}
+                                        <td className="px-4 py-3 text-right tabular-nums">
+                                            <Plata
+                                                cadete={cadete}
+                                                saldoMinimo={saldo_minimo}
+                                            />
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                                                {cadete.por_saldo && (
+                                                {/* También al semanal que dejó saldo
+                                                    dormido: sus movimientos son los que
+                                                    explican de dónde salió ese número. */}
+                                                {(cadete.por_saldo ||
+                                                    cadete.tiene_saldo) && (
                                                     <Button
                                                         asChild
                                                         size="sm"
@@ -271,17 +275,58 @@ function Monto({ valor, minimo }: { valor: string; minimo: number | null }) {
 }
 
 /**
- * Pasar al cadete de una modalidad a la otra, o el motivo por el que no se puede.
+ * Lo que la fila muestra de plata: lo de su modalidad, y lo que quedó dormido del otro
+ * lado si quedó algo.
  *
- * ⚠️ No se cambia con plata en el medio. Un cadete con saldo a favor que pasa a semanal
- * deja ese saldo en su columna, fuera de todo listado: plata que nadie vuelve a ver. El
- * `switch` del sistema viejo eran dos líneas y no preguntaba nada.
+ * ⚠️ Las dos columnas y no una. Mientras el cambio de modalidad estuvo prohibido con plata
+ * en el medio, una sola alcanzaba: el semanal nunca tenía saldo. Ahora puede tenerlo, y
+ * esta segunda línea es la que hace que esa plata siga a la vista en lugar de quedar en
+ * una columna que la pantalla no dibuja.
+ */
+function Plata({
+    cadete,
+    saldoMinimo,
+}: {
+    cadete: EnLista;
+    saldoMinimo: number | null;
+}) {
+    const dormido = cadete.por_saldo
+        ? cadete.tiene_deuda && `deuda $${cadete.deuda}`
+        : cadete.tiene_saldo && `saldo $${cadete.saldo}`;
+
+    return (
+        <>
+            {cadete.por_saldo ? (
+                <Monto valor={cadete.saldo} minimo={saldoMinimo} />
+            ) : (
+                <span className="text-muted-foreground">
+                    deuda ${cadete.deuda}
+                </span>
+            )}
+
+            {dormido && (
+                <div
+                    className="text-muted-foreground text-xs"
+                    title="Plata que quedó de la otra modalidad de cobranza."
+                >
+                    {dormido}
+                </div>
+            )}
+        </>
+    );
+}
+
+/**
+ * Pasar al cadete de una modalidad a la otra.
+ *
+ * ⚠️ Se puede siempre, con plata en el medio o sin ella, como en el sistema viejo. Lo que
+ * queda del otro lado lo dice el `confirm` antes de hacerlo, y el mensaje de vuelta lo
+ * repite: el porqué de avisar en lugar de prohibir está en
+ * `app/Services/CambioDeModalidadDeCobranza.php`.
  */
 function Cambio({ cadete }: { cadete: EnLista }) {
-    // ⚠️ Cuando no se puede, no se dibuja nada. El motivo es siempre el número que está
-    // en la columna de al lado —el saldo, o la deuda—, así que repetirlo en una frase por
-    // fila duplicaba el alto de las diez filas para decir lo que ya se ve. Queda en el
-    // `title` de ese número, y entero en la respuesta del servidor.
+    // Lo único que puede negarlo es el rol —un comercio no cambia nada acá—, y en ese
+    // caso la fila no ofrece el botón.
     if (!cadete.cambio.permitido) {
         return null;
     }
@@ -293,7 +338,9 @@ function Cambio({ cadete }: { cadete: EnLista }) {
             options={{ preserveScroll: true }}
             onBefore={() =>
                 confirm(
-                    `El móvil ${cadete.movil} pasa a cobranza ${cadete.pasaria_a.toLowerCase()}.\n\n¿Seguir?`,
+                    `El móvil ${cadete.movil} pasa a cobranza ${cadete.pasaria_a.toLowerCase()}.` +
+                        (cadete.aviso === null ? '' : `\n\n${cadete.aviso}`) +
+                        '\n\n¿Seguir?',
                 )
             }
         >

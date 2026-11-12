@@ -7,7 +7,6 @@ use App\Models\Rol;
 use App\Models\User;
 use App\Services\BajaDeCadete;
 use App\Services\BorradoDefinitivoDeCadete;
-use App\Services\CambioDeModalidadDeCobranza;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -141,20 +140,14 @@ class CadetePolicy
     /**
      * Pasarlo de una modalidad de cobranza a la otra.
      *
-     * La regla —no con plata en el medio— vive en `CambioDeModalidadDeCobranza`, que es
-     * la que aplica el servicio antes de escribir. Acá se pregunta la misma.
+     * ⚠️ Se puede siempre, con plata en el medio o sin ella, como en el sistema viejo.
+     * Acá hubo una versión que preguntaba por el saldo y la deuda, y negaba el cambio a
+     * los 65 cadetes que cobran por saldo: el porqué de haberla sacado está en
+     * `CambioDeModalidadDeCobranza`. Lo que queda del otro lado se avisa, no se niega.
      */
-    public function cambiarModalidad(User $user, Cadete $cadete): Response
+    public function cambiarModalidad(User $user): bool
     {
-        if (! $this->viewAny($user)) {
-            return Response::deny();
-        }
-
-        $motivo = CambioDeModalidadDeCobranza::porQueNo($cadete);
-
-        return $motivo === null
-            ? Response::allow()
-            : Response::deny($motivo);
+        return $this->viewAny($user);
     }
 
     /**

@@ -3,11 +3,14 @@
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\VerificarRol;
+use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -59,4 +62,37 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        /*
+        | Cada vez que alguien se pasa del tope, queda escrito quién.
+        |
+        | ⚠️ **Es lo único que contesta la pregunta de quién.** El monitoreo de Laravel
+        | Cloud dice cuántos 429 hubo y en qué ruta —187 en un día sobre
+        | `/api/actualizarubicacion`—, pero no de quién, y con el tope contando por cuenta
+        | (ver `tests/Feature/Api/TopeDePedidosTest.php`) un 429 significa que ESE cadete
+        | hizo 120 pedidos en un minuto. Sin el móvil no hay manera de saber cuál, ni si
+        | son muchos cadetes o siempre el mismo teléfono con el GPS enloquecido.
+        |
+        | ⚠️ Devuelve null a propósito: esto escucha, no responde. El 429 que recibe la app
+        | lo sigue armando Laravel, con sus cabeceras `Retry-After` y todo. Un `return`
+        | distinto de null acá le cambiaría la respuesta a la app sin querer.
+        |
+        | ⚠️ Nada de datos personales: el id de la cuenta y el número de móvil, que son los
+        | que sirven para buscar en el panel. Ni nombre, ni teléfono, ni el cuerpo.
+        */
+        $exceptions->render(function (ThrottleRequestsException $e, Request $peticion) {
+            $cuenta = $peticion->user();
+
+            Log::warning('Tope de pedidos superado', [
+                'ruta' => $peticion->path(),
+                'metodo' => $peticion->method(),
+                'cuenta_id' => $cuenta?->getAuthIdentifier(),
+                'movil' => $cuenta instanceof User ? $cuenta->cadete?->numero_movil : null,
+                // Sin cuenta el tope cuenta por IP, así que ahí la IP es la única pista.
+                'ip' => $peticion->ip(),
+                'reintentar_en' => $e->getHeaders()['Retry-After'] ?? null,
+            ]);
+
+            return null;
+        });
     })->create();

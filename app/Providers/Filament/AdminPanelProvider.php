@@ -6,10 +6,12 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -58,6 +60,23 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
+            ])
+            /*
+            | El enlace a Telescope.
+            |
+            | Telescope tiene su propia pantalla y no se puede meter adentro de Filament,
+            | así que lo que queda es que se pueda llegar: desde «Fallas» se sabe QUÉ
+            | falló y desde acá se mira un pedido entero. Sin este renglón hay que
+            | acordarse de la dirección, que es lo mismo que no estar.
+            |
+            | ⚠️ Abre en otra pestaña a propósito: es otra aplicación, y volver con el
+            | botón de atrás desde ahí deja el panel a medio cargar.
+            */
+            ->navigationItems([
+                NavigationItem::make('Telescope')
+                    ->url('/telescope', shouldOpenInNewTab: true)
+                    ->icon(Heroicon::OutlinedMagnifyingGlass)
+                    ->sort(92),
             ])
             ->middleware([
                 EncryptCookies::class,

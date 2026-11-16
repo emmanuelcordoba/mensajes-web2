@@ -66,7 +66,10 @@ export default function CobranzaSemanalIndex({
 
                 <div className="grid gap-4 sm:grid-cols-3">
                     <Total titulo="Deuda" valor={totales.deuda} />
-                    <Total titulo="Pagado en efectivo" valor={totales.efectivo} />
+                    <Total
+                        titulo="Pagado en efectivo"
+                        valor={totales.efectivo}
+                    />
                     <Total titulo="Pagado en tickets" valor={totales.tickets} />
                 </div>
 
@@ -117,10 +120,18 @@ export default function CobranzaSemanalIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Móvil</th>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Vehículo</th>
-                                    <th className="px-4 py-3 font-medium">Vencimiento</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Móvil
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Vehículo
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Vencimiento
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Deuda
                                     </th>
@@ -152,7 +163,9 @@ export default function CobranzaSemanalIndex({
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             {cadete.nombre}
                                         </td>
-                                        <td className="px-4 py-3">{cadete.vehiculo}</td>
+                                        <td className="px-4 py-3">
+                                            {cadete.vehiculo}
+                                        </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             {cadete.tiene_ciclo ? (
                                                 <span
@@ -174,7 +187,11 @@ export default function CobranzaSemanalIndex({
                                             ${cadete.deuda}
                                         </td>
                                         <td className="px-4 py-3 text-right whitespace-nowrap">
-                                            <Button asChild size="sm" variant="outline">
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant="outline"
+                                            >
                                                 <Link
                                                     href={`/panel/cadetes/cobranzas/semanal/${cadete.id}`}
                                                 >
@@ -198,7 +215,9 @@ export default function CobranzaSemanalIndex({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -209,7 +228,9 @@ export default function CobranzaSemanalIndex({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}
@@ -304,6 +325,9 @@ function LasCuotas({ montos }: { montos: MontoGeneral[] }) {
 CobranzaSemanalIndex.layout = {
     breadcrumbs: [
         { title: 'Cadetes', href: '/panel/cadetes' },
-        { title: 'Cobranzas · Semanal', href: '/panel/cadetes/cobranzas/semanal' },
+        {
+            title: 'Cobranzas · Semanal',
+            href: '/panel/cadetes/cobranzas/semanal',
+        },
     ],
 };

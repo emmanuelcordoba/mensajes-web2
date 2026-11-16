@@ -103,7 +103,8 @@ export default function CadeteForm({
                                     defaultValue={cadete?.dni ?? ''}
                                 />
                                 <p className="text-muted-foreground text-xs">
-                                    7 u 8 dígitos, sin puntos. Puede quedar vacío.
+                                    7 u 8 dígitos, sin puntos. Puede quedar
+                                    vacío.
                                 </p>
                                 <InputError message={errors.dni} />
                             </div>
@@ -158,14 +159,18 @@ export default function CadeteForm({
                     <Card className="space-y-4 p-6">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="grid gap-2">
-                                <Label htmlFor="numero_movil">N° de móvil</Label>
+                                <Label htmlFor="numero_movil">
+                                    N° de móvil
+                                </Label>
                                 <Input
                                     id="numero_movil"
                                     name="numero_movil"
                                     type="number"
                                     min={1}
                                     defaultValue={
-                                        cadete?.numero_movil ?? siguienteMovil ?? ''
+                                        cadete?.numero_movil ??
+                                        siguienteMovil ??
+                                        ''
                                     }
                                     required
                                 />
@@ -215,7 +220,8 @@ export default function CadeteForm({
                                 name="tiene_monto_semanal_personal"
                                 value="1"
                                 defaultChecked={
-                                    cadete?.tiene_monto_semanal_personal ?? false
+                                    cadete?.tiene_monto_semanal_personal ??
+                                    false
                                 }
                                 className="border-input mt-0.5 size-4 rounded border"
                             />
@@ -224,27 +230,33 @@ export default function CadeteForm({
                                     Cuota semanal propia
                                 </Label>
                                 <p className="text-muted-foreground text-xs">
-                                    Si no, cobra el monto general de su vehículo.
+                                    Si no, cobra el monto general de su
+                                    vehículo.
                                 </p>
                             </div>
                         </div>
-                        <InputError message={errors.tiene_monto_semanal_personal} />
+                        <InputError
+                            message={errors.tiene_monto_semanal_personal}
+                        />
 
                         {cadete !== undefined && (
                             <p className="text-muted-foreground border-t pt-4 text-xs">
-                                Hoy está <strong>{cadete.estado}</strong> y cobra por{' '}
+                                Hoy está <strong>{cadete.estado}</strong> y
+                                cobra por{' '}
                                 <strong>
                                     {cadete.modalidad_cobranza.toLowerCase()}
                                 </strong>
-                                . El estado se cambia desde el listado; la modalidad,
-                                desde cobranzas.
+                                . El estado se cambia desde el listado; la
+                                modalidad, desde cobranzas.
                             </p>
                         )}
                     </Card>
 
                     <Card className="space-y-4 p-6">
                         <div className="grid gap-1">
-                            <h2 className="text-sm font-medium">La cuenta de la app</h2>
+                            <h2 className="text-sm font-medium">
+                                La cuenta de la app
+                            </h2>
                             <p className="text-muted-foreground text-xs">
                                 {cadete === undefined
                                     ? 'Se crea junto con el cadete, y es con la que entra a la app.'
@@ -309,9 +321,9 @@ export default function CadeteForm({
                                bajas lógicas, así que una cuenta dada de baja deja al
                                cadete sin dónde guardar el email ni la contraseña. */
                             <p className="text-muted-foreground text-sm">
-                                Este cadete no tiene cuenta activa, así que no hay email
-                                ni contraseña que editar. Para reponerla hace falta
-                                restaurar la cuenta.
+                                Este cadete no tiene cuenta activa, así que no
+                                hay email ni contraseña que editar. Para
+                                reponerla hace falta restaurar la cuenta.
                             </p>
                         )}
                     </Card>

@@ -38,9 +38,9 @@ export default function Pendiente({ titulo, dentroDe }: Props) {
                 <Card className="flex flex-col items-center gap-3 p-10 text-center">
                     <Construction className="text-muted-foreground size-8" />
                     <p className="text-muted-foreground max-w-prose text-sm">
-                        El menú está completo para poder ver el panel entero, pero
-                        esta pantalla todavía no se escribió. Por ahora se usa la
-                        del sistema viejo.
+                        El menú está completo para poder ver el panel entero,
+                        pero esta pantalla todavía no se escribió. Por ahora se
+                        usa la del sistema viejo.
                     </p>
                 </Card>
             </div>

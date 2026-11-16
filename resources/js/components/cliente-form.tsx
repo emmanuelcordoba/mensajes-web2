@@ -60,8 +60,8 @@ export default function ClienteForm({
                             />
                             {cliente?.de_la_app && (
                                 <p className="text-muted-foreground text-xs">
-                                    Gana sobre el que escribe la app. Si lo dejás
-                                    vacío, vuelve a mostrarse{' '}
+                                    Gana sobre el que escribe la app. Si lo
+                                    dejás vacío, vuelve a mostrarse{' '}
                                     <strong>
                                         {[cliente.nombres, cliente.apellidos]
                                             .filter(Boolean)
@@ -106,7 +106,9 @@ export default function ClienteForm({
                                 <Input
                                     id="nombre_empleado"
                                     name="nombre_empleado"
-                                    defaultValue={cliente?.nombre_empleado ?? ''}
+                                    defaultValue={
+                                        cliente?.nombre_empleado ?? ''
+                                    }
                                     maxLength={255}
                                 />
                                 <p className="text-muted-foreground text-xs">
@@ -131,8 +133,8 @@ export default function ClienteForm({
                                         required
                                     />
                                     <p className="text-muted-foreground text-xs">
-                                        Lo asigna el sistema al crear. Cambialo sólo
-                                        para corregir.
+                                        Lo asigna el sistema al crear. Cambialo
+                                        sólo para corregir.
                                     </p>
                                     <InputError message={errors.numero} />
                                 </div>
@@ -147,8 +149,8 @@ export default function ClienteForm({
                                         )}
                                     </p>
                                     <p className="text-muted-foreground text-xs">
-                                        Para moverlo de cuenta hace falta la pantalla
-                                        de fusión, que todavía no está.
+                                        Para moverlo de cuenta hace falta la
+                                        pantalla de fusión, que todavía no está.
                                     </p>
                                 </div>
                             </div>

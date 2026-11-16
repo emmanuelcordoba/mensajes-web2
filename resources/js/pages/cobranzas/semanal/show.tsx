@@ -46,7 +46,9 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
 
                 <Card className="space-y-4 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="text-sm font-medium">El ciclo en curso</h2>
+                        <h2 className="text-sm font-medium">
+                            El ciclo en curso
+                        </h2>
                         {cadete.vencido && (
                             <Badge variant="destructive">Vencido</Badge>
                         )}
@@ -58,11 +60,25 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
                         <Dato
                             nombre="Cuota semanal"
                             valor={`$${cadete.cuota}`}
-                            nota={cadete.cuota_propia ? 'propia' : 'la general de su vehículo'}
+                            nota={
+                                cadete.cuota_propia
+                                    ? 'propia'
+                                    : 'la general de su vehículo'
+                            }
                         />
-                        <Dato nombre="Pagado en efectivo" valor={`$${cadete.efectivo}`} />
-                        <Dato nombre="Pagado en tickets" valor={`$${cadete.tickets}`} />
-                        <Dato nombre="Deuda" valor={`$${cadete.deuda}`} destacado />
+                        <Dato
+                            nombre="Pagado en efectivo"
+                            valor={`$${cadete.efectivo}`}
+                        />
+                        <Dato
+                            nombre="Pagado en tickets"
+                            valor={`$${cadete.tickets}`}
+                        />
+                        <Dato
+                            nombre="Deuda"
+                            valor={`$${cadete.deuda}`}
+                            destacado
+                        />
                     </dl>
                 </Card>
 
@@ -80,7 +96,9 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
                             <>
                                 <div className="grid gap-4 sm:grid-cols-3">
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor="monto_efectivo">Efectivo</Label>
+                                        <Label htmlFor="monto_efectivo">
+                                            Efectivo
+                                        </Label>
                                         <Input
                                             id="monto_efectivo"
                                             name="monto_efectivo"
@@ -89,11 +107,15 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
                                             required
                                             className="tabular-nums"
                                         />
-                                        <InputError message={errors.monto_efectivo} />
+                                        <InputError
+                                            message={errors.monto_efectivo}
+                                        />
                                     </div>
 
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor="monto_tickets">Tickets</Label>
+                                        <Label htmlFor="monto_tickets">
+                                            Tickets
+                                        </Label>
                                         <Input
                                             id="monto_tickets"
                                             name="monto_tickets"
@@ -102,7 +124,9 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
                                             required
                                             className="tabular-nums"
                                         />
-                                        <InputError message={errors.monto_tickets} />
+                                        <InputError
+                                            message={errors.monto_tickets}
+                                        />
                                     </div>
 
                                     <div className="grid gap-1.5">
@@ -113,18 +137,23 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
                                             id="fecha_vencimiento"
                                             name="fecha_vencimiento"
                                             type="date"
-                                            defaultValue={cadete.fecha_vencimiento ?? ''}
+                                            defaultValue={
+                                                cadete.fecha_vencimiento ?? ''
+                                            }
                                             required
                                         />
-                                        <InputError message={errors.fecha_vencimiento} />
+                                        <InputError
+                                            message={errors.fecha_vencimiento}
+                                        />
                                     </div>
                                 </div>
 
                                 <p className="text-muted-foreground text-xs">
                                     {/* La cuota NO viaja: la deuda se recalcula con la
                                         guardada. Ver PANEL-9. */}
-                                    Lo que se cargue se suma a lo ya pagado, y la deuda se
-                                    recalcula contra la cuota guardada.
+                                    Lo que se cargue se suma a lo ya pagado, y
+                                    la deuda se recalcula contra la cuota
+                                    guardada.
                                 </p>
 
                                 <Button type="submit" disabled={processing}>
@@ -166,7 +195,9 @@ export default function CobranzaSemanalShow({ cadete }: { cadete: Cadete }) {
                 </Card>
 
                 <Button asChild variant="ghost">
-                    <Link href="/panel/cadetes/cobranzas/semanal">Volver al listado</Link>
+                    <Link href="/panel/cadetes/cobranzas/semanal">
+                        Volver al listado
+                    </Link>
                 </Button>
             </div>
         </>
@@ -202,6 +233,9 @@ function Dato({
 CobranzaSemanalShow.layout = {
     breadcrumbs: [
         { title: 'Cadetes', href: '/panel/cadetes' },
-        { title: 'Cobranzas · Semanal', href: '/panel/cadetes/cobranzas/semanal' },
+        {
+            title: 'Cobranzas · Semanal',
+            href: '/panel/cadetes/cobranzas/semanal',
+        },
     ],
 };

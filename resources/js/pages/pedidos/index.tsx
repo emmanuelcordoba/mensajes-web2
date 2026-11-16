@@ -63,7 +63,9 @@ export default function PedidosIndex({
 
     const alternar = (id: number) =>
         setElegidos((antes) =>
-            antes.includes(id) ? antes.filter((otro) => otro !== id) : [...antes, id],
+            antes.includes(id)
+                ? antes.filter((otro) => otro !== id)
+                : [...antes, id],
         );
 
     const alternarTodos = () =>
@@ -105,7 +107,10 @@ export default function PedidosIndex({
                             className="flex flex-wrap items-end gap-2"
                         >
                             <div className="grid gap-1">
-                                <label htmlFor="buscar" className="text-sm font-medium">
+                                <label
+                                    htmlFor="buscar"
+                                    className="text-sm font-medium"
+                                >
                                     Buscar
                                 </label>
                                 <Input
@@ -118,7 +123,10 @@ export default function PedidosIndex({
                             </div>
 
                             <div className="grid gap-1">
-                                <label htmlFor="campo" className="text-sm font-medium">
+                                <label
+                                    htmlFor="campo"
+                                    className="text-sm font-medium"
+                                >
                                     En
                                 </label>
                                 <select
@@ -128,13 +136,18 @@ export default function PedidosIndex({
                                     className="border-input bg-background h-9 rounded-md border px-3 text-sm"
                                 >
                                     <option value="cliente">Cliente</option>
-                                    <option value="direccion">Direcciones</option>
+                                    <option value="direccion">
+                                        Direcciones
+                                    </option>
                                     <option value="cadete">Cadete</option>
                                 </select>
                             </div>
 
                             <div className="grid gap-1">
-                                <label htmlFor="estado" className="text-sm font-medium">
+                                <label
+                                    htmlFor="estado"
+                                    className="text-sm font-medium"
+                                >
                                     Estado
                                 </label>
                                 <select
@@ -156,7 +169,10 @@ export default function PedidosIndex({
                             </div>
 
                             <div className="grid gap-1">
-                                <label htmlFor="desde" className="text-sm font-medium">
+                                <label
+                                    htmlFor="desde"
+                                    className="text-sm font-medium"
+                                >
                                     Desde
                                 </label>
                                 <Input
@@ -169,7 +185,10 @@ export default function PedidosIndex({
                             </div>
 
                             <div className="grid gap-1">
-                                <label htmlFor="hasta" className="text-sm font-medium">
+                                <label
+                                    htmlFor="hasta"
+                                    className="text-sm font-medium"
+                                >
                                     Hasta
                                 </label>
                                 <Input
@@ -183,7 +202,8 @@ export default function PedidosIndex({
 
                             <Button type="submit">Buscar</Button>
 
-                            {(filtros.buscar !== '' || filtros.estado !== '') && (
+                            {(filtros.buscar !== '' ||
+                                filtros.estado !== '') && (
                                 <Button asChild variant="ghost">
                                     <Link href="/panel/pedidos">Limpiar</Link>
                                 </Button>
@@ -250,7 +270,9 @@ export default function PedidosIndex({
                             )}
 
                             <Button asChild size="sm" variant="secondary">
-                                <Link href={`/panel/pedidos/${pedido.id}`}>Ver</Link>
+                                <Link href={`/panel/pedidos/${pedido.id}`}>
+                                    Ver
+                                </Link>
                             </Button>
 
                             {pedido.se_puede_borrar && (
@@ -259,7 +281,9 @@ export default function PedidosIndex({
                                     action={`/panel/pedidos/${pedido.id}`}
                                     options={{ preserveScroll: true }}
                                     onBefore={() =>
-                                        confirm('Se elimina el pedido. ¿Seguir?')
+                                        confirm(
+                                            'Se elimina el pedido. ¿Seguir?',
+                                        )
                                     }
                                 >
                                     {({ processing }) => (

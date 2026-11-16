@@ -73,7 +73,9 @@ export default function HorarioEdit({
                                             id="desde"
                                             name="desde"
                                             type="time"
-                                            defaultValue={horario?.desde ?? '08:00'}
+                                            defaultValue={
+                                                horario?.desde ?? '08:00'
+                                            }
                                             required
                                         />
                                         <InputError message={errors.desde} />
@@ -85,7 +87,9 @@ export default function HorarioEdit({
                                             id="hasta"
                                             name="hasta"
                                             type="time"
-                                            defaultValue={horario?.hasta ?? '20:00'}
+                                            defaultValue={
+                                                horario?.hasta ?? '20:00'
+                                            }
                                             required
                                         />
                                         <InputError message={errors.hasta} />
@@ -93,8 +97,8 @@ export default function HorarioEdit({
                                 </div>
 
                                 <p className="text-muted-foreground text-xs">
-                                    Si «hasta» es menor que «desde», el horario cruza
-                                    la medianoche. Está contemplado.
+                                    Si «hasta» es menor que «desde», el horario
+                                    cruza la medianoche. Está contemplado.
                                 </p>
                             </Card>
 
@@ -107,15 +111,20 @@ export default function HorarioEdit({
                                         id="mensaje_horario"
                                         name="mensaje_horario"
                                         rows={2}
-                                        defaultValue={horario?.mensaje_horario ?? ''}
+                                        defaultValue={
+                                            horario?.mensaje_horario ?? ''
+                                        }
                                         required
                                         maxLength={255}
                                         className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none"
                                     />
                                     <p className="text-muted-foreground text-xs">
-                                        Lo lee quien abre la app cuando está cerrado.
+                                        Lo lee quien abre la app cuando está
+                                        cerrado.
                                     </p>
-                                    <InputError message={errors.mensaje_horario} />
+                                    <InputError
+                                        message={errors.mensaje_horario}
+                                    />
                                 </div>
 
                                 <div className="grid gap-2">
@@ -159,6 +168,9 @@ export default function HorarioEdit({
 
 HorarioEdit.layout = {
     breadcrumbs: [
-        { title: 'Horario de Atención APP', href: '/panel/horario-de-atencion' },
+        {
+            title: 'Horario de Atención APP',
+            href: '/panel/horario-de-atencion',
+        },
     ],
 };

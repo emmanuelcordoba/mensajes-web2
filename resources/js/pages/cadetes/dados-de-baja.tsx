@@ -86,25 +86,31 @@ export default function CadetesDadosDeBaja({
 
                 <Card className="space-y-2 p-4 text-sm">
                     <p>
-                        Un cadete dado de baja no aparece en el listado ni en la cola, y
-                        conserva todo: su legajo, su actividad y sus pedidos. Desde acá se
-                        lo puede <strong>borrar definitivamente</strong>, que es sacar la
+                        Un cadete dado de baja no aparece en el listado ni en la
+                        cola, y conserva todo: su legajo, su actividad y sus
+                        pedidos. Desde acá se lo puede{' '}
+                        <strong>borrar definitivamente</strong>, que es sacar la
                         fila de verdad.
                     </p>
                     <ul className="text-muted-foreground list-disc space-y-1 pl-5">
                         <li>
-                            <strong>Acá el único borrado es el definitivo.</strong> La baja
-                            lógica ya pasó: ofrecerla de nuevo no haría nada.
+                            <strong>
+                                Acá el único borrado es el definitivo.
+                            </strong>{' '}
+                            La baja lógica ya pasó: ofrecerla de nuevo no haría
+                            nada.
                         </li>
                         <li>
-                            Borra el cadete, su cuenta, su legajo con los documentos de
-                            identidad, su actividad, sus mensajes y sus movimientos de
-                            cobranza. <strong>Los pedidos no se borran</strong>: son de los
-                            clientes, y quedan sin cadete.
+                            Borra el cadete, su cuenta, su legajo con los
+                            documentos de identidad, su actividad, sus mensajes
+                            y sus movimientos de cobranza.{' '}
+                            <strong>Los pedidos no se borran</strong>: son de
+                            los clientes, y quedan sin cadete.
                         </li>
                         <li>
-                            No se deshace. Queda un registro en el servidor con todo lo que
-                            se borró, y la confirmación pide escribir el número de móvil.
+                            No se deshace. Queda un registro en el servidor con
+                            todo lo que se borró, y la confirmación pide
+                            escribir el número de móvil.
                         </li>
                     </ul>
                 </Card>
@@ -114,11 +120,21 @@ export default function CadetesDadosDeBaja({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Móvil</th>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Dado de baja</th>
-                                    <th className="px-4 py-3 font-medium">Cuenta</th>
-                                    <th className="px-4 py-3 font-medium">Pedidos</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Móvil
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Dado de baja
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Cuenta
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Pedidos
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Acción
                                     </th>
@@ -137,7 +153,10 @@ export default function CadetesDadosDeBaja({
                                 )}
 
                                 {cadetes.data.map((cadete) => (
-                                    <tr key={cadete.id} className="border-b last:border-0">
+                                    <tr
+                                        key={cadete.id}
+                                        className="border-b last:border-0"
+                                    >
                                         <td className="px-4 py-3 tabular-nums">
                                             {cadete.numero_movil}
                                         </td>
@@ -182,7 +201,9 @@ export default function CadetesDadosDeBaja({
                                                     <Button
                                                         size="sm"
                                                         variant="destructive"
-                                                        onClick={() => setBorrando(cadete)}
+                                                        onClick={() =>
+                                                            setBorrando(cadete)
+                                                        }
                                                     >
                                                         Borrado definitivo
                                                     </Button>
@@ -190,9 +211,13 @@ export default function CadetesDadosDeBaja({
                                                     /* El motivo entero en lugar de un botón
                                                        que iba a fallar, como en la baja del
                                                        listado. */
-                                                    cadete.borrado.motivo !== null && (
+                                                    cadete.borrado.motivo !==
+                                                        null && (
                                                         <span className="text-muted-foreground max-w-72 text-right text-xs whitespace-normal">
-                                                            {cadete.borrado.motivo}
+                                                            {
+                                                                cadete.borrado
+                                                                    .motivo
+                                                            }
                                                         </span>
                                                     )
                                                 )}
@@ -212,7 +237,9 @@ export default function CadetesDadosDeBaja({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -223,7 +250,9 @@ export default function CadetesDadosDeBaja({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}
@@ -278,7 +307,8 @@ function DialogoDeBorrado({
                         Borrar el móvil {cadete?.numero_movil}
                     </DialogTitle>
                     <DialogDescription>
-                        {cadete?.nombre} sale del padrón de verdad. No se deshace.
+                        {cadete?.nombre} sale del padrón de verdad. No se
+                        deshace.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -287,20 +317,25 @@ function DialogoDeBorrado({
                         <ul className="space-y-1 text-sm">
                             <li>
                                 Se borran{' '}
-                                <strong>{cadete.arrastra.mensajes} mensajes</strong>,{' '}
                                 <strong>
-                                    {cadete.arrastra.actividades} tramos de actividad
+                                    {cadete.arrastra.mensajes} mensajes
+                                </strong>
+                                ,{' '}
+                                <strong>
+                                    {cadete.arrastra.actividades} tramos de
+                                    actividad
                                 </strong>{' '}
                                 y{' '}
                                 <strong>
-                                    {cadete.arrastra.cobranza} movimientos de cobranza
+                                    {cadete.arrastra.cobranza} movimientos de
+                                    cobranza
                                 </strong>
                                 .
                             </li>
                             {cadete.arrastra.postulacion && (
                                 <li>
-                                    Se borra su <strong>postulación</strong>, con los
-                                    documentos de identidad.
+                                    Se borra su <strong>postulación</strong>,
+                                    con los documentos de identidad.
                                 </li>
                             )}
                             {cadete.arrastra.cuenta !== null && (
@@ -311,8 +346,8 @@ function DialogoDeBorrado({
                             )}
                             <li className="text-muted-foreground">
                                 Sus {cadete.arrastra.pedidos} pedidos{' '}
-                                <strong>no se borran</strong>: son de los clientes, y
-                                quedan sin cadete.
+                                <strong>no se borran</strong>: son de los
+                                clientes, y quedan sin cadete.
                             </li>
                         </ul>
 
@@ -330,7 +365,8 @@ function DialogoDeBorrado({
                                 <>
                                     <div className="grid gap-2">
                                         <Label htmlFor="confirmacion">
-                                            Escribí el número de móvil para confirmar
+                                            Escribí el número de móvil para
+                                            confirmar
                                         </Label>
                                         <Input
                                             id="confirmacion"
@@ -338,8 +374,12 @@ function DialogoDeBorrado({
                                             autoComplete="off"
                                             inputMode="numeric"
                                             value={escrito}
-                                            onChange={(e) => setEscrito(e.target.value)}
-                                            placeholder={String(cadete.numero_movil)}
+                                            onChange={(e) =>
+                                                setEscrito(e.target.value)
+                                            }
+                                            placeholder={String(
+                                                cadete.numero_movil,
+                                            )}
                                         />
                                     </div>
 

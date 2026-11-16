@@ -68,6 +68,14 @@ export default defineConfig({
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            // ⚠️ Lo compilado y lo vendorizado no se formatea, igual que en `lint`, donde
+            // esto ya estaba. Sin esta línea `vp check --fix` DESMINIFICA la landing:
+            // `alpine-3.17.5.min.js` y el CSS compilado pasan de dos líneas a 7.500, y
+            // `vp check` los marca en cada corrida, que es parte de por qué CI estaba en
+            // rojo.
+            'public/**',
+            'vendor/**',
+            'bootstrap/ssr/**',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

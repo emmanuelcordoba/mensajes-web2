@@ -76,7 +76,8 @@ export function TablaDePedidos({
                                         aria-label="Seleccionar todos"
                                         checked={
                                             seleccion.borrables > 0 &&
-                                            seleccion.elegidos.length === seleccion.borrables
+                                            seleccion.elegidos.length ===
+                                                seleccion.borrables
                                         }
                                         onChange={seleccion.alternarTodos}
                                         disabled={seleccion.borrables === 0}
@@ -88,8 +89,12 @@ export function TablaDePedidos({
                             <th className="px-4 py-3 font-medium">Dirección</th>
                             <th className="px-4 py-3 font-medium">Destino</th>
                             <th className="px-4 py-3 font-medium">Teléfono</th>
-                            <th className="px-4 py-3 text-right font-medium">Garantía</th>
-                            <th className="px-4 py-3 text-right font-medium">Valor</th>
+                            <th className="px-4 py-3 text-right font-medium">
+                                Garantía
+                            </th>
+                            <th className="px-4 py-3 text-right font-medium">
+                                Valor
+                            </th>
                             <th className="px-4 py-3 font-medium">Móvil</th>
                             <th className="px-4 py-3 font-medium">Cadete</th>
                             <th className="px-4 py-3 font-medium">Estado</th>
@@ -125,8 +130,14 @@ export function TablaDePedidos({
                                             <input
                                                 type="checkbox"
                                                 aria-label={`Seleccionar el pedido de ${pedido.cuando}`}
-                                                checked={seleccion.elegidos.includes(pedido.id)}
-                                                onChange={() => seleccion.alternar(pedido.id)}
+                                                checked={seleccion.elegidos.includes(
+                                                    pedido.id,
+                                                )}
+                                                onChange={() =>
+                                                    seleccion.alternar(
+                                                        pedido.id,
+                                                    )
+                                                }
                                             />
                                         )}
                                     </td>
@@ -135,7 +146,9 @@ export function TablaDePedidos({
                                     {pedido.cuando}
                                 </td>
                                 <td className="px-4 py-3">{pedido.cliente}</td>
-                                <td className="px-4 py-3">{pedido.direccion}</td>
+                                <td className="px-4 py-3">
+                                    {pedido.direccion}
+                                </td>
                                 <td className="px-4 py-3">{pedido.destino}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                     {pedido.telefono}

@@ -43,7 +43,10 @@ export default function ConfiguracionesIndex({
 
                 <div className="space-y-3">
                     {configuraciones.map((configuracion) => (
-                        <Fila key={configuracion.id} configuracion={configuracion} />
+                        <Fila
+                            key={configuracion.id}
+                            configuracion={configuracion}
+                        />
                     ))}
                 </div>
             </div>
@@ -64,7 +67,9 @@ function Fila({ configuracion }: { configuracion: ConfiguracionEditable }) {
                     <>
                         <div className="grid gap-2">
                             <div>
-                                <p className="font-medium">{configuracion.titulo}</p>
+                                <p className="font-medium">
+                                    {configuracion.titulo}
+                                </p>
                                 {configuracion.descripcion && (
                                     <p className="text-muted-foreground text-sm">
                                         {configuracion.descripcion}
@@ -102,7 +107,11 @@ function Fila({ configuracion }: { configuracion: ConfiguracionEditable }) {
                                     Guardado
                                 </span>
                             )}
-                            <Button type="submit" disabled={processing} size="sm">
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                size="sm"
+                            >
                                 Guardar
                             </Button>
                         </div>
@@ -114,7 +123,5 @@ function Fila({ configuracion }: { configuracion: ConfiguracionEditable }) {
 }
 
 ConfiguracionesIndex.layout = {
-    breadcrumbs: [
-        { title: 'Configuraciones', href: '/panel/configuraciones' },
-    ],
+    breadcrumbs: [{ title: 'Configuraciones', href: '/panel/configuraciones' }],
 };

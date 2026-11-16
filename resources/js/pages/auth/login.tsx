@@ -17,7 +17,11 @@ type Props = {
     canRegister: boolean;
 };
 
-export default function Login({ status, canResetPassword, canRegister }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    canRegister,
+}: Props) {
     return (
         <>
             <Head title="Ingresar" />

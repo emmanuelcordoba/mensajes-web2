@@ -94,17 +94,21 @@ export default function PostulacionesIndex({
                         }}
                     >
                         <label className="grid gap-1 text-sm">
-                            <span className="text-muted-foreground">Mostrar</span>
+                            <span className="text-muted-foreground">
+                                Mostrar
+                            </span>
                             <select
                                 name="estado"
                                 defaultValue={filtros.estado}
                                 className="border-input bg-background h-9 rounded-md border px-3 text-sm"
                             >
-                                {Object.entries(ESTADOS).map(([valor, texto]) => (
-                                    <option key={valor} value={valor}>
-                                        {texto}
-                                    </option>
-                                ))}
+                                {Object.entries(ESTADOS).map(
+                                    ([valor, texto]) => (
+                                        <option key={valor} value={valor}>
+                                            {texto}
+                                        </option>
+                                    ),
+                                )}
                             </select>
                         </label>
 
@@ -123,9 +127,12 @@ export default function PostulacionesIndex({
                             Buscar
                         </Button>
 
-                        {(filtros.buscar !== '' || filtros.estado !== 'pendientes') && (
+                        {(filtros.buscar !== '' ||
+                            filtros.estado !== 'pendientes') && (
                             <Button asChild variant="ghost">
-                                <Link href="/panel/cadetes/postulaciones">Limpiar</Link>
+                                <Link href="/panel/cadetes/postulaciones">
+                                    Limpiar
+                                </Link>
                             </Button>
                         )}
                     </form>
@@ -136,12 +143,24 @@ export default function PostulacionesIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Cuándo</th>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Email</th>
-                                    <th className="px-4 py-3 font-medium">Teléfono</th>
-                                    <th className="px-4 py-3 font-medium">Dirección</th>
-                                    <th className="px-4 py-3 font-medium">Vehículo</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Cuándo
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Email
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Teléfono
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Dirección
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Vehículo
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Acción
                                     </th>
@@ -154,7 +173,8 @@ export default function PostulacionesIndex({
                                             colSpan={7}
                                             className="text-muted-foreground px-4 py-8 text-center"
                                         >
-                                            Ninguna postulación con ese criterio.
+                                            Ninguna postulación con ese
+                                            criterio.
                                         </td>
                                     </tr>
                                 )}
@@ -172,7 +192,8 @@ export default function PostulacionesIndex({
                                                 {postulacion.nombre}
                                                 {postulacion.movil !== null && (
                                                     <Badge variant="outline">
-                                                        Móvil {postulacion.movil}
+                                                        Móvil{' '}
+                                                        {postulacion.movil}
                                                     </Badge>
                                                 )}
                                             </div>
@@ -200,7 +221,11 @@ export default function PostulacionesIndex({
                                             {postulacion.vehiculo}
                                         </td>
                                         <td className="px-4 py-3 text-right whitespace-nowrap">
-                                            <Button asChild size="sm" variant="outline">
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant="outline"
+                                            >
                                                 <Link
                                                     href={`/panel/cadetes/postulaciones/${postulacion.id}`}
                                                 >
@@ -222,7 +247,9 @@ export default function PostulacionesIndex({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -233,7 +260,9 @@ export default function PostulacionesIndex({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}

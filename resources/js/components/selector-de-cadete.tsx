@@ -178,7 +178,9 @@ export function SelectorDeCadete({
                 onBlur={alCerrarse}
                 onChange={(e) => {
                     alCerrarse();
-                    alElegir(e.target.value === '' ? null : Number(e.target.value));
+                    alElegir(
+                        e.target.value === '' ? null : Number(e.target.value),
+                    );
                 }}
                 className="border-input bg-background h-9 w-full min-w-0 rounded-md border px-3 text-sm"
             >
@@ -219,7 +221,8 @@ export function SelectorDeCadete({
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >
-                    Ningún cadete coincide. Sólo se ofrecen los que están trabajando.
+                    Ningún cadete coincide. Sólo se ofrecen los que están
+                    trabajando.
                 </span>
             )}
 

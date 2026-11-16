@@ -69,7 +69,10 @@ function Dato({
     // de un pedido se mira para encontrar un dato, no para contar los que faltan. Los
     // que siempre importan —el origen, el destino— se muestran igual con un guión.
     const vacio =
-        children === null || children === undefined || children === '' || children === false;
+        children === null ||
+        children === undefined ||
+        children === '' ||
+        children === false;
 
     if (vacio && !siempre) {
         return null;
@@ -78,13 +81,22 @@ function Dato({
     return (
         <div>
             <dt className="text-muted-foreground text-xs">{etiqueta}</dt>
-            <dd className="text-sm">{vacio ? <span className="text-muted-foreground">—</span> : children}</dd>
+            <dd className="text-sm">
+                {vacio ? (
+                    <span className="text-muted-foreground">—</span>
+                ) : (
+                    children
+                )}
+            </dd>
         </div>
     );
 }
 
 export default function PedidoShow({ pedido }: { pedido: Pedido }) {
-    const titulo = pedido.numero === null ? 'Pedido sin número' : `Pedido N° ${pedido.numero}`;
+    const titulo =
+        pedido.numero === null
+            ? 'Pedido sin número'
+            : `Pedido N° ${pedido.numero}`;
 
     return (
         <>
@@ -107,7 +119,10 @@ export default function PedidoShow({ pedido }: { pedido: Pedido }) {
                         <Dato etiqueta="Cliente" siempre>
                             {pedido.cliente}
                             {pedido.cliente_numero !== null && (
-                                <span className="text-muted-foreground"> · N° {pedido.cliente_numero}</span>
+                                <span className="text-muted-foreground">
+                                    {' '}
+                                    · N° {pedido.cliente_numero}
+                                </span>
                             )}
                         </Dato>
                         <Dato etiqueta="Teléfono">{pedido.telefono}</Dato>
@@ -125,7 +140,9 @@ export default function PedidoShow({ pedido }: { pedido: Pedido }) {
                             <Monto valor={pedido.valor} />
                         </Dato>
                         <Dato etiqueta="Garantía">
-                            {pedido.garantia === null ? null : <Monto valor={pedido.garantia} />}
+                            {pedido.garantia === null ? null : (
+                                <Monto valor={pedido.garantia} />
+                            )}
                         </Dato>
                         <Dato etiqueta="Valor declarado">
                             {pedido.valor_declarado === null ? null : (
@@ -134,15 +151,23 @@ export default function PedidoShow({ pedido }: { pedido: Pedido }) {
                         </Dato>
 
                         <Dato etiqueta="Móvil">
-                            {pedido.movil === null ? null : `Móvil ${pedido.movil}`}
+                            {pedido.movil === null
+                                ? null
+                                : `Móvil ${pedido.movil}`}
                         </Dato>
                         <Dato etiqueta="Cargado por">{pedido.cargado_por}</Dato>
                         <Dato etiqueta="Paquete">
-                            {[pedido.tipo_paquete, pedido.peso_paquete].filter(Boolean).join(' · ') || null}
+                            {[pedido.tipo_paquete, pedido.peso_paquete]
+                                .filter(Boolean)
+                                .join(' · ') || null}
                         </Dato>
 
-                        <Dato etiqueta="Gastronomía">{pedido.gastronomia ? 'Sí' : null}</Dato>
-                        <Dato etiqueta="Vuelve al origen">{pedido.retorno_origen ? 'Sí' : null}</Dato>
+                        <Dato etiqueta="Gastronomía">
+                            {pedido.gastronomia ? 'Sí' : null}
+                        </Dato>
+                        <Dato etiqueta="Vuelve al origen">
+                            {pedido.retorno_origen ? 'Sí' : null}
+                        </Dato>
                     </dl>
                 </Card>
 
@@ -153,30 +178,46 @@ export default function PedidoShow({ pedido }: { pedido: Pedido }) {
                         <Card className="text-muted-foreground p-4 text-sm">
                             {/* No es raro: el registro de estados existe desde después de muchos
                                 pedidos viejos, y un pedido migrado puede no tener ninguno. */}
-                            No quedó registro de los cambios de estado. El estado actual es{' '}
-                            <strong>{pedido.estado}</strong>, actualizado {pedido.actualizado ?? 'sin fecha'}.
+                            No quedó registro de los cambios de estado. El
+                            estado actual es <strong>{pedido.estado}</strong>,
+                            actualizado {pedido.actualizado ?? 'sin fecha'}.
                         </Card>
                     ) : (
                         <Card className="overflow-x-auto p-0">
                             <table className="w-full text-sm">
                                 <thead className="text-muted-foreground border-b text-left">
                                     <tr>
-                                        <th className="px-4 py-2 font-medium">Cuándo</th>
-                                        <th className="px-4 py-2 font-medium">Estado</th>
-                                        <th className="px-4 py-2 font-medium">Detalle</th>
-                                        <th className="px-4 py-2 font-medium">Origen</th>
+                                        <th className="px-4 py-2 font-medium">
+                                            Cuándo
+                                        </th>
+                                        <th className="px-4 py-2 font-medium">
+                                            Estado
+                                        </th>
+                                        <th className="px-4 py-2 font-medium">
+                                            Detalle
+                                        </th>
+                                        <th className="px-4 py-2 font-medium">
+                                            Origen
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {pedido.logs.map((log) => (
-                                        <tr key={log.id} className="border-b last:border-0">
+                                        <tr
+                                            key={log.id}
+                                            className="border-b last:border-0"
+                                        >
                                             <td className="px-4 py-2 whitespace-nowrap tabular-nums">
                                                 {log.cuando ?? '—'}
                                             </td>
                                             <td className="px-4 py-2">
-                                                <EstadoBadge estado={log.estado} />
+                                                <EstadoBadge
+                                                    estado={log.estado}
+                                                />
                                             </td>
-                                            <td className="px-4 py-2">{log.mensaje ?? '—'}</td>
+                                            <td className="px-4 py-2">
+                                                {log.mensaje ?? '—'}
+                                            </td>
                                             <td className="text-muted-foreground px-4 py-2 uppercase">
                                                 {log.plataforma}
                                             </td>

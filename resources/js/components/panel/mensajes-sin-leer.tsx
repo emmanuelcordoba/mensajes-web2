@@ -33,7 +33,8 @@ export function MensajesSinLeer() {
     // `@inertiajs/core` que lo declara no la toma `usePage()` sin genérico, y hoy eso deja
     // 24 errores de tipos repartidos por los componentes que lo hacen. Mientras eso no se
     // arregle, uno nuevo no suma otro.
-    const { mensajesSinLeer } = usePage<{ mensajesSinLeer: number | null }>().props;
+    const { mensajesSinLeer } = usePage<{ mensajesSinLeer: number | null }>()
+        .props;
     const [cuantos, setCuantos] = useState(mensajesSinLeer ?? 0);
 
     // El número de las props manda cuando cambia: una visita nueva ya lo trae al día, y

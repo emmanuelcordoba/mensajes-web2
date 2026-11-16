@@ -63,7 +63,8 @@ export default function CobranzaSaldoShow({
     saldo_minimo: number | null;
     cargar: { permitido: boolean; motivo: string | null };
 }) {
-    const alcanza = saldo_minimo === null || Number(cadete.saldo) >= saldo_minimo;
+    const alcanza =
+        saldo_minimo === null || Number(cadete.saldo) >= saldo_minimo;
 
     return (
         <>
@@ -127,18 +128,21 @@ export default function CobranzaSaldoShow({
                                                     Cargar
                                                 </Button>
                                             </div>
-                                            <InputError message={errors.monto} />
+                                            <InputError
+                                                message={errors.monto}
+                                            />
                                         </div>
                                         <p className="text-muted-foreground text-xs">
-                                            En pesos enteros. La carga mínima es de $
-                                            {saldo_minimo ?? 1}.
+                                            En pesos enteros. La carga mínima es
+                                            de ${saldo_minimo ?? 1}.
                                         </p>
                                     </>
                                 )}
                             </Form>
                         ) : (
                             <p className="text-muted-foreground text-sm">
-                                {cargar.motivo ?? 'No se le puede cargar saldo.'}
+                                {cargar.motivo ??
+                                    'No se le puede cargar saldo.'}
                             </p>
                         )}
                     </Card>
@@ -156,16 +160,24 @@ export default function CobranzaSaldoShow({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Cuándo</th>
-                                    <th className="px-4 py-3 font-medium">Tipo</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Cuándo
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Tipo
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Monto
                                     </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Saldo previo
                                     </th>
-                                    <th className="px-4 py-3 font-medium">Pedido</th>
-                                    <th className="px-4 py-3 font-medium">Quién</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Pedido
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Quién
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -208,10 +220,12 @@ export default function CobranzaSaldoShow({
                                         >
                                             {/* El signo no está en `monto`: está en
                                                 `monto_positivo`. Se dibuja acá. */}
-                                            {movimiento.suma ? '+' : '−'}${movimiento.monto}
+                                            {movimiento.suma ? '+' : '−'}$
+                                            {movimiento.monto}
                                         </td>
                                         <td className="px-4 py-3 text-right tabular-nums">
-                                            {movimiento.saldo_previo === null ? (
+                                            {movimiento.saldo_previo ===
+                                            null ? (
                                                 <span className="text-muted-foreground">
                                                     —
                                                 </span>
@@ -247,7 +261,9 @@ export default function CobranzaSaldoShow({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -258,7 +274,9 @@ export default function CobranzaSaldoShow({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}
@@ -266,7 +284,9 @@ export default function CobranzaSaldoShow({
                 )}
 
                 <Button asChild variant="ghost">
-                    <Link href="/panel/cadetes/cobranzas/saldo">Volver al listado</Link>
+                    <Link href="/panel/cadetes/cobranzas/saldo">
+                        Volver al listado
+                    </Link>
                 </Button>
             </div>
         </>

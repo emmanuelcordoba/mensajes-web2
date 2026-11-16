@@ -64,7 +64,9 @@ export default function MensajesIndex({
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="flex items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold tracking-tight">Chat</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        Chat
+                    </h1>
                     <NuevaConversacion />
                 </div>
 
@@ -239,7 +241,9 @@ function Conversacion({ abierta }: { abierta: Abierta }) {
  */
 function NuevaConversacion() {
     const [buscado, setBuscado] = useState('');
-    const [encontrados, setEncontrados] = useState<{ id: number; nombre: string }[]>([]);
+    const [encontrados, setEncontrados] = useState<
+        { id: number; nombre: string }[]
+    >([]);
 
     useEffect(() => {
         if (buscado.trim() === '') {

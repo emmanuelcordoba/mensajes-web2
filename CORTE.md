@@ -14,7 +14,7 @@ Se borra con el corte, junto con `app/Etl`, `config/etl.php` y el servicio `mong
 ## 0. Antes de empezar: el backup y el tar se toman JUNTOS
 
 No es prolijidad. Las imágenes de las postulaciones **no están en ningún backup de la
-base** —son archivos en el servidor, DATA-9— y la base guarda la *ruta* a cada una. Si el
+base** —son archivos en el servidor, DATA-9— y la base guarda la _ruta_ a cada una. Si el
 tar es anterior al backup, toda postulación creada en el medio apunta a un archivo que el
 tar no tiene, y **la carga se detiene a mitad de camino**.
 
@@ -39,7 +39,7 @@ mano:
 sail --profile etl up -d mongo
 ```
 
-El backup es un *archive* de `mongodump` comprimido: no hace falta —ni sirve—
+El backup es un _archive_ de `mongodump` comprimido: no hace falta —ni sirve—
 descomprimirlo. El `drop` previo importa, o quedan colecciones de la copia anterior que el
 backup nuevo ya no trae:
 
@@ -124,13 +124,13 @@ del corte choca con uno que ya existe.
 
 **Medido: 36 minutos**, todas las tablas coincidiendo. Las dos que mandan:
 
-| tabla | filas | tiempo |
-|---|---:|---:|
-| `logs_estados_pedidos` | 3.677.210 | 20m52s |
-| `pedidos` | 969.539 | 12m10s |
-| `actividades_cadetes` | 399.865 | 1m04s |
-| `postulacion_documentos` | 2.976 | 2m15s |
-| todo lo demás | 39.464 | menos de 1m |
+| tabla                    |     filas |      tiempo |
+| ------------------------ | --------: | ----------: |
+| `logs_estados_pedidos`   | 3.677.210 |      20m52s |
+| `pedidos`                |   969.539 |      12m10s |
+| `actividades_cadetes`    |   399.865 |       1m04s |
+| `postulacion_documentos` |     2.976 |       2m15s |
+| todo lo demás            |    39.464 | menos de 1m |
 
 Al terminar quedaron 2 usuarios con su cliente restringido, el próximo pedido es el
 957.326 y el próximo cliente el 1.000.270.

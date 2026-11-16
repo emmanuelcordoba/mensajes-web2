@@ -31,7 +31,9 @@ export default function PedidosEliminados({
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h1 className="text-xl font-semibold">Pedidos eliminados</h1>
+                    <h1 className="text-xl font-semibold">
+                        Pedidos eliminados
+                    </h1>
 
                     <div className="flex items-center gap-2">
                         <p className="text-muted-foreground text-sm">
@@ -41,7 +43,9 @@ export default function PedidosEliminados({
                         </p>
 
                         <Button asChild variant="secondary" size="sm">
-                            <Link href="/panel/pedidos">Volver a los pedidos</Link>
+                            <Link href="/panel/pedidos">
+                                Volver a los pedidos
+                            </Link>
                         </Button>
                     </div>
                 </div>
@@ -59,7 +63,11 @@ export default function PedidosEliminados({
                             }
                         >
                             {({ processing }) => (
-                                <Button type="submit" size="sm" disabled={processing}>
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={processing}
+                                >
                                     Restaurar
                                 </Button>
                             )}

@@ -71,7 +71,9 @@ export default function CobranzaSemanalCiclo({
 
             <div className="max-w-3xl space-y-6 p-4">
                 <Heading
-                    title={es_el_primero ? 'Abrir la cobranza' : 'Reconocer semana'}
+                    title={
+                        es_el_primero ? 'Abrir la cobranza' : 'Reconocer semana'
+                    }
                     description={`Móvil N° ${cadete.movil} · ${cadete.nombre}`}
                 />
 
@@ -93,10 +95,14 @@ export default function CobranzaSemanalCiclo({
                                             id="fecha_inicio"
                                             name="fecha_inicio"
                                             type="date"
-                                            defaultValue={propuesta.fecha_inicio}
+                                            defaultValue={
+                                                propuesta.fecha_inicio
+                                            }
                                             required
                                         />
-                                        <InputError message={errors.fecha_inicio} />
+                                        <InputError
+                                            message={errors.fecha_inicio}
+                                        />
                                     </div>
 
                                     <div className="grid gap-1.5">
@@ -107,7 +113,9 @@ export default function CobranzaSemanalCiclo({
                                             id="fecha_vencimiento"
                                             name="fecha_vencimiento"
                                             type="date"
-                                            defaultValue={propuesta.fecha_vencimiento}
+                                            defaultValue={
+                                                propuesta.fecha_vencimiento
+                                            }
                                             required
                                         />
                                         {/* ⚠️ El panel viejo lo calculaba con JavaScript y
@@ -118,7 +126,9 @@ export default function CobranzaSemanalCiclo({
                                         <p className="text-muted-foreground text-xs">
                                             Una semana desde el inicio.
                                         </p>
-                                        <InputError message={errors.fecha_vencimiento} />
+                                        <InputError
+                                            message={errors.fecha_vencimiento}
+                                        />
                                     </div>
                                 </div>
                             </Card>
@@ -133,7 +143,9 @@ export default function CobranzaSemanalCiclo({
                                             id="monto_semanal"
                                             name="monto_semanal"
                                             value={cuota}
-                                            onChange={(e) => setCuota(e.target.value)}
+                                            onChange={(e) =>
+                                                setCuota(e.target.value)
+                                            }
                                             inputMode="decimal"
                                             required
                                             className="tabular-nums"
@@ -143,7 +155,9 @@ export default function CobranzaSemanalCiclo({
                                                 ? 'Tiene cuota propia.'
                                                 : 'La general de su vehículo.'}
                                         </p>
-                                        <InputError message={errors.monto_semanal} />
+                                        <InputError
+                                            message={errors.monto_semanal}
+                                        />
                                     </div>
 
                                     <div className="grid gap-1.5">
@@ -154,13 +168,17 @@ export default function CobranzaSemanalCiclo({
                                             id="monto_pagado_efectivo"
                                             name="monto_pagado_efectivo"
                                             value={efectivo}
-                                            onChange={(e) => setEfectivo(e.target.value)}
+                                            onChange={(e) =>
+                                                setEfectivo(e.target.value)
+                                            }
                                             inputMode="decimal"
                                             required
                                             className="tabular-nums"
                                         />
                                         <InputError
-                                            message={errors.monto_pagado_efectivo}
+                                            message={
+                                                errors.monto_pagado_efectivo
+                                            }
                                         />
                                     </div>
 
@@ -172,13 +190,17 @@ export default function CobranzaSemanalCiclo({
                                             id="monto_pagado_tickets"
                                             name="monto_pagado_tickets"
                                             value={tickets}
-                                            onChange={(e) => setTickets(e.target.value)}
+                                            onChange={(e) =>
+                                                setTickets(e.target.value)
+                                            }
                                             inputMode="decimal"
                                             required
                                             className="tabular-nums"
                                         />
                                         <InputError
-                                            message={errors.monto_pagado_tickets}
+                                            message={
+                                                errors.monto_pagado_tickets
+                                            }
                                         />
                                     </div>
                                 </div>
@@ -196,17 +218,21 @@ export default function CobranzaSemanalCiclo({
                                     /* ⚠️ Lo que dice este cartel es el defecto de
                                        PANEL-21, puesto donde se decide. */
                                     <p className="text-muted-foreground text-xs">
-                                        Los pagos vienen con lo que el cadete ya pagó, y la
-                                        deuda sale de restarlos de la cuota. Si pagó la
-                                        semana anterior completa, la nueva arranca en $0:
-                                        poné los pagos en 0 si querés que deba la semana.
+                                        Los pagos vienen con lo que el cadete ya
+                                        pagó, y la deuda sale de restarlos de la
+                                        cuota. Si pagó la semana anterior
+                                        completa, la nueva arranca en $0: poné
+                                        los pagos en 0 si querés que deba la
+                                        semana.
                                     </p>
                                 )}
                             </Card>
 
                             <div className="flex items-center gap-3">
                                 <Button type="submit" disabled={processing}>
-                                    {es_el_primero ? 'Abrir ciclo' : 'Reconocer semana'}
+                                    {es_el_primero
+                                        ? 'Abrir ciclo'
+                                        : 'Reconocer semana'}
                                 </Button>
                                 <Button asChild variant="ghost">
                                     <Link href="/panel/cadetes/cobranzas/semanal">
@@ -225,6 +251,9 @@ export default function CobranzaSemanalCiclo({
 CobranzaSemanalCiclo.layout = {
     breadcrumbs: [
         { title: 'Cadetes', href: '/panel/cadetes' },
-        { title: 'Cobranzas · Semanal', href: '/panel/cadetes/cobranzas/semanal' },
+        {
+            title: 'Cobranzas · Semanal',
+            href: '/panel/cadetes/cobranzas/semanal',
+        },
     ],
 };

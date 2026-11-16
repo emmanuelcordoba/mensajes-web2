@@ -86,7 +86,9 @@ export default function ColaIndex({
                                                 {cadete.posicion}°
                                             </span>
                                             <span className="text-xs">
-                                                {cadete.en_la_app ? 'App' : 'Web'}
+                                                {cadete.en_la_app
+                                                    ? 'App'
+                                                    : 'Web'}
                                             </span>
                                         </div>
                                         <div className="px-3 py-4 text-center">
@@ -105,7 +107,9 @@ export default function ColaIndex({
 
                     <aside className="w-full lg:max-w-md">
                         <div className="bg-card space-y-5 rounded-lg border p-6">
-                            <h2 className="text-lg font-semibold">Entrar a la cola</h2>
+                            <h2 className="text-lg font-semibold">
+                                Entrar a la cola
+                            </h2>
 
                             <Form
                                 action="/panel/cadetes/cola"
@@ -206,7 +210,8 @@ export default function ColaIndex({
                                         </button>
 
                                         <p className="text-muted-foreground text-center text-sm">
-                                            Escribí tu móvil, Enter, tu contraseña y Enter.
+                                            Escribí tu móvil, Enter, tu
+                                            contraseña y Enter.
                                         </p>
                                     </>
                                 )}
@@ -241,6 +246,8 @@ function Reloj() {
     }, []);
 
     return (
-        <p className="text-2xl font-semibold tabular-nums">{hora ?? '--:--:--'}</p>
+        <p className="text-2xl font-semibold tabular-nums">
+            {hora ?? '--:--:--'}
+        </p>
     );
 }

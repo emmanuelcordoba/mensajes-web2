@@ -76,14 +76,19 @@ export default function CadetesIndex({
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="flex items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold tracking-tight">Cadetes</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        Cadetes
+                    </h1>
 
                     <div className="flex items-center gap-3">
                         <span className="text-muted-foreground text-sm">
-                            {cadetes.from ?? 0}–{cadetes.to ?? 0} de {cadetes.total}
+                            {cadetes.from ?? 0}–{cadetes.to ?? 0} de{' '}
+                            {cadetes.total}
                         </span>
                         <Button asChild size="sm">
-                            <Link href="/panel/cadetes/create">Nuevo cadete</Link>
+                            <Link href="/panel/cadetes/create">
+                                Nuevo cadete
+                            </Link>
                         </Button>
 
                         {/* ⚠️ Un `<a>` y no un `<Link>`: lo que hay del otro lado es un
@@ -152,12 +157,24 @@ export default function CadetesIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Móvil</th>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Email</th>
-                                    <th className="px-4 py-3 font-medium">Teléfono</th>
-                                    <th className="px-4 py-3 font-medium">Vehículo</th>
-                                    <th className="px-4 py-3 font-medium">Estado</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Móvil
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Email
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Teléfono
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Vehículo
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Estado
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Acción
                                     </th>
@@ -176,7 +193,10 @@ export default function CadetesIndex({
                                 )}
 
                                 {cadetes.data.map((cadete) => (
-                                    <tr key={cadete.id} className="border-b last:border-0">
+                                    <tr
+                                        key={cadete.id}
+                                        className="border-b last:border-0"
+                                    >
                                         <td className="px-4 py-3 tabular-nums">
                                             {cadete.numero_movil}
                                         </td>
@@ -189,17 +209,23 @@ export default function CadetesIndex({
                                                 Entero en el título, y entero al editar. */}
                                             <span
                                                 className="block max-w-44 truncate"
-                                                title={cadete.email ?? undefined}
+                                                title={
+                                                    cadete.email ?? undefined
+                                                }
                                             >
                                                 {cadete.email ?? (
-                                                    <span className="italic">sin cuenta</span>
+                                                    <span className="italic">
+                                                        sin cuenta
+                                                    </span>
                                                 )}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             {cadete.telefono}
                                         </td>
-                                        <td className="px-4 py-3">{cadete.vehiculo}</td>
+                                        <td className="px-4 py-3">
+                                            {cadete.vehiculo}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <div className="flex flex-wrap items-center gap-1">
                                                 <Badge
@@ -223,7 +249,11 @@ export default function CadetesIndex({
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button asChild size="sm" variant="outline">
+                                                <Button
+                                                    asChild
+                                                    size="sm"
+                                                    variant="outline"
+                                                >
                                                     <Link
                                                         href={`/panel/cadetes/${cadete.id}/edit`}
                                                     >
@@ -231,18 +261,23 @@ export default function CadetesIndex({
                                                     </Link>
                                                 </Button>
 
-                                                {cadete.cambiar_estado.permitido && (
+                                                {cadete.cambiar_estado
+                                                    .permitido && (
                                                     <Form
                                                         action={`/panel/cadetes/${cadete.id}/estado`}
                                                         method="patch"
-                                                        options={{ preserveScroll: true }}
+                                                        options={{
+                                                            preserveScroll: true,
+                                                        }}
                                                     >
                                                         {({ processing }) => (
                                                             <Button
                                                                 type="submit"
                                                                 size="sm"
                                                                 variant="secondary"
-                                                                disabled={processing}
+                                                                disabled={
+                                                                    processing
+                                                                }
                                                             >
                                                                 {cadete.trabajando
                                                                     ? 'Sacar de cola'
@@ -258,7 +293,9 @@ export default function CadetesIndex({
                                                             size="sm"
                                                             variant="outline"
                                                             onClick={() =>
-                                                                setBloqueando(cadete)
+                                                                setBloqueando(
+                                                                    cadete,
+                                                                )
                                                             }
                                                         >
                                                             Bloquear
@@ -271,12 +308,16 @@ export default function CadetesIndex({
                                                                 preserveScroll: true,
                                                             }}
                                                         >
-                                                            {({ processing }) => (
+                                                            {({
+                                                                processing,
+                                                            }) => (
                                                                 <Button
                                                                     type="submit"
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    disabled={processing}
+                                                                    disabled={
+                                                                        processing
+                                                                    }
                                                                 >
                                                                     Desbloquear
                                                                 </Button>
@@ -301,7 +342,9 @@ export default function CadetesIndex({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -312,7 +355,9 @@ export default function CadetesIndex({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}
@@ -410,8 +455,8 @@ function DialogoDeBloqueo({
                         Bloquear el móvil {cadete?.numero_movil}
                     </DialogTitle>
                     <DialogDescription>
-                        {cadete?.nombre} no va a poder entrar a la app ni a la cola
-                        hasta que lo desbloqueen.
+                        {cadete?.nombre} no va a poder entrar a la app ni a la
+                        cola hasta que lo desbloqueen.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -435,12 +480,19 @@ function DialogoDeBloqueo({
                                         name="motivo"
                                         required
                                         value={motivo}
-                                        onChange={(e) => setMotivo(e.target.value)}
+                                        onChange={(e) =>
+                                            setMotivo(e.target.value)
+                                        }
                                         className="border-input bg-background h-9 rounded-md border px-3 text-sm"
                                     >
-                                        <option value="">Elegí un motivo</option>
+                                        <option value="">
+                                            Elegí un motivo
+                                        </option>
                                         {motivos.map((uno) => (
-                                            <option key={uno.codigo} value={uno.codigo}>
+                                            <option
+                                                key={uno.codigo}
+                                                value={uno.codigo}
+                                            >
                                                 {uno.descripcion}
                                             </option>
                                         ))}
@@ -460,8 +512,8 @@ function DialogoDeBloqueo({
                                             className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none"
                                         />
                                         <p className="text-muted-foreground text-xs">
-                                            Es lo que va a leer el cadete. Hasta 120
-                                            caracteres.
+                                            Es lo que va a leer el cadete. Hasta
+                                            120 caracteres.
                                         </p>
                                         <InputError message={errors.mensaje} />
                                     </div>

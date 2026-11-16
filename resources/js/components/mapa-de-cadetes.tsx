@@ -143,8 +143,8 @@ export function MapaDeCadetes({
     if (falló) {
         return (
             <Aviso>
-                No se pudo cargar el mapa de Google. Puede ser la conexión, o que la clave
-                no tenga habilitado este dominio.
+                No se pudo cargar el mapa de Google. Puede ser la conexión, o
+                que la clave no tenga habilitado este dominio.
             </Aviso>
         );
     }

@@ -12,7 +12,10 @@ import {
     type Ruta,
 } from '@/components/google-maps';
 import InputError from '@/components/input-error';
-import { SelectorDeCadete, type CadeteElegible } from '@/components/selector-de-cadete';
+import {
+    SelectorDeCadete,
+    type CadeteElegible,
+} from '@/components/selector-de-cadete';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -69,7 +72,11 @@ const SE_CIERRA_EN = 400;
 
 export type ParaImprimir = { id: number; numero: number | null };
 
-export type ConfigDelMapa = { centro: Punto; zoom: number; clave: string | null };
+export type ConfigDelMapa = {
+    centro: Punto;
+    zoom: number;
+    clave: string | null;
+};
 
 type Comercio = {
     id: number;
@@ -149,7 +156,9 @@ export function NuevoPedido({
     const [cotizando, setCotizando] = useState(false);
     const [problema, setProblema] = useState<string | null>(null);
 
-    const { listo, api } = useApiDeGoogleMaps(deLaOficina ? (mapa?.clave ?? null) : null);
+    const { listo, api } = useApiDeGoogleMaps(
+        deLaOficina ? (mapa?.clave ?? null) : null,
+    );
 
     /**
      * Vaciar el alta después de cargar, para que el pedido siguiente arranque limpio.
@@ -202,7 +211,12 @@ export function NuevoPedido({
     | campo que el operador puede reescribir.
     */
     const cotizar = useCallback(() => {
-        if (!listo || api === undefined || lugarOrigen === null || lugarDestino === null) {
+        if (
+            !listo ||
+            api === undefined ||
+            lugarOrigen === null ||
+            lugarDestino === null
+        ) {
             return;
         }
 
@@ -220,7 +234,9 @@ export function NuevoPedido({
 
             if (estado !== 'OK' || metros === undefined) {
                 setCotizando(false);
-                setProblema('Google no pudo medir el viaje entre esas dos direcciones.');
+                setProblema(
+                    'Google no pudo medir el viaje entre esas dos direcciones.',
+                );
 
                 return;
             }
@@ -239,10 +255,16 @@ export function NuevoPedido({
             void fetch(`/panel/tarifa?${consulta.toString()}`, {
                 headers: { Accept: 'application/json' },
             })
-                .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+                .then((r) =>
+                    r.ok
+                        ? r.json()
+                        : Promise.reject(new Error(String(r.status))),
+                )
                 .then((datos: { costo: string }) => setValor(datos.costo))
                 .catch(() =>
-                    setProblema('No se pudo calcular el precio. Se puede escribir a mano.'),
+                    setProblema(
+                        'No se pudo calcular el precio. Se puede escribir a mano.',
+                    ),
                 )
                 .finally(() => setCotizando(false));
         });
@@ -267,7 +289,12 @@ export function NuevoPedido({
 
                 <div className="flex items-center gap-1">
                     {ultimoPedido !== null && (
-                        <Button asChild size="sm" variant="secondary" className="h-7">
+                        <Button
+                            asChild
+                            size="sm"
+                            variant="secondary"
+                            className="h-7"
+                        >
                             {/* Pestaña nueva, como el panel viejo: la página se imprime
                                 sola al abrirse y después se cierra. */}
                             <a
@@ -414,7 +441,9 @@ export function NuevoPedido({
                         </div>
 
                         <label className="grid gap-1 text-sm">
-                            <span className="text-muted-foreground">Detalle</span>
+                            <span className="text-muted-foreground">
+                                Detalle
+                            </span>
                             <textarea
                                 id="detalle"
                                 name="detalle"
@@ -442,7 +471,11 @@ export function NuevoPedido({
                             {deLaOficina && (
                                 <Campo
                                     id="valor"
-                                    titulo={cotizando ? 'Valor (calculando…)' : 'Valor'}
+                                    titulo={
+                                        cotizando
+                                            ? 'Valor (calculando…)'
+                                            : 'Valor'
+                                    }
                                     nombre="valor"
                                     tipo="number"
                                     valor={valor}
@@ -454,12 +487,19 @@ export function NuevoPedido({
                         </div>
 
                         {problema !== null && (
-                            <p className="text-muted-foreground text-xs">{problema}</p>
+                            <p className="text-muted-foreground text-xs">
+                                {problema}
+                            </p>
                         )}
 
                         {deLaOficina && cadetes !== null && (
-                            <label className="grid gap-1 text-sm" htmlFor="cadete_id">
-                                <span className="text-muted-foreground">Cadete</span>
+                            <label
+                                className="grid gap-1 text-sm"
+                                htmlFor="cadete_id"
+                            >
+                                <span className="text-muted-foreground">
+                                    Cadete
+                                </span>
                                 <SelectorDeCadete
                                     id="cadete_id"
                                     cadetes={cadetes}
@@ -472,7 +512,11 @@ export function NuevoPedido({
 
                         {/* Lo que no se tipea: de qué comercio es, cuando se eligió uno. */}
                         {comercio !== null && (
-                            <input type="hidden" name="cliente_id" value={comercio.id} />
+                            <input
+                                type="hidden"
+                                name="cliente_id"
+                                value={comercio.id}
+                            />
                         )}
 
                         <div>
@@ -551,9 +595,12 @@ function ElComercio({
         setBuscando(true);
 
         const espera = setTimeout(() => {
-            void fetch(`/panel/clientes/buscar?q=${encodeURIComponent(nombre)}`, {
-                headers: { Accept: 'application/json' },
-            })
+            void fetch(
+                `/panel/clientes/buscar?q=${encodeURIComponent(nombre)}`,
+                {
+                    headers: { Accept: 'application/json' },
+                },
+            )
                 .then((r) => (r.ok ? r.json() : []))
                 .then((datos: Comercio[]) => setEncontrados(datos))
                 .catch(() => setEncontrados([]))
@@ -574,7 +621,9 @@ function ElComercio({
         })
             .then((r) => (r.ok ? r.json() : []))
             .then((datos: Comercio[]) => {
-                const exacto = datos.find((c) => String(c.numero) === numero.trim());
+                const exacto = datos.find(
+                    (c) => String(c.numero) === numero.trim(),
+                );
 
                 if (exacto !== undefined) {
                     escribiendo.current = false;
@@ -618,7 +667,9 @@ function ElComercio({
                         escribiendo.current = true;
                         setNombre(e.target.value);
                     }}
-                    onBlur={() => setTimeout(() => setEncontrados([]), SE_CIERRA_EN)}
+                    onBlur={() =>
+                        setTimeout(() => setEncontrados([]), SE_CIERRA_EN)
+                    }
                     autoComplete="off"
                 />
                 <InputError message={errors.cliente} />
@@ -629,8 +680,8 @@ function ElComercio({
                     !buscando &&
                     encontrados.length === 0 && (
                         <span className="text-muted-foreground text-xs">
-                            Ningún comercio con ese nombre. Se puede cargar igual: el
-                            nombre queda escrito en el pedido.
+                            Ningún comercio con ese nombre. Se puede cargar
+                            igual: el nombre queda escrito en el pedido.
                         </span>
                     )}
 
@@ -712,8 +763,14 @@ function DireccionConLugar({
                     componentRestrictions: { country: 'AR' },
                     types: ['geocode'],
                     locationBias: new api.maps.LatLngBounds(
-                        new api.maps.LatLng(TUCUMAN.suroeste.lat, TUCUMAN.suroeste.lng),
-                        new api.maps.LatLng(TUCUMAN.noreste.lat, TUCUMAN.noreste.lng),
+                        new api.maps.LatLng(
+                            TUCUMAN.suroeste.lat,
+                            TUCUMAN.suroeste.lng,
+                        ),
+                        new api.maps.LatLng(
+                            TUCUMAN.noreste.lat,
+                            TUCUMAN.noreste.lng,
+                        ),
                     ),
                 },
                 (encontradas, estado) => {
@@ -736,7 +793,9 @@ function DireccionConLugar({
         }
 
         // PlacesService pide un elemento donde poner sus atribuciones; uno suelto sirve.
-        new api.maps.places.PlacesService(document.createElement('div')).getDetails(
+        new api.maps.places.PlacesService(
+            document.createElement('div'),
+        ).getDetails(
             { placeId: prediccion.place_id, fields: ['address_components'] },
             (lugarElegido, estado) => {
                 if (
@@ -846,7 +905,9 @@ function Campo({
 
             <div className="flex items-center gap-1">
                 {prefijo !== undefined && (
-                    <span className="text-muted-foreground text-sm">{prefijo}</span>
+                    <span className="text-muted-foreground text-sm">
+                        {prefijo}
+                    </span>
                 )}
                 <Input
                     id={id}
@@ -876,7 +937,13 @@ function Campo({
  * Es el `modalMapaPedido` del panel viejo. Sólo tiene algo que mostrar cuando las dos
  * direcciones salieron de Google; si no, muestra la ciudad.
  */
-function ElMapa({ mapa, ruta }: { mapa: ConfigDelMapa | null; ruta: Ruta | null }) {
+function ElMapa({
+    mapa,
+    ruta,
+}: {
+    mapa: ConfigDelMapa | null;
+    ruta: Ruta | null;
+}) {
     const [abierto, setAbierto] = useState(false);
 
     return (
@@ -908,13 +975,24 @@ function ElMapa({ mapa, ruta }: { mapa: ConfigDelMapa | null; ruta: Ruta | null 
     );
 }
 
-function ElViaje({ mapa, ruta }: { mapa: ConfigDelMapa | null; ruta: Ruta | null }) {
+function ElViaje({
+    mapa,
+    ruta,
+}: {
+    mapa: ConfigDelMapa | null;
+    ruta: Ruta | null;
+}) {
     const division = useRef<HTMLDivElement>(null);
     const deGoogle = useRef<MapaDeGoogle | null>(null);
     const { listo, falló, api } = useApiDeGoogleMaps(mapa?.clave ?? null);
 
     useEffect(() => {
-        if (!listo || api === undefined || division.current === null || mapa === null) {
+        if (
+            !listo ||
+            api === undefined ||
+            division.current === null ||
+            mapa === null
+        ) {
             return;
         }
 
@@ -929,7 +1007,9 @@ function ElViaje({ mapa, ruta }: { mapa: ConfigDelMapa | null; ruta: Ruta | null
         if (ruta !== null) {
             // El renderizador encuadra el viaje solo, así que no hace falta calcular
             // los límites como hacía el panel viejo.
-            new api.maps.DirectionsRenderer({ map: deGoogle.current }).setDirections(ruta);
+            new api.maps.DirectionsRenderer({
+                map: deGoogle.current,
+            }).setDirections(ruta);
         }
     }, [listo, api, mapa, ruta]);
 
@@ -940,8 +1020,8 @@ function ElViaje({ mapa, ruta }: { mapa: ConfigDelMapa | null; ruta: Ruta | null
     if (falló) {
         return (
             <div className="text-muted-foreground flex h-full items-center justify-center p-6 text-center text-sm">
-                No se pudo cargar el mapa de Google. Puede ser la conexión, o que la clave
-                no tenga habilitado este dominio.
+                No se pudo cargar el mapa de Google. Puede ser la conexión, o
+                que la clave no tenga habilitado este dominio.
             </div>
         );
     }
@@ -1004,7 +1084,9 @@ function NuevoComercio({ alCrear }: { alCrear: (comercio: Comercio) => void }) {
                 alCrear(datos as Comercio);
             })
             .catch(() =>
-                setErrores({ nombre: ['No se pudo crear el comercio. Probá de nuevo.'] }),
+                setErrores({
+                    nombre: ['No se pudo crear el comercio. Probá de nuevo.'],
+                }),
             )
             .finally(() => setGuardando(false));
     };
@@ -1022,15 +1104,20 @@ function NuevoComercio({ alCrear }: { alCrear: (comercio: Comercio) => void }) {
                 <DialogHeader>
                     <DialogTitle>Nuevo cliente</DialogTitle>
                     <DialogDescription>
-                        El número se lo asigna el sistema al guardar. Queda cargado en el
-                        pedido que estás escribiendo.
+                        El número se lo asigna el sistema al guardar. Queda
+                        cargado en el pedido que estás escribiendo.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={guardar} className="grid gap-3">
                     <div className="grid gap-1">
                         <Label htmlFor="rapido-nombre">Nombre</Label>
-                        <Input id="rapido-nombre" name="nombre" required maxLength={255} />
+                        <Input
+                            id="rapido-nombre"
+                            name="nombre"
+                            required
+                            maxLength={255}
+                        />
                         <InputError message={errores.nombre?.[0]} />
                     </div>
 

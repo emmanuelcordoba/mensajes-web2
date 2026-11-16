@@ -102,7 +102,9 @@ export type ApiDeGoogleMaps = {
                 getDetails(
                     pedido: { placeId: string; fields: string[] },
                     respuesta: (
-                        lugar: { address_components?: ParteDeDireccion[] } | null,
+                        lugar: {
+                            address_components?: ParteDeDireccion[];
+                        } | null,
                         estado: string,
                     ) => void,
                 ): void;
@@ -189,8 +191,9 @@ export function FaltaLaClave() {
     return (
         <Aviso>
             <span>
-                Falta configurar <code>GOOGLE_MAPS_KEY</code> en el entorno. Sin esa clave
-                la API de Google Maps no carga, y el mapa no se puede dibujar.
+                Falta configurar <code>GOOGLE_MAPS_KEY</code> en el entorno. Sin
+                esa clave la API de Google Maps no carga, y el mapa no se puede
+                dibujar.
             </span>
         </Aviso>
     );

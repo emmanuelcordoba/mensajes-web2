@@ -95,7 +95,9 @@ export default function ClientesIndex({
                         }}
                     >
                         <label className="grid gap-1 text-sm">
-                            <span className="text-muted-foreground">Origen</span>
+                            <span className="text-muted-foreground">
+                                Origen
+                            </span>
                             <select
                                 name="origen"
                                 defaultValue={filtros.origen}
@@ -108,7 +110,9 @@ export default function ClientesIndex({
                         </label>
 
                         <label className="grid gap-1 text-sm">
-                            <span className="text-muted-foreground">Buscar por</span>
+                            <span className="text-muted-foreground">
+                                Buscar por
+                            </span>
                             <select
                                 name="campo"
                                 defaultValue={filtros.campo}
@@ -148,12 +152,24 @@ export default function ClientesIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">N°</th>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Dirección</th>
-                                    <th className="px-4 py-3 font-medium">Teléfono</th>
-                                    <th className="px-4 py-3 font-medium">Origen</th>
-                                    <th className="px-4 py-3 font-medium">Pedidos</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        N°
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Dirección
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Teléfono
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Origen
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Pedidos
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Acción
                                     </th>
@@ -179,7 +195,9 @@ export default function ClientesIndex({
                                         <td className="px-4 py-3 tabular-nums">
                                             {cliente.numero}
                                         </td>
-                                        <td className="px-4 py-3">{cliente.nombre}</td>
+                                        <td className="px-4 py-3">
+                                            {cliente.nombre}
+                                        </td>
                                         <td className="text-muted-foreground px-4 py-3">
                                             {cliente.direccion}
                                         </td>
@@ -194,11 +212,15 @@ export default function ClientesIndex({
                                                         : 'secondary'
                                                 }
                                             >
-                                                {cliente.de_la_app ? 'App' : 'Panel'}
+                                                {cliente.de_la_app
+                                                    ? 'App'
+                                                    : 'Panel'}
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 tabular-nums">
-                                            {cliente.pedidos.toLocaleString('es-AR')}
+                                            {cliente.pedidos.toLocaleString(
+                                                'es-AR',
+                                            )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-2">
@@ -231,7 +253,9 @@ export default function ClientesIndex({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -242,7 +266,9 @@ export default function ClientesIndex({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}

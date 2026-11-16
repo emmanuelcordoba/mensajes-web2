@@ -96,7 +96,9 @@ export default function PublicidadForm({
                                 defaultChecked={publicidad?.visible ?? true}
                                 className="border-input size-4 rounded border"
                             />
-                            <Label htmlFor="visible">Se muestra en la app</Label>
+                            <Label htmlFor="visible">
+                                Se muestra en la app
+                            </Label>
                         </div>
                     </Card>
 

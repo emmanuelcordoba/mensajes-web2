@@ -58,7 +58,9 @@ export default function UsuariosIndex({
                             {usuarios.total}
                         </span>
                         <Button asChild size="sm">
-                            <Link href="/panel/users/create">Nuevo usuario</Link>
+                            <Link href="/panel/users/create">
+                                Nuevo usuario
+                            </Link>
                         </Button>
                     </div>
                 </div>
@@ -68,12 +70,22 @@ export default function UsuariosIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Email</th>
-                                    <th className="px-4 py-3 font-medium">Rol</th>
-                                    <th className="px-4 py-3 font-medium">Comercio</th>
-                                    <th className="px-4 py-3 font-medium">Iniciales</th>
-                                    <th className="px-4 py-3 font-medium text-right">
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Email
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Rol
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Comercio
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Iniciales
+                                    </th>
+                                    <th className="px-4 py-3 text-right font-medium">
                                         Acción
                                     </th>
                                 </tr>
@@ -84,8 +96,12 @@ export default function UsuariosIndex({
                                         key={cuenta.id}
                                         className="border-b last:border-0"
                                     >
-                                        <td className="px-4 py-3">{cuenta.name}</td>
-                                        <td className="px-4 py-3">{cuenta.email}</td>
+                                        <td className="px-4 py-3">
+                                            {cuenta.name}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {cuenta.email}
+                                        </td>
                                         <td className="px-4 py-3">
                                             {cuenta.rol ? (
                                                 <Badge variant="secondary">
@@ -123,7 +139,9 @@ export default function UsuariosIndex({
                                                     <Form
                                                         action={`/panel/users/${cuenta.id}`}
                                                         method="delete"
-                                                        options={{ preserveScroll: true }}
+                                                        options={{
+                                                            preserveScroll: true,
+                                                        }}
                                                         onBefore={() =>
                                                             confirm(
                                                                 `Se da de baja la cuenta de ${cuenta.name}. Deja de poder entrar. ¿Seguir?`,
@@ -135,7 +153,9 @@ export default function UsuariosIndex({
                                                                 type="submit"
                                                                 size="sm"
                                                                 variant="destructive"
-                                                                disabled={processing}
+                                                                disabled={
+                                                                    processing
+                                                                }
                                                             >
                                                                 Dar de baja
                                                             </Button>
@@ -158,7 +178,9 @@ export default function UsuariosIndex({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -169,7 +191,9 @@ export default function UsuariosIndex({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}

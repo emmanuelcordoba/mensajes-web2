@@ -48,9 +48,7 @@ export default function UserForm({
 }) {
     const [rolId, setRolId] = useState<number | null>(usuario?.rol_id ?? null);
 
-    const esComercio = roles.some(
-        (rol) => rol.id === rolId && rol.es_comercio,
-    );
+    const esComercio = roles.some((rol) => rol.id === rolId && rol.es_comercio);
 
     return (
         <Form
@@ -154,7 +152,9 @@ export default function UserForm({
                         {esComercio && (
                             <ElegirComercio
                                 nombreInicial={usuario?.comercio ?? null}
-                                idInicial={usuario?.cliente_restringido_id ?? null}
+                                idInicial={
+                                    usuario?.cliente_restringido_id ?? null
+                                }
                                 error={errors.cliente_restringido_id}
                             />
                         )}
@@ -261,7 +261,9 @@ function ElegirComercio({
 
             {elegido !== null ? (
                 <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">{elegido.nombre}</span>
+                    <span className="text-sm font-medium">
+                        {elegido.nombre}
+                    </span>
                     <Button
                         type="button"
                         size="sm"

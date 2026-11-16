@@ -94,23 +94,29 @@ export default function CobranzaSaldoIndex({
                                 e.preventDefault();
                                 const datos = new FormData(e.currentTarget);
                                 router.get('/panel/cadetes/cobranzas/saldo', {
-                                    modalidad: String(datos.get('modalidad') ?? ''),
+                                    modalidad: String(
+                                        datos.get('modalidad') ?? '',
+                                    ),
                                     buscar: String(datos.get('buscar') ?? ''),
                                 });
                             }}
                         >
                             <label className="grid gap-1 text-sm">
-                                <span className="text-muted-foreground">Mostrar</span>
+                                <span className="text-muted-foreground">
+                                    Mostrar
+                                </span>
                                 <select
                                     name="modalidad"
                                     defaultValue={filtros.modalidad}
                                     className="border-input bg-background h-9 rounded-md border px-3 text-sm"
                                 >
-                                    {Object.entries(MODALIDADES).map(([valor, texto]) => (
-                                        <option key={valor} value={valor}>
-                                            {texto}
-                                        </option>
-                                    ))}
+                                    {Object.entries(MODALIDADES).map(
+                                        ([valor, texto]) => (
+                                            <option key={valor} value={valor}>
+                                                {texto}
+                                            </option>
+                                        ),
+                                    )}
                                 </select>
                             </label>
 
@@ -129,7 +135,8 @@ export default function CobranzaSaldoIndex({
                                 Buscar
                             </Button>
 
-                            {(filtros.buscar !== '' || filtros.modalidad !== 'saldo') && (
+                            {(filtros.buscar !== '' ||
+                                filtros.modalidad !== 'saldo') && (
                                 <Button asChild variant="ghost">
                                     <Link href="/panel/cadetes/cobranzas/saldo">
                                         Limpiar
@@ -139,7 +146,10 @@ export default function CobranzaSaldoIndex({
                         </form>
                     </Card>
 
-                    <ElPorcentaje porcentaje={porcentaje} saldoMinimo={saldo_minimo} />
+                    <ElPorcentaje
+                        porcentaje={porcentaje}
+                        saldoMinimo={saldo_minimo}
+                    />
                 </div>
 
                 <Card className="overflow-hidden p-0">
@@ -147,9 +157,15 @@ export default function CobranzaSaldoIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Móvil</th>
-                                    <th className="px-4 py-3 font-medium">Nombre</th>
-                                    <th className="px-4 py-3 font-medium">Cobranza</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Móvil
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Cobranza
+                                    </th>
                                     <th className="px-4 py-3 text-right font-medium">
                                         Saldo
                                     </th>
@@ -235,7 +251,9 @@ export default function CobranzaSaldoIndex({
                                 <span
                                     key={i}
                                     className="text-muted-foreground px-3 py-1.5 text-sm"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ) : (
                                 <Link
@@ -246,7 +264,9 @@ export default function CobranzaSaldoIndex({
                                             ? 'bg-primary text-primary-foreground'
                                             : 'hover:bg-muted'
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ),
                         )}
@@ -375,9 +395,10 @@ function ElPorcentaje({
     if (porcentaje === null) {
         return (
             <Card className="text-muted-foreground p-4 text-sm">
-                Falta la configuración <code>COBRANZA_SALDO_PORCENTAJE</code>, así que no
-                se sabe cuál es el saldo mínimo y no se puede cargar saldo. Es una
-                instalación a medio configurar, no algo que se arregle desde acá.
+                Falta la configuración <code>COBRANZA_SALDO_PORCENTAJE</code>,
+                así que no se sabe cuál es el saldo mínimo y no se puede cargar
+                saldo. Es una instalación a medio configurar, no algo que se
+                arregle desde acá.
             </Card>
         );
     }
@@ -418,8 +439,9 @@ function ElPorcentaje({
 
                         {saldoMinimo !== null && (
                             <p className="text-muted-foreground text-xs">
-                                Con este porcentaje, el saldo mínimo para seguir tomando
-                                pedidos es <strong>${saldoMinimo}</strong>.
+                                Con este porcentaje, el saldo mínimo para seguir
+                                tomando pedidos es{' '}
+                                <strong>${saldoMinimo}</strong>.
                             </p>
                         )}
                     </>

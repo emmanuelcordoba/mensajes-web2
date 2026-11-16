@@ -43,7 +43,9 @@ export default function MapaIndex({
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold tracking-tight">Mapa</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        Mapa
+                    </h1>
                     <span className="text-muted-foreground text-sm">
                         {cadetes.length === 0
                             ? 'Ningún cadete en la app ahora mismo'

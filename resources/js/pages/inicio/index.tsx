@@ -2,16 +2,17 @@ import { Form, Head, Link, usePoll } from '@inertiajs/react';
 import { ArrowDown, Info, MessageSquare, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { MapaDeCadetes, type EnElMapa, type Punto } from '@/components/mapa-de-cadetes';
+import {
+    MapaDeCadetes,
+    type EnElMapa,
+    type Punto,
+} from '@/components/mapa-de-cadetes';
 import {
     ListaDeEspera,
     type EnEspera,
     type ParaAsignar,
 } from '@/pages/inicio/lista-de-espera';
-import {
-    NuevoPedido,
-    type ParaImprimir,
-} from '@/pages/inicio/nuevo-pedido';
+import { NuevoPedido, type ParaImprimir } from '@/pages/inicio/nuevo-pedido';
 import { ProveedorDePausaDeRefresco } from '@/hooks/use-pausa-de-refresco';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -296,7 +297,9 @@ function Fila({
                 }
             }}
         >
-            <td className="px-1 py-1.5 font-medium tabular-nums">{cadete.movil}</td>
+            <td className="px-1 py-1.5 font-medium tabular-nums">
+                {cadete.movil}
+            </td>
             <td className="px-1 py-1.5">
                 <div className="flex items-center justify-between gap-1">
                     {/* ⚠️ Una letra, con el nombre entero al pasar el mouse. La columna
@@ -329,7 +332,12 @@ function Fila({
 
                         <AlFinal cadete={cadete} />
 
-                        <Button asChild size="icon" variant="ghost" className="size-4">
+                        <Button
+                            asChild
+                            size="icon"
+                            variant="ghost"
+                            className="size-4"
+                        >
                             <Link
                                 href={`/panel/mensajes/${cadete.id}`}
                                 title={`Chat con el móvil ${cadete.movil}`}
@@ -361,7 +369,9 @@ function AlFinal({ cadete }: { cadete: EnLaCola }) {
             method="post"
             options={{ preserveScroll: true }}
             onBefore={() =>
-                confirm(`El móvil ${cadete.movil} pasa al final de la cola.\n\n¿Seguir?`)
+                confirm(
+                    `El móvil ${cadete.movil} pasa al final de la cola.\n\n¿Seguir?`,
+                )
             }
         >
             {({ processing }) => (
@@ -457,13 +467,31 @@ function ElDetalle({
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex flex-col justify-between gap-4">
                             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                                <Dato titulo="Apellido" valor={detalle.apellidos} />
-                                <Dato titulo="Nombres" valor={detalle.nombres} />
+                                <Dato
+                                    titulo="Apellido"
+                                    valor={detalle.apellidos}
+                                />
+                                <Dato
+                                    titulo="Nombres"
+                                    valor={detalle.nombres}
+                                />
                                 <Dato titulo="Email" valor={detalle.email} />
-                                <Dato titulo="Dirección" valor={detalle.direccion} />
-                                <Dato titulo="Teléfono" valor={detalle.telefono} />
-                                <Dato titulo="Nacimiento" valor={detalle.nacimiento} />
-                                <Dato titulo="Vehículo" valor={detalle.vehiculo} />
+                                <Dato
+                                    titulo="Dirección"
+                                    valor={detalle.direccion}
+                                />
+                                <Dato
+                                    titulo="Teléfono"
+                                    valor={detalle.telefono}
+                                />
+                                <Dato
+                                    titulo="Nacimiento"
+                                    valor={detalle.nacimiento}
+                                />
+                                <Dato
+                                    titulo="Vehículo"
+                                    valor={detalle.vehiculo}
+                                />
                             </dl>
 
                             <div className="flex flex-col gap-2">
@@ -475,7 +503,8 @@ function ElDetalle({
                                     alTerminar={cerrar}
                                     variante="secondary"
                                 >
-                                    <ArrowDown className="size-4" /> Mover al final
+                                    <ArrowDown className="size-4" /> Mover al
+                                    final
                                 </AccionDelDetalle>
 
                                 <AccionDelDetalle

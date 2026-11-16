@@ -76,7 +76,10 @@ export default function EstadisticasIndex({
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Numero titulo="Finalizados en el mes" valor={resumen.total} />
+                    <Numero
+                        titulo="Finalizados en el mes"
+                        valor={resumen.total}
+                    />
                     <Numero
                         titulo="Promedio por día"
                         valor={resumen.promedio}
@@ -103,7 +106,9 @@ export default function EstadisticasIndex({
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground text-left">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Día</th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Día
+                                    </th>
                                     <th className="px-4 py-3 font-medium">
                                         Pedidos finalizados
                                     </th>
@@ -201,14 +206,20 @@ function LaFila({ dia, pico }: { dia: Dia; pico: number }) {
                 <span className="text-muted-foreground">{dia.diaSemana}</span>{' '}
                 <span className="font-medium">{dia.dia}</span>
                 {dia.esHoy && (
-                    <span className="text-muted-foreground ml-2 text-xs"> hoy</span>
+                    <span className="text-muted-foreground ml-2 text-xs">
+                        {' '}
+                        hoy
+                    </span>
                 )}
             </td>
 
             <td className="px-4 py-2">
                 {/* La barra es la misma información que el número de al lado, dibujada: para
                     quien no la ve, el número está en la celda siguiente. */}
-                <div className="bg-muted h-2 w-full rounded-full" aria-hidden="true">
+                <div
+                    className="bg-muted h-2 w-full rounded-full"
+                    aria-hidden="true"
+                >
                     <div
                         className="bg-primary h-2 rounded-full"
                         style={{ width: `${ancho}%` }}

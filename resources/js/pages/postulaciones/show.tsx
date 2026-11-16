@@ -75,16 +75,34 @@ export default function PostulacionShow({
                         <h2 className="text-sm font-medium">La persona</h2>
 
                         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                            <Dato nombre="Nombres" valor={postulacion.nombres} />
-                            <Dato nombre="Apellidos" valor={postulacion.apellidos} />
-                            <Dato nombre="DNI" valor={String(postulacion.dni)} />
+                            <Dato
+                                nombre="Nombres"
+                                valor={postulacion.nombres}
+                            />
+                            <Dato
+                                nombre="Apellidos"
+                                valor={postulacion.apellidos}
+                            />
+                            <Dato
+                                nombre="DNI"
+                                valor={String(postulacion.dni)}
+                            />
                             <Dato
                                 nombre="Fecha de nacimiento"
                                 valor={postulacion.fecha_nacimiento}
                             />
-                            <Dato nombre="Teléfono" valor={postulacion.telefono} />
-                            <Dato nombre="Vehículo" valor={postulacion.vehiculo} />
-                            <Dato nombre="Dirección" valor={postulacion.direccion} />
+                            <Dato
+                                nombre="Teléfono"
+                                valor={postulacion.telefono}
+                            />
+                            <Dato
+                                nombre="Vehículo"
+                                valor={postulacion.vehiculo}
+                            />
+                            <Dato
+                                nombre="Dirección"
+                                valor={postulacion.direccion}
+                            />
                             <Dato nombre="Email" valor={postulacion.email} />
                             <Dato
                                 nombre="Recomendado por"
@@ -95,7 +113,9 @@ export default function PostulacionShow({
 
                     <Card className="space-y-4 p-6">
                         <div className="grid gap-1">
-                            <h2 className="text-sm font-medium">El cuestionario</h2>
+                            <h2 className="text-sm font-medium">
+                                El cuestionario
+                            </h2>
                             {/* El panel viejo lo guardaba y no lo mostraba en ningún
                                 lado: quien decidía contratar no veía las respuestas. */}
                             <p className="text-muted-foreground text-xs">
@@ -131,14 +151,16 @@ export default function PostulacionShow({
                     <h2 className="text-sm font-medium">Los documentos</h2>
 
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {Object.entries(postulacion.documentos).map(([tipo, url]) => (
-                            <Documento
-                                key={tipo}
-                                etiqueta={etiquetas[tipo] ?? tipo}
-                                url={url}
-                                tapado={identidad.includes(tipo)}
-                            />
-                        ))}
+                        {Object.entries(postulacion.documentos).map(
+                            ([tipo, url]) => (
+                                <Documento
+                                    key={tipo}
+                                    etiqueta={etiquetas[tipo] ?? tipo}
+                                    url={url}
+                                    tapado={identidad.includes(tipo)}
+                                />
+                            ),
+                        )}
                     </div>
                 </Card>
 
@@ -163,7 +185,9 @@ export default function PostulacionShow({
                                             name="numero_movil"
                                             type="number"
                                             min={1}
-                                            defaultValue={contratar.siguiente_movil}
+                                            defaultValue={
+                                                contratar.siguiente_movil
+                                            }
                                             required
                                         />
                                         {/* ⚠️ El número propuesto es el último más uno,
@@ -171,15 +195,18 @@ export default function PostulacionShow({
                                             se recicla el del cadete que se va, así que
                                             los números vuelven para atrás (PANEL-5). */}
                                         <p className="text-muted-foreground text-xs">
-                                            Es con lo que lo va a nombrar la central.
+                                            Es con lo que lo va a nombrar la
+                                            central.
                                         </p>
-                                        <InputError message={errors.numero_movil} />
+                                        <InputError
+                                            message={errors.numero_movil}
+                                        />
                                     </div>
 
                                     <p className="text-muted-foreground text-sm">
-                                        Al contratar se crea el cadete y su cuenta de la
-                                        app, y la contraseña se muestra{' '}
-                                        <strong>una sola vez</strong>.
+                                        Al contratar se crea el cadete y su
+                                        cuenta de la app, y la contraseña se
+                                        muestra <strong>una sola vez</strong>.
                                     </p>
 
                                     <Button type="submit" disabled={processing}>
@@ -225,7 +252,9 @@ export default function PostulacionShow({
                 </Card>
 
                 <Button asChild variant="ghost">
-                    <Link href="/panel/cadetes/postulaciones">Volver al listado</Link>
+                    <Link href="/panel/cadetes/postulaciones">
+                        Volver al listado
+                    </Link>
                 </Button>
             </div>
         </>
@@ -267,7 +296,9 @@ function Documento({
     return (
         <div className="grid gap-2">
             <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground text-xs">{etiqueta}</span>
+                <span className="text-muted-foreground text-xs">
+                    {etiqueta}
+                </span>
                 {tapado && url !== null && (
                     <button
                         type="button"

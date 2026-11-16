@@ -42,7 +42,8 @@ export default function PublicidadIndex({
                             Publicidad APP
                         </h1>
                         <p className="text-muted-foreground text-sm">
-                            {visibles} de {publicidades.length} se muestran en la app.
+                            {visibles} de {publicidades.length} se muestran en
+                            la app.
                         </p>
                     </div>
 
@@ -55,7 +56,10 @@ export default function PublicidadIndex({
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {publicidades.map((publicidad) => (
-                        <Card key={publicidad.id} className="overflow-hidden p-0">
+                        <Card
+                            key={publicidad.id}
+                            className="overflow-hidden p-0"
+                        >
                             <div className="bg-muted flex aspect-video items-center justify-center overflow-hidden">
                                 {publicidad.imagen === null ? (
                                     <span className="text-muted-foreground text-xs">
@@ -88,7 +92,9 @@ export default function PublicidadIndex({
                                                 : 'secondary'
                                         }
                                     >
-                                        {publicidad.visible ? 'Se muestra' : 'Oculta'}
+                                        {publicidad.visible
+                                            ? 'Se muestra'
+                                            : 'Oculta'}
                                     </Badge>
                                 </div>
 
@@ -154,7 +160,5 @@ export default function PublicidadIndex({
 }
 
 PublicidadIndex.layout = {
-    breadcrumbs: [
-        { title: 'Publicidad APP', href: '/panel/publicidad-app' },
-    ],
+    breadcrumbs: [{ title: 'Publicidad APP', href: '/panel/publicidad-app' }],
 };

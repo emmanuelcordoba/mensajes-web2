@@ -165,9 +165,15 @@ export function ListaDeEspera({
                         <thead className="text-muted-foreground text-left">
                             <tr>
                                 <th className="px-2 py-1.5 font-medium">#</th>
-                                <th className="px-2 py-1.5 font-medium">Cliente</th>
-                                <th className="px-2 py-1.5 font-medium">Dirección</th>
-                                <th className="px-2 py-1.5 font-medium">Destino</th>
+                                <th className="px-2 py-1.5 font-medium">
+                                    Cliente
+                                </th>
+                                <th className="px-2 py-1.5 font-medium">
+                                    Dirección
+                                </th>
+                                <th className="px-2 py-1.5 font-medium">
+                                    Destino
+                                </th>
                                 <th className="px-2 py-1.5" />
                             </tr>
                         </thead>
@@ -233,7 +239,9 @@ function FilaDeEspera({
                 dos cortan la palabra al dibujarla, pero sólo `overflow-wrap: anywhere`
                 cuenta para el ancho mínimo, que es el que decide si aparece la barra. */}
             <td className="px-2 py-1.5 wrap-anywhere">{fila.cliente ?? '—'}</td>
-            <td className="px-2 py-1.5 wrap-anywhere">{fila.direccion ?? '—'}</td>
+            <td className="px-2 py-1.5 wrap-anywhere">
+                {fila.direccion ?? '—'}
+            </td>
             <td className="px-2 py-1.5 wrap-anywhere">{fila.destino ?? '—'}</td>
             <td className="px-2 py-1.5">
                 <div className="flex items-center justify-end gap-1 whitespace-nowrap">
@@ -381,7 +389,9 @@ function ElModalDelPedido({
                     </DialogDescription>
                 </DialogHeader>
 
-                {error !== null && <p className="text-destructive text-sm">{error}</p>}
+                {error !== null && (
+                    <p className="text-destructive text-sm">{error}</p>
+                )}
 
                 {pedido !== null && (
                     <Form
@@ -403,9 +413,10 @@ function ElModalDelPedido({
                             <>
                                 {!pedido.editable && (
                                     <p className="text-muted-foreground text-xs">
-                                        Es un pedido de la app: sus campos los puso el
-                                        cliente y no se editan desde acá. Cambiar el
-                                        precio lo deja cotizado, esperando que lo acepte.
+                                        Es un pedido de la app: sus campos los
+                                        puso el cliente y no se editan desde
+                                        acá. Cambiar el precio lo deja cotizado,
+                                        esperando que lo acepte.
                                     </p>
                                 )}
 
@@ -447,7 +458,11 @@ function ElModalDelPedido({
                                         </span>
                                         <select
                                             name="retorno_origen"
-                                            defaultValue={pedido.retorno_origen ? '1' : '0'}
+                                            defaultValue={
+                                                pedido.retorno_origen
+                                                    ? '1'
+                                                    : '0'
+                                            }
                                             disabled={!pedido.editable}
                                             className="border-input bg-background h-9 rounded-md border px-3 text-sm disabled:opacity-60"
                                         >
@@ -458,7 +473,9 @@ function ElModalDelPedido({
                                 </div>
 
                                 <label className="grid gap-1 text-sm">
-                                    <span className="text-muted-foreground">Detalle</span>
+                                    <span className="text-muted-foreground">
+                                        Detalle
+                                    </span>
                                     <textarea
                                         name="detalle"
                                         rows={2}
@@ -521,13 +538,16 @@ function ElModalDelPedido({
                                     pedido.valor_declarado !== null) && (
                                     <p className="text-muted-foreground text-xs">
                                         Paquete: {pedido.tipo_paquete ?? '—'} ·{' '}
-                                        {pedido.peso_paquete ?? '—'} · declarado $
-                                        {pedido.valor_declarado ?? '—'}
+                                        {pedido.peso_paquete ?? '—'} · declarado
+                                        ${pedido.valor_declarado ?? '—'}
                                     </p>
                                 )}
 
                                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                    <Borrar pedido={pedido} alTerminar={cerrar} />
+                                    <Borrar
+                                        pedido={pedido}
+                                        alTerminar={cerrar}
+                                    />
 
                                     <div className="flex items-center gap-4">
                                         {/* Al lado del botón porque es lo que cambia lo
@@ -538,13 +558,18 @@ function ElModalDelPedido({
                                             <input
                                                 type="checkbox"
                                                 checked={imprimir}
-                                                onChange={(e) => marcar(e.target.checked)}
+                                                onChange={(e) =>
+                                                    marcar(e.target.checked)
+                                                }
                                                 className="accent-primary size-4"
                                             />
                                             Imprimir pedido
                                         </label>
 
-                                        <Button type="submit" disabled={processing}>
+                                        <Button
+                                            type="submit"
+                                            disabled={processing}
+                                        >
                                             Guardar y asignar
                                         </Button>
                                     </div>

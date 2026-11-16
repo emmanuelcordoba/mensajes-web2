@@ -31,7 +31,9 @@ export function TiempoDeDemora() {
 
     return (
         <label className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground hidden sm:inline">Demora</span>
+            <span className="text-muted-foreground hidden sm:inline">
+                Demora
+            </span>
             <select
                 value={elegido}
                 onChange={(e) => {

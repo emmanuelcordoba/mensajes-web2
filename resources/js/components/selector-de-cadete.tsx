@@ -9,17 +9,15 @@ import { usePausaMientrasEstaAbierto } from '@/hooks/use-pausa-de-refresco';
 | Lo usan las dos pantallas que asignan: el alta de Inicio y el modal de la lista de espera.
 | Es un componente y no dos copias porque la regla de a quién se puede ofrecer es una sola.
 |
-| ⚠️ **La cola arriba y el resto abajo, y están todos en la lista.** El panel viejo hace algo
-| distinto y se contradice solo: al cargar la pantalla el `<select>` tiene los 134 cadetes no
-| bloqueados, y cinco segundos después `recargarCadetesActivos()` lo reemplaza por
-| `Cadete::all()` —220, **incluidos los 86 que tienen el usuario bloqueado**—. Acá la cola va
-| primero porque es de donde sale el 97% de los pedidos, y abajo está el resto del padrón
-| esté el cadete activo o no, porque se le asigna a alguien fuera de la cola cuando avisa por
-| teléfono o pasa por el mostrador. Los bloqueados no aparecen nunca.
+| ⚠️ **Es la cola, en orden de llegada, y nada más que la cola.** El pedido le toca al que
+| esperó más, así que la lista viene ordenada del servidor —`InicioController::paraAsignar()`—
+| y acá no se reordena ni se agrupa. El panel viejo ofrecía el padrón entero: al cargar la
+| pantalla los 134 cadetes no bloqueados y, cinco segundos después, `Cadete::all()` —220,
+| **incluidos los 86 que tienen el usuario bloqueado**—. Al cadete que avisa por teléfono o
+| pasa por el mostrador se lo pone en la cola y recién entonces se le da el pedido.
 |
-| ⚠️ **El campo de al lado filtra la lista; ya no le pregunta al servidor.** Antes el resto
-| de los cadetes no viajaba y había que buscarlos contra el servidor, una consulta por
-| tecla. Ahora están todos acá: filtrar es mirar lo que la pantalla ya tiene.
+| ⚠️ **El campo de al lado filtra la lista; no le pregunta al servidor.** Filtrar es mirar lo
+| que la pantalla ya tiene, y el orden de lo que queda sigue siendo el de la cola.
 */
 
 export type CadeteElegible = {
@@ -27,25 +25,18 @@ export type CadeteElegible = {
     movil: number;
     nombre: string;
     en_la_app: boolean;
-    en_la_cola: boolean;
 };
 
 /**
- * Cómo se lee cada opción: igual que el `<select>` viejo, con el APP/WEB al final.
+ * Cómo se lee cada opción: el lugar en la cola adelante, y el APP/WEB al final como el
+ * `<select>` viejo.
  *
- * ⚠️ El APP/WEB va **sólo para los de la cola**. En el panel viejo todas las opciones lo
- * llevan, y para alguien que no está trabajando las dos cosas son mentira: «WEB» quiere
- * decir que está en el mostrador esperando un pedido. Al que está fuera de la cola lo dice
- * el grupo en el que aparece.
+ * ⚠️ El número es la posición en la cola, no el móvil ni el id: es lo que hace visible el
+ * orden en una lista donde todos están esperando. «WEB» quiere decir que está en el
+ * mostrador; «APP», que está en la calle con el teléfono.
  */
-function comoSeLee(cadete: CadeteElegible): string {
-    const nombre = `${cadete.movil} — ${cadete.nombre}`;
-
-    if (!cadete.en_la_cola) {
-        return nombre;
-    }
-
-    return `${nombre} ${cadete.en_la_app ? '(APP)' : '(WEB)'}`;
+function comoSeLee(cadete: CadeteElegible, lugar: number): string {
+    return `${lugar}. ${cadete.movil} — ${cadete.nombre} ${cadete.en_la_app ? '(APP)' : '(WEB)'}`;
 }
 
 /** Si lo tipeado aparece en el móvil o en el nombre, sin distinguir mayúsculas. */
@@ -108,26 +99,25 @@ export function SelectorDeCadete({
     const losQueSeVen = abierta.estaAbierta && foto !== null ? foto : cadetes;
 
     /*
-    | Los dos grupos, ya filtrados.
+    | La cola ya filtrada, con el lugar que cada uno tiene en ella.
+    |
+    | ⚠️ **El lugar se calcula antes de filtrar**: es la posición en la cola, no el renglón
+    | de la lista. Filtrando por «Qui» el que está sexto sigue diciendo 6.
     |
     | ⚠️ **El elegido se muestra aunque el filtro lo deje afuera.** Si no, al seguir tipeando
     | su opción desaparecía del `<select>`, que quedaba apuntando a un valor que no estaba en
     | la lista: se veía vacío y se mandaba igual.
     */
-    const { enLaCola, afuera } = useMemo(() => {
+    const queVan = useMemo(() => {
         const texto = buscado.trim().toLocaleLowerCase();
 
-        const queVan = losQueSeVen.filter(
-            (c) => texto === '' || c.id === elegido || coincide(c, texto),
-        );
-
-        return {
-            enLaCola: queVan.filter((c) => c.en_la_cola),
-            afuera: queVan.filter((c) => !c.en_la_cola),
-        };
+        return losQueSeVen
+            .map((cadete, indice) => ({ cadete, lugar: indice + 1 }))
+            .filter(
+                ({ cadete }) =>
+                    texto === '' || cadete.id === elegido || coincide(cadete, texto),
+            );
     }, [losQueSeVen, buscado, elegido]);
-
-    const hayCola = losQueSeVen.some((c) => c.en_la_cola);
 
     /*
     | ⚠️ `min-w-0` en los tres, y no es cosmético: el ancho mínimo de un `<select>` es el de
@@ -154,25 +144,11 @@ export function SelectorDeCadete({
             >
                 <option value="">Ninguno</option>
 
-                {enLaCola.length > 0 && (
-                    <optgroup label="En la cola">
-                        {enLaCola.map((cadete) => (
-                            <option key={cadete.id} value={cadete.id}>
-                                {comoSeLee(cadete)}
-                            </option>
-                        ))}
-                    </optgroup>
-                )}
-
-                {afuera.length > 0 && (
-                    <optgroup label="Fuera de la cola">
-                        {afuera.map((cadete) => (
-                            <option key={cadete.id} value={cadete.id}>
-                                {comoSeLee(cadete)}
-                            </option>
-                        ))}
-                    </optgroup>
-                )}
+                {queVan.map(({ cadete, lugar }) => (
+                    <option key={cadete.id} value={cadete.id}>
+                        {comoSeLee(cadete, lugar)}
+                    </option>
+                ))}
             </select>
 
             <Input
@@ -185,15 +161,15 @@ export function SelectorDeCadete({
             />
 
             {/* Que no quede nadie es información: si no, el campo parece no funcionar. */}
-            {buscado.trim() !== '' && enLaCola.length === 0 && afuera.length === 0 && (
+            {buscado.trim() !== '' && queVan.length === 0 && (
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >
-                    Ningún cadete coincide. Los bloqueados no se pueden elegir.
+                    Ningún cadete de la cola coincide.
                 </span>
             )}
 
-            {!hayCola && (
+            {losQueSeVen.length === 0 && (
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >

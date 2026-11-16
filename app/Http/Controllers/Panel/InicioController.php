@@ -205,65 +205,59 @@ class InicioController extends Controller
     }
 
     /**
-     * Los cadetes que el alta y el modal ofrecen: la cola arriba, y abajo el resto.
+     * Los cadetes que el alta y el modal ofrecen: la cola, y nada más que la cola.
      *
-     * El orden no es decorativo: de la cola sale el 97,1% de los pedidos web, así que lo
-     * primero que se ve es lo que casi siempre se elige. Abajo va el padrón, por móvil,
-     * esté el cadete activo o no: se le asigna a alguien fuera de la cola cuando avisa por
-     * teléfono o pasa por el mostrador, y antes había que buscarlo para que apareciera.
+     * **El orden es el de llegada y es la regla de la casa**: el pedido le toca al que
+     * esperó más. Por eso sale de `scopeEnLaCola`, que ordena por `orden_cola`, y por eso
+     * la lista no se reordena ni se agrupa en el navegador.
      *
-     * ⚠️ **Los bloqueados no están, y es la única exclusión.** Ver `scopeOfrecibles`. El
-     * selector del panel viejo hacía lo contrario y se contradecía solo: al cargar la
-     * pantalla tenía los 134 cadetes no bloqueados y cinco segundos después
-     * `recargarCadetesActivos()` lo reemplazaba por `Cadete::all()` —220, con los 86 que
-     * tienen el usuario bloqueado adentro—. O sea que el selector se ensanchaba al primer
-     * refresco y recién entonces dejaba elegir a alguien bloqueado.
+     * ⚠️ **Fuera de la cola no se ofrece a nadie.** Antes esta lista seguía con el resto
+     * del padrón por móvil, que es lo que dejaba hacer el selector del panel viejo; lo que
+     * la oficina necesita es lo contrario: que el selector sea la cola, para no saltearla
+     * sin querer. Al cadete que avisa por teléfono o pasa por el mostrador se lo pone en la
+     * cola —desde la central, con el botón de la columna de la izquierda— y recién entonces
+     * se le da el pedido.
      *
-     * ⚠️ **También se filtra la cola, y no es por prolijidad:** bloquear no saca de la cola
-     * —`IngresoALaCola` sólo niega la ENTRADA—, así que un cadete bloqueado mientras
-     * esperaba sigue ahí. Se sigue mostrando en la cola de la pantalla, que es el estado
-     * real, pero no se ofrece para asignarle un pedido.
+     * ⚠️ **La asignación del servidor sigue aceptando a cualquier ofrecible**, y es a
+     * propósito: entre que la pantalla se dibuja y el operador aprieta Asignar, el cadete
+     * elegido puede haber salido de la cola —se la llevó él mismo desde la app—, y eso no
+     * tiene que convertirse en un error. Lo que esta lista decide es qué se ofrece.
+     *
+     * ⚠️ **Los bloqueados no están.** Ver `scopeOfrecibles`. Y no es por prolijidad:
+     * bloquear no saca de la cola —`IngresoALaCola` sólo niega la ENTRADA—, así que un
+     * cadete bloqueado mientras esperaba sigue ahí. Se sigue mostrando en la cola de la
+     * pantalla, que es el estado real, pero no se ofrece para asignarle un pedido.
      *
      * ⚠️ **Lista explícita de campos, y por eso esto se puede mandar en cada refresco.** De
-     * los 143 ofrecibles viajan cinco valores cada uno: unos 10 KB, contra los 186 KB que
-     * manda el panel viejo cada cinco segundos con los documentos completos de los 220. La
-     * pantalla está abierta todo el día en la oficina.
+     * cada uno viajan cuatro valores: contra los 186 KB que el panel viejo manda cada cinco
+     * segundos con los documentos completos de los 220 cadetes. La pantalla está abierta
+     * todo el día en la oficina.
      *
-     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool}>
+     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool}>
      */
     protected function paraAsignar(): array
     {
-        $campos = ['id', 'numero_movil', 'nombres', 'apellidos', 'estado', 'orden_cola'];
-
-        $enLaCola = Cadete::query()->enLaCola()->ofrecibles()->get($campos);
-
-        // El resto: todos los demás ofrecibles, por móvil, que es por donde se los nombra.
-        $afuera = Cadete::query()
+        return Cadete::query()
+            ->enLaCola()
             ->ofrecibles()
-            ->whereNotIn('id', $enLaCola->modelKeys())
-            ->orderBy('numero_movil')
-            ->get($campos);
-
-        return $enLaCola
-            ->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete, true))
-            ->concat($afuera->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete, false)))
+            ->get(['id', 'numero_movil', 'nombres', 'apellidos', 'estado', 'orden_cola'])
             ->values()
+            ->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete))
             ->all();
     }
 
     /**
      * Un cadete como lo necesita el selector, y nada más que eso.
      *
-     * @return array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool}
+     * @return array{id: int, movil: int, nombre: string, en_la_app: bool}
      */
-    protected static function comoSeOfrece(Cadete $cadete, bool $enLaCola): array
+    protected static function comoSeOfrece(Cadete $cadete): array
     {
         return [
             'id' => $cadete->id,
             'movil' => $cadete->numero_movil,
             'nombre' => trim($cadete->nombres.' '.$cadete->apellidos),
             'en_la_app' => $cadete->estaEnLaApp(),
-            'en_la_cola' => $enLaCola,
         ];
     }
 

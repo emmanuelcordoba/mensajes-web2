@@ -34,6 +34,9 @@ use Laravel\Telescope\TelescopeApplicationServiceProvider;
  */
 class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 {
+    /** De qué código para arriba una respuesta cuenta como falla. */
+    public const DESDE_ACA_ES_UNA_FALLA = 400;
+
     /**
      * Register any application services.
      */
@@ -47,7 +50,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
             return $esLocal
                 || $entry->isReportableException()
                 // Toda respuesta de 400 para arriba, que es lo que vinimos a entender.
-                || $entry->isFailedRequest()
+                || self::esUnaRespuestaQueFalla($entry)
                 || $entry->isFailedJob()
                 || $entry->isScheduledTask()
                 || $entry->hasMonitoredTag()
@@ -57,6 +60,25 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
         });
 
         Telescope::tag(fn (IncomingEntry $entry): array => self::etiquetas($entry));
+    }
+
+    /**
+     * Una respuesta de 400 para arriba.
+     *
+     * ⚠️ **Y no `IncomingEntry::isFailedRequest()`, que es lo que decía acá y es por lo
+     * que esto estuvo un día sin guardar una sola fila.** Ese método mira `>= 500`, no
+     * `>= 400`: con él, un 429 —que es justamente lo que vinimos a entender— no se guarda,
+     * ni un 404, ni un 422. En local no se notó porque en local se guarda todo, y en
+     * producción el síntoma es el peor que hay: ningún error, ninguna caída, la tabla
+     * vacía y la pantalla de Fallas diciendo que no falló nada.
+     *
+     * El corte en 400 es el mismo que usa `FallasDeLaApi` para leer. Una regla, dos
+     * lectores.
+     */
+    protected static function esUnaRespuestaQueFalla(IncomingEntry $entry): bool
+    {
+        return $entry->type === 'request'
+            && ($entry->content['response_status'] ?? 200) >= self::DESDE_ACA_ES_UNA_FALLA;
     }
 
     /**

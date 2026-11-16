@@ -188,44 +188,53 @@ test('an order nobody signed carries no badge, and does not pretend otherwise', 
         ->assertJsonPath('distintivo', null);
 });
 
-test('only the queue is offered, and in the order it was joined', function () {
-    // ⚠️ **El orden es la regla de la casa**: el pedido le toca al que esperó más, así que
-    // la lista sale por `orden_cola` y no por móvil. El panel viejo hacía otra cosa y se
-    // contradecía solo: el primer dibujado traía los 134 cadetes no bloqueados y cinco
+test('the queue goes first in its order, and the ones with an order underneath', function () {
+    // ⚠️ **Arriba el orden es la regla de la casa**: el pedido le toca al que esperó más,
+    // así que ese grupo sale por `orden_cola` y no por móvil. El panel viejo hacía otra cosa
+    // y se contradecía solo: el primer dibujado traía los 134 cadetes no bloqueados y cinco
     // segundos después `recargarCadetesActivos()` lo reemplazaba por `Cadete::all()` —220,
-    // con los 86 que tienen el usuario bloqueado adentro, y los documentos completos
-    // viajando cada cinco segundos—.
+    // con los 86 que tienen el usuario bloqueado adentro—.
     //
-    // ⚠️ **Y fuera de la cola no se ofrece a nadie**: ni el inactivo ni el que tiene un
-    // pedido en la mano. Al que avisa por teléfono o pasa por el mostrador se lo pone en la
-    // cola y recién entonces se le da el pedido.
+    // ⚠️ **Y abajo van los que ya tienen pedido en la mano, que no es una excepción sino
+    // cómo se trabaja**: se le dan dos o tres seguidos para la misma zona y al aceptar el
+    // primero sale de la cola. Lo que no se ofrece es el resto del padrón.
     unCadeteParaAsignar(Cadete::ESTADO_ACTIVO_WEB);
 
     // Entró antes a la cola: va primero, aunque su móvil sea más alto.
-    Cadete::factory()->create([
+    $temprano = Cadete::factory()->create([
         'numero_movil' => 99,
         'estado' => Cadete::ESTADO_ACTIVO_APP,
         'orden_cola' => 500,
     ]);
 
+    // Esperando, pero con un pedido recién asignado que todavía no aceptó: sigue arriba
+    // —es donde la oficina lo busca— y la lista dice que tiene uno encima.
+    Pedido::factory()->enEstado(Pedido::ESTADO_ASIGNADO)->create(['cadete_id' => $temprano->id]);
+
+    // Inactivo y sin nada en la mano: no se ofrece.
     Cadete::factory()->create(['numero_movil' => 22, 'estado' => Cadete::ESTADO_INACTIVO]);
 
-    // Con un pedido en la mano no está en la cola, así que tampoco se ofrece.
-    Cadete::factory()->create([
+    // Con dos pedidos encima: abajo, y con la cuenta, que es lo que decide si se le carga
+    // otro.
+    $entregando = Cadete::factory()->create([
         'numero_movil' => 33,
         'estado' => Cadete::ESTADO_CON_PEDIDO_APP,
         'orden_cola' => 1,
     ]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_EN_CURSO)->create(['cadete_id' => $entregando->id]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_ASIGNADO)->create(['cadete_id' => $entregando->id]);
 
     $this->actingAs(usuarioCon(Rol::EMPLEADO))
         ->get('/panel')
         ->assertInertia(function ($pagina) {
             $ofrecidos = $pagina->toArray()['props']['paraAsignar'];
 
-            expect(array_column($ofrecidos, 'movil'))->toBe([99, 11])
-                // Cuatro valores por cadete: ni el DNI, ni el teléfono, ni la dirección.
+            expect(array_column($ofrecidos, 'movil'))->toBe([99, 11, 33])
+                ->and(array_column($ofrecidos, 'en_la_cola'))->toBe([true, true, false])
+                ->and(array_column($ofrecidos, 'pendientes'))->toBe([1, 0, 2])
+                // Cinco valores por cadete: ni el DNI, ni el teléfono, ni la dirección.
                 ->and(array_keys($ofrecidos[0]))
-                ->toBe(['id', 'movil', 'nombre', 'en_la_app']);
+                ->toBe(['id', 'movil', 'nombre', 'en_la_app', 'en_la_cola', 'pendientes']);
         });
 });
 
@@ -270,7 +279,7 @@ test('the one who left the queue in the middle can still be given the order', fu
 
     $empleado = usuarioCon(Rol::EMPLEADO);
 
-    // No se ofrece.
+    // No se ofrece: no está en la lista de espera y no le quedó nada en la mano.
     $this->actingAs($empleado)
         ->get('/panel')
         ->assertInertia(fn ($pagina) => $pagina->has('paraAsignar', 0)->etc());

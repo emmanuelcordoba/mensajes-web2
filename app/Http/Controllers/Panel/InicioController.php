@@ -9,6 +9,7 @@ use App\Models\Pedido;
 use App\Models\Rol;
 use App\Models\User;
 use App\Services\ColaDeCadetes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -205,23 +206,27 @@ class InicioController extends Controller
     }
 
     /**
-     * Los cadetes que el alta y el modal ofrecen: la cola, y nada más que la cola.
+     * Los cadetes que el alta y el modal ofrecen: la lista de espera, y debajo los que
+     * están con un pedido en la mano.
      *
-     * **El orden es el de llegada y es la regla de la casa**: el pedido le toca al que
-     * esperó más. Por eso sale de `scopeEnLaCola`, que ordena por `orden_cola`, y por eso
-     * la lista no se reordena ni se agrupa en el navegador.
+     * **Arriba, el orden es el de llegada y es la regla de la casa**: el pedido le toca al
+     * que esperó más. Por eso sale de `scopeEnLaCola`, que ordena por `orden_cola`, y por
+     * eso la lista no se reordena ni se agrupa en el navegador.
      *
-     * ⚠️ **Fuera de la cola no se ofrece a nadie.** Antes esta lista seguía con el resto
-     * del padrón por móvil, que es lo que dejaba hacer el selector del panel viejo; lo que
-     * la oficina necesita es lo contrario: que el selector sea la cola, para no saltearla
-     * sin querer. Al cadete que avisa por teléfono o pasa por el mostrador se lo pone en la
-     * cola —desde la central, con el botón de la columna de la izquierda— y recién entonces
-     * se le da el pedido.
+     * ⚠️ **Abajo van los que ya tienen pedido, y no es una excepción: es cómo se trabaja.**
+     * A un cadete se le dan dos o tres pedidos seguidos para la misma zona, y cuando acepta
+     * el primero sale de la cola. Sin este segundo grupo, el único modo de darle el
+     * siguiente era esperar a que terminara. Van por móvil, que es por donde se los nombra,
+     * y con cuántos pedidos tienen encima: eso es lo que decide si se le carga otro.
+     *
+     * ⚠️ **Y no se ofrece a nadie más.** El resto del padrón —el inactivo, el que no
+     * trabaja hoy— no aparece, que es lo que dejaba saltear la cola sin querer. Al que
+     * avisa por teléfono o pasa por el mostrador se lo pone en la cola primero.
      *
      * ⚠️ **La asignación del servidor sigue aceptando a cualquier ofrecible**, y es a
      * propósito: entre que la pantalla se dibuja y el operador aprieta Asignar, el cadete
-     * elegido puede haber salido de la cola —se la llevó él mismo desde la app—, y eso no
-     * tiene que convertirse en un error. Lo que esta lista decide es qué se ofrece.
+     * elegido puede haber salido de la cola, y eso no tiene que convertirse en un error.
+     * Lo que esta lista decide es qué se ofrece.
      *
      * ⚠️ **Los bloqueados no están.** Ver `scopeOfrecibles`. Y no es por prolijidad:
      * bloquear no saca de la cola —`IngresoALaCola` sólo niega la ENTRADA—, así que un
@@ -229,35 +234,51 @@ class InicioController extends Controller
      * pantalla, que es el estado real, pero no se ofrece para asignarle un pedido.
      *
      * ⚠️ **Lista explícita de campos, y por eso esto se puede mandar en cada refresco.** De
-     * cada uno viajan cuatro valores: contra los 186 KB que el panel viejo manda cada cinco
+     * cada uno viajan cinco valores: contra los 186 KB que el panel viejo manda cada cinco
      * segundos con los documentos completos de los 220 cadetes. La pantalla está abierta
      * todo el día en la oficina.
      *
-     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool}>
+     * @return array<int, array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool, pendientes: int}>
      */
     protected function paraAsignar(): array
     {
-        return Cadete::query()
+        $campos = ['id', 'numero_movil', 'nombres', 'apellidos', 'estado', 'orden_cola'];
+
+        // ⚠️ `withCount` y no contar en PHP: son dos consultas en total, no una por cadete.
+        $enLaCola = Cadete::query()
             ->enLaCola()
             ->ofrecibles()
-            ->get(['id', 'numero_movil', 'nombres', 'apellidos', 'estado', 'orden_cola'])
+            ->withCount(['pedidos as pendientes' => fn (Builder $p) => $p->whereIn('estado', Pedido::ESTADOS_SIN_TERMINAR)])
+            ->get($campos);
+
+        $conPedido = Cadete::query()
+            ->conPedidoSinTerminar()
+            ->ofrecibles()
+            ->withCount(['pedidos as pendientes' => fn (Builder $p) => $p->whereIn('estado', Pedido::ESTADOS_SIN_TERMINAR)])
+            ->orderBy('numero_movil')
+            ->get($campos);
+
+        return $enLaCola
+            ->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete, true))
+            ->concat($conPedido->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete, false)))
             ->values()
-            ->map(fn (Cadete $cadete): array => self::comoSeOfrece($cadete))
             ->all();
     }
 
     /**
      * Un cadete como lo necesita el selector, y nada más que eso.
      *
-     * @return array{id: int, movil: int, nombre: string, en_la_app: bool}
+     * @return array{id: int, movil: int, nombre: string, en_la_app: bool, en_la_cola: bool, pendientes: int}
      */
-    protected static function comoSeOfrece(Cadete $cadete): array
+    protected static function comoSeOfrece(Cadete $cadete, bool $enLaCola): array
     {
         return [
             'id' => $cadete->id,
             'movil' => $cadete->numero_movil,
             'nombre' => trim($cadete->nombres.' '.$cadete->apellidos),
             'en_la_app' => $cadete->estaEnLaApp(),
+            'en_la_cola' => $enLaCola,
+            'pendientes' => (int) ($cadete->pendientes ?? 0),
         ];
     }
 

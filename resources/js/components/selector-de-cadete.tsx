@@ -9,12 +9,13 @@ import { usePausaMientrasEstaAbierto } from '@/hooks/use-pausa-de-refresco';
 | Lo usan las dos pantallas que asignan: el alta de Inicio y el modal de la lista de espera.
 | Es un componente y no dos copias porque la regla de a quién se puede ofrecer es una sola.
 |
-| ⚠️ **Es la cola, en orden de llegada, y nada más que la cola.** El pedido le toca al que
-| esperó más, así que la lista viene ordenada del servidor —`InicioController::paraAsignar()`—
-| y acá no se reordena ni se agrupa. El panel viejo ofrecía el padrón entero: al cargar la
-| pantalla los 134 cadetes no bloqueados y, cinco segundos después, `Cadete::all()` —220,
-| **incluidos los 86 que tienen el usuario bloqueado**—. Al cadete que avisa por teléfono o
-| pasa por el mostrador se lo pone en la cola y recién entonces se le da el pedido.
+| ⚠️ **Arriba la lista de espera, en orden de llegada; abajo los que ya tienen pedido.** El
+| pedido le toca al que esperó más, así que el primer grupo viene ordenado del servidor
+| —`InicioController::paraAsignar()`— y acá no se reordena. El segundo grupo existe porque a
+| un cadete se le dan dos o tres pedidos seguidos y, al aceptar el primero, sale de la cola:
+| sin él había que esperar a que terminara. Lo que no aparece es el resto del padrón, que es
+| lo que dejaba saltear la cola sin querer; al que avisa por teléfono o pasa por el mostrador
+| se lo pone en la cola primero.
 |
 | ⚠️ **El campo de al lado filtra la lista; no le pregunta al servidor.** Filtrar es mirar lo
 | que la pantalla ya tiene, y el orden de lo que queda sigue siendo el de la cola.
@@ -25,18 +26,48 @@ export type CadeteElegible = {
     movil: number;
     nombre: string;
     en_la_app: boolean;
+    /** Arriba, con los que esperan, o abajo, con los que están entregando. */
+    en_la_cola: boolean;
+    /** Cuántos pedidos tiene en la mano: asignados o en curso. */
+    pendientes: number;
 };
+
+/**
+ * Cuántos pedidos tiene encima, dicho sólo cuando tiene.
+ *
+ * Es el dato que decide si se le carga otro, y por eso se ve en los dos grupos: en el de
+ * abajo todos tienen al menos uno, y arriba lo tiene el que está esperando con un pedido
+ * recién asignado que todavía no aceptó.
+ */
+function conPedidos(cadete: CadeteElegible): string {
+    if (cadete.pendientes <= 0) {
+        return '';
+    }
+
+    return ` · ${cadete.pendientes} ${cadete.pendientes === 1 ? 'pedido' : 'pedidos'}`;
+}
 
 /**
  * Cómo se lee cada opción: el lugar en la cola adelante, y el APP/WEB al final como el
  * `<select>` viejo.
  *
- * ⚠️ El número es la posición en la cola, no el móvil ni el id: es lo que hace visible el
- * orden en una lista donde todos están esperando. «WEB» quiere decir que está en el
- * mostrador; «APP», que está en la calle con el teléfono.
+ * ⚠️ El número es la posición en la lista de espera, no el móvil ni el id: es lo que hace
+ * visible el orden en un grupo donde todos están esperando. Los de abajo no lo llevan
+ * —no están esperando nada—, pero sí dicen cuánto tienen encima.
+ *
+ * ⚠️ **El APP/WEB va sólo arriba**, y es la misma decisión que el panel viejo tomó al
+ * revés: allá todas las opciones lo llevan, y para el que no está esperando las dos cosas
+ * son mentira. «WEB» quiere decir que está en el mostrador esperando un pedido, y el que
+ * está entregando no está en el mostrador: de él lo que importa es cuántos lleva encima.
  */
-function comoSeLee(cadete: CadeteElegible, lugar: number): string {
-    return `${lugar}. ${cadete.movil} — ${cadete.nombre} ${cadete.en_la_app ? '(APP)' : '(WEB)'}`;
+function comoSeLee(cadete: CadeteElegible, lugar: number | null): string {
+    const nombre = `${cadete.movil} — ${cadete.nombre}`;
+
+    if (lugar === null) {
+        return `${nombre}${conPedidos(cadete)}`;
+    }
+
+    return `${lugar}. ${nombre} ${cadete.en_la_app ? '(APP)' : '(WEB)'}${conPedidos(cadete)}`;
 }
 
 /** Si lo tipeado aparece en el móvil o en el nombre, sin distinguir mayúsculas. */
@@ -99,25 +130,34 @@ export function SelectorDeCadete({
     const losQueSeVen = abierta.estaAbierta && foto !== null ? foto : cadetes;
 
     /*
-    | La cola ya filtrada, con el lugar que cada uno tiene en ella.
+    | Los dos grupos ya filtrados, con el lugar que cada uno tiene en la lista de espera.
     |
-    | ⚠️ **El lugar se calcula antes de filtrar**: es la posición en la cola, no el renglón
-    | de la lista. Filtrando por «Qui» el que está sexto sigue diciendo 6.
+    | ⚠️ **El lugar se calcula antes de filtrar**: es la posición en la lista de espera, no
+    | el renglón del `<select>`. Filtrando por «Qui» el que está sexto sigue diciendo 6.
     |
     | ⚠️ **El elegido se muestra aunque el filtro lo deje afuera.** Si no, al seguir tipeando
     | su opción desaparecía del `<select>`, que quedaba apuntando a un valor que no estaba en
     | la lista: se veía vacío y se mandaba igual.
     */
-    const queVan = useMemo(() => {
+    const { esperando, entregando } = useMemo(() => {
         const texto = buscado.trim().toLocaleLowerCase();
+        const entra = (cadete: CadeteElegible) =>
+            texto === '' || cadete.id === elegido || coincide(cadete, texto);
 
-        return losQueSeVen
-            .map((cadete, indice) => ({ cadete, lugar: indice + 1 }))
-            .filter(
-                ({ cadete }) =>
-                    texto === '' || cadete.id === elegido || coincide(cadete, texto),
-            );
+        const enLaCola = losQueSeVen.filter((c) => c.en_la_cola);
+
+        return {
+            esperando: enLaCola
+                .map((cadete, indice) => ({ cadete, lugar: indice + 1 }))
+                .filter(({ cadete }) => entra(cadete)),
+            entregando: losQueSeVen
+                .filter((c) => !c.en_la_cola && entra(c))
+                .map((cadete) => ({ cadete, lugar: null })),
+        };
     }, [losQueSeVen, buscado, elegido]);
+
+    const cuantosSeVen = esperando.length + entregando.length;
+    const hayCola = losQueSeVen.some((c) => c.en_la_cola);
 
     /*
     | ⚠️ `min-w-0` en los tres, y no es cosmético: el ancho mínimo de un `<select>` es el de
@@ -144,11 +184,25 @@ export function SelectorDeCadete({
             >
                 <option value="">Ninguno</option>
 
-                {queVan.map(({ cadete, lugar }) => (
-                    <option key={cadete.id} value={cadete.id}>
-                        {comoSeLee(cadete, lugar)}
-                    </option>
-                ))}
+                {esperando.length > 0 && (
+                    <optgroup label="En la lista de espera">
+                        {esperando.map(({ cadete, lugar }) => (
+                            <option key={cadete.id} value={cadete.id}>
+                                {comoSeLee(cadete, lugar)}
+                            </option>
+                        ))}
+                    </optgroup>
+                )}
+
+                {entregando.length > 0 && (
+                    <optgroup label="Con pedido, fuera de la lista">
+                        {entregando.map(({ cadete, lugar }) => (
+                            <option key={cadete.id} value={cadete.id}>
+                                {comoSeLee(cadete, lugar)}
+                            </option>
+                        ))}
+                    </optgroup>
+                )}
             </select>
 
             <Input
@@ -161,15 +215,15 @@ export function SelectorDeCadete({
             />
 
             {/* Que no quede nadie es información: si no, el campo parece no funcionar. */}
-            {buscado.trim() !== '' && queVan.length === 0 && (
+            {buscado.trim() !== '' && cuantosSeVen === 0 && (
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >
-                    Ningún cadete de la cola coincide.
+                    Ningún cadete coincide. Sólo se ofrecen los que están trabajando.
                 </span>
             )}
 
-            {losQueSeVen.length === 0 && (
+            {!hayCola && (
                 <span
                     className={`text-muted-foreground text-xs ${enLinea ? 'sm:col-span-2' : ''}`}
                 >

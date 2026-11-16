@@ -138,8 +138,13 @@ class PedidoDelCadete
      * movimiento además guarda `pedido_id`, y su índice único es el segundo cerrojo (COB-1).
      *
      * ⚠️ **Vuelve a la cola y va al FINAL**, con un `orden_cola` nuevo, como el sistema
-     * viejo: ya hizo un viaje, le toca a los que esperan. Y sólo si no le queda otro pedido
-     * en curso, porque un cadete puede tener más de uno.
+     * viejo: ya hizo un viaje, le toca a los que esperan. Y sólo si no le queda ningún otro
+     * pedido sin terminar, porque a un cadete se le dan varios seguidos.
+     *
+     * ⚠️ **Sin terminar son los Asignados y los En curso, y mirar sólo los En curso era el
+     * error.** Al cadete que entregaba uno y tenía otro recién asignado —dado pero todavía
+     * sin aceptar— esto lo devolvía a la cola y lo dejaba figurando como libre, con un
+     * pedido encima. Desde la oficina se le asignaba otro más sin saberlo.
      *
      * ⚠️ Todo en una transacción: el estado del pedido, el del cadete y el cobro son una
      * sola decisión.
@@ -160,7 +165,7 @@ class PedidoDelCadete
 
             LogEstadoPedido::registrar($pedido, LogEstadoPedido::CADETE_APP, $cadete);
 
-            if (! $cadete->tienePedidoEnCurso()) {
+            if (! $cadete->tienePedidoSinTerminar()) {
                 $cadete->estado = Cadete::ESTADO_ACTIVO_APP;
                 $cadete->orden_cola = now()->getTimestamp();
                 $cadete->save();

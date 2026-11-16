@@ -149,6 +149,19 @@ class Pedido extends Model
         self::ESTADO_CANCELADO,
     ];
 
+    /**
+     * Los pedidos que el cadete todavía tiene en la mano.
+     *
+     * ⚠️ **Son dos y no uno.** `Asignado` es el que le dieron y todavía no tocó
+     * «aceptar»; `En curso`, el que ya aceptó. Para el cadete los dos son trabajo
+     * pendiente, y mirar sólo `En curso` es lo que lo devolvía a la cola con un pedido
+     * sin confirmar encima. Ver `Cadete::tienePedidoSinTerminar()`.
+     */
+    public const ESTADOS_SIN_TERMINAR = [
+        self::ESTADO_ASIGNADO,
+        self::ESTADO_EN_CURSO,
+    ];
+
     /** Los que ya no esperan a nadie, y en la cola del panel van arriba. */
     private const ESTADOS_RESUELTOS = [
         self::ESTADO_CANCELADO,

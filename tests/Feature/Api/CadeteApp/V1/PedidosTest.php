@@ -249,6 +249,24 @@ test('with another order in progress the cadete keeps it', function () {
     expect($cadete->fresh()->estado)->toBe(Cadete::ESTADO_CON_PEDIDO_APP);
 });
 
+test('with another order just assigned the cadete does not go back to the queue', function () {
+    // ⚠️ **El agujero que esto cierra.** A un cadete se le dan dos o tres pedidos seguidos;
+    // el segundo queda Asignado hasta que lo acepta. Al entregar el primero, la cuenta vieja
+    // sólo miraba los «En curso», así que lo devolvía a la cola y lo dejaba figurando libre
+    // con un pedido encima: desde la oficina se le cargaba otro más sin saberlo.
+    $cadete = unCadeteConApp(['estado' => Cadete::ESTADO_CON_PEDIDO_APP, 'orden_cola' => 1]);
+    $entregando = unPedidoDe($cadete, Pedido::ESTADO_EN_CURSO);
+    unPedidoDe($cadete, Pedido::ESTADO_ASIGNADO);
+
+    $this->actingAs($cadete->user, 'sanctum')
+        ->getJson('/api/pedidos/finalizar?id='.$entregando->id)
+        ->assertOk();
+
+    expect($cadete->fresh()->estado)->toBe(Cadete::ESTADO_CON_PEDIDO_APP)
+        // Y no se lo manda al final de una cola en la que no está.
+        ->and($cadete->fresh()->orden_cola)->toBe(1);
+});
+
 test('finishing charges the balance once, and twice does not charge twice', function () {
     // ⚠️ **COB-1, y es plata.** Si llegan dos finalizar del mismo pedido —un doble toque, o
     // la app reintentando cuando se corta la red— cada uno cobraba el pedido.

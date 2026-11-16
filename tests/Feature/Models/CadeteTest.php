@@ -125,7 +125,7 @@ test('the queue only holds the two active states, in arrival order', function ()
     expect(Cadete::query()->enLaCola()->pluck('id')->all())->toBe([$primero->id, $segundo->id]);
 });
 
-test('asking whether THIS cadete has an order in progress answers about this one', function () {
+test('asking whether THIS cadete has an unfinished order answers about this one', function () {
     // El método viejo consultaba Auth::user()->cadete, o sea que respondía por el
     // cadete de la sesión y no por $this.
     $conPedido = Cadete::factory()->create();
@@ -134,8 +134,40 @@ test('asking whether THIS cadete has an order in progress answers about this one
     Pedido::factory()->enEstado(Pedido::ESTADO_EN_CURSO)->create(['cadete_id' => $conPedido->id]);
     Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create(['cadete_id' => $sinPedido->id]);
 
-    expect($conPedido->tienePedidoEnCurso())->toBeTrue()
-        ->and($sinPedido->tienePedidoEnCurso())->toBeFalse();
+    expect($conPedido->tienePedidoSinTerminar())->toBeTrue()
+        ->and($sinPedido->tienePedidoSinTerminar())->toBeFalse();
+});
+
+test('an order that was assigned and not yet accepted is still unfinished', function () {
+    // ⚠️ **Asignado cuenta, y mirar sólo «En curso» era el error.** Un pedido recién dado
+    // —que el cadete todavía no aceptó— es trabajo que tiene encima igual, y con la cuenta
+    // vieja al entregar otro volvía a la cola figurando libre.
+    $cadete = Cadete::factory()->create();
+    Pedido::factory()->enEstado(Pedido::ESTADO_ASIGNADO)->create(['cadete_id' => $cadete->id]);
+
+    expect($cadete->tienePedidoSinTerminar())->toBeTrue();
+});
+
+test('the ones with an order in hand are offered apart from the queue', function () {
+    // El grupo de abajo del selector de asignación: están trabajando, fuera de la cola, y
+    // con pedidos encima. Se les da otro sin esperar a que terminen.
+    $entregando = Cadete::factory()->create(['estado' => Cadete::ESTADO_CON_PEDIDO_APP]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_EN_CURSO)->create(['cadete_id' => $entregando->id]);
+
+    // En la cola con un pedido recién asignado: va en el grupo de arriba, con los que
+    // esperan, que es donde la oficina lo busca.
+    $esperando = Cadete::factory()->create([
+        'estado' => Cadete::ESTADO_ACTIVO_APP,
+        'orden_cola' => 10,
+    ]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_ASIGNADO)->create(['cadete_id' => $esperando->id]);
+
+    // Terminó todo y se fue: no lo tiene que ofrecer nadie.
+    $libre = Cadete::factory()->create(['estado' => Cadete::ESTADO_INACTIVO]);
+    Pedido::factory()->enEstado(Pedido::ESTADO_FINALIZADO)->create(['cadete_id' => $libre->id]);
+
+    expect(Cadete::query()->conPedidoSinTerminar()->pluck('id')->all())
+        ->toBe([$entregando->id]);
 });
 
 test('the minimum balance rounds up to the next hundred', function () {

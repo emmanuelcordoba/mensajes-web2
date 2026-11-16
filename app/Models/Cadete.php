@@ -411,15 +411,36 @@ class Cadete extends Model
     }
 
     /**
-     * Si ESTE cadete tiene un pedido en curso.
+     * Si a este cadete le queda algún pedido sin terminar: asignado o en curso.
      *
      * ⚠️ El método viejo consultaba `Auth::user()->cadete`, o sea que preguntaba
      * por el cadete de la sesión y no por `$this`: llamarlo sobre otro cadete
      * respondía por el que estaba conectado. Acá pregunta por sí mismo.
      */
-    public function tienePedidoEnCurso(): bool
+    public function tienePedidoSinTerminar(): bool
     {
-        return $this->pedidos()->where('estado', Pedido::ESTADO_EN_CURSO)->exists();
+        return $this->pedidos()->whereIn('estado', Pedido::ESTADOS_SIN_TERMINAR)->exists();
+    }
+
+    /**
+     * Los que están trabajando pero fuera de la cola, con pedidos todavía en la mano.
+     *
+     * Es el grupo de abajo del selector de asignación: a un cadete se le da más de un
+     * pedido seguido, y cuando acepta el primero sale de la cola. Sin esto, el único modo
+     * de darle el segundo era esperar a que terminara.
+     *
+     * ⚠️ `whereDoesntHave` no: la pregunta es por el ESTADO del cadete. Alguien que está
+     * en la cola con un pedido asignado sin aceptar va en el grupo de arriba, con los que
+     * esperan, que es donde la oficina lo busca.
+     *
+     * @param  Builder<Cadete>  $query
+     * @return Builder<Cadete>
+     */
+    public function scopeConPedidoSinTerminar(Builder $query): Builder
+    {
+        return $query
+            ->whereNotIn('estado', self::ESTADOS_ACTIVOS)
+            ->whereHas('pedidos', fn (Builder $p) => $p->whereIn('estado', Pedido::ESTADOS_SIN_TERMINAR));
     }
 
     /**

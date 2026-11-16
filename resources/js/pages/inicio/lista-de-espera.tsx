@@ -70,6 +70,10 @@ export type ParaAsignar = {
     movil: number;
     nombre: string;
     en_la_app: boolean;
+    /** Arriba, con los que esperan, o abajo, con los que están entregando. */
+    en_la_cola: boolean;
+    /** Cuántos pedidos tiene en la mano: asignados o en curso. */
+    pendientes: number;
 };
 
 type DetalleDePedido = {

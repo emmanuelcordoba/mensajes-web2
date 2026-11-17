@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { textoDelCampo } from '@/lib/utils';
 
 /*
 | Las postulaciones para cadete.
@@ -88,8 +89,8 @@ export default function PostulacionesIndex({
                             e.preventDefault();
                             const datos = new FormData(e.currentTarget);
                             router.get('/panel/cadetes/postulaciones', {
-                                estado: String(datos.get('estado') ?? ''),
-                                buscar: String(datos.get('buscar') ?? ''),
+                                estado: textoDelCampo(datos.get('estado')),
+                                buscar: textoDelCampo(datos.get('buscar')),
                             });
                         }}
                     >

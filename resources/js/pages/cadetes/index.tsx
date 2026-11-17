@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { textoDelCampo } from '@/lib/utils';
 
 /*
 | Los cadetes.
@@ -125,7 +126,7 @@ export default function CadetesIndex({
                             e.preventDefault();
                             const datos = new FormData(e.currentTarget);
                             router.get('/panel/cadetes', {
-                                buscar: String(datos.get('buscar') ?? ''),
+                                buscar: textoDelCampo(datos.get('buscar')),
                             });
                         }}
                     >

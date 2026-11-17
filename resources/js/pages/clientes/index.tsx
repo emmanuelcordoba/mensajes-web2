@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { textoDelCampo } from '@/lib/utils';
 
 /*
 | Los clientes.
@@ -88,9 +89,9 @@ export default function ClientesIndex({
                             e.preventDefault();
                             const datos = new FormData(e.currentTarget);
                             router.get('/panel/clientes', {
-                                origen: String(datos.get('origen') ?? ''),
-                                campo: String(datos.get('campo') ?? ''),
-                                buscar: String(datos.get('buscar') ?? ''),
+                                origen: textoDelCampo(datos.get('origen')),
+                                campo: textoDelCampo(datos.get('campo')),
+                                buscar: textoDelCampo(datos.get('buscar')),
                             });
                         }}
                     >

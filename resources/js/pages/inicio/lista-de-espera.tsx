@@ -37,7 +37,6 @@ import {
 } from '@/components/ui/dialog';
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 /**
  * Quién cargó el pedido, en dos letras sobre su color.

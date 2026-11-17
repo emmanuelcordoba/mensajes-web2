@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { textoDelCampo } from '@/lib/utils';
 
 /*
 | Cobranzas · Semanal.
@@ -83,7 +84,7 @@ export default function CobranzaSemanalIndex({
                                 e.preventDefault();
                                 const datos = new FormData(e.currentTarget);
                                 router.get('/panel/cadetes/cobranzas/semanal', {
-                                    buscar: String(datos.get('buscar') ?? ''),
+                                    buscar: textoDelCampo(datos.get('buscar')),
                                 });
                             }}
                         >

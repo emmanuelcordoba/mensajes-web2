@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { textoDelCampo } from '@/lib/utils';
 
 /*
 | Cobranzas · Saldo.
@@ -94,10 +95,10 @@ export default function CobranzaSaldoIndex({
                                 e.preventDefault();
                                 const datos = new FormData(e.currentTarget);
                                 router.get('/panel/cadetes/cobranzas/saldo', {
-                                    modalidad: String(
-                                        datos.get('modalidad') ?? '',
+                                    modalidad: textoDelCampo(
+                                        datos.get('modalidad'),
                                     ),
-                                    buscar: String(datos.get('buscar') ?? ''),
+                                    buscar: textoDelCampo(datos.get('buscar')),
                                 });
                             }}
                         >

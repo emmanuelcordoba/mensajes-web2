@@ -312,17 +312,38 @@ test('an expired fee does not stop the app, and that is the old behaviour', func
 
 // ----------------------------------------------------------------- actualizarubicacion
 
-test('the location is saved and comes back in the cadete', function () {
+test('the location is saved with the time it was reported', function () {
+    // ⚠️ La fecha es la mitad del dato: sin ella el mapa no puede distinguir al cadete
+    // parado en una esquina del que dejó de mandar hace semanas. Ver `PuntoDelCadete`.
     $cadete = unCadeteDeLaApp(['estado' => Cadete::ESTADO_ACTIVO_APP, 'orden_cola' => 1]);
+
+    $this->travelTo('2026-11-18 10:30:00');
 
     $respuesta = $this->actingAs($cadete->user, 'sanctum')
         ->postJson('/api/actualizarubicacion', ['lat' => -26.8241, 'lon' => -65.2226])
         ->assertOk();
 
+    $guardado = $cadete->fresh();
+
     expect($respuesta->json('ok'))->toBeTrue()
-        ->and($respuesta->json('cadete.ubicacion_lat'))->toBe(-26.8241)
-        ->and($cadete->fresh()->ubicacion_lat)->toBe(-26.8241)
-        ->and($cadete->fresh()->ubicacion_lon)->toBe(-65.2226);
+        ->and($guardado->ubicacion_lat)->toBe(-26.8241)
+        ->and($guardado->ubicacion_lon)->toBe(-65.2226)
+        ->and($guardado->ubicacion_actualizada_en?->toDateTimeString())->toBe('2026-11-18 10:30:00');
+});
+
+test('the answer does not carry the cadete, which nobody ever read', function () {
+    // ⚠️ Es el endpoint más frecuente del sistema y devolvía el cadete completo —nombre,
+    // apellido, dirección, teléfono y DNI— varias veces por minuto, por los datos móviles
+    // del cadete, para que nadie lo leyera: buscado en toda la historia del repositorio de
+    // la app, `ubicacion.page.ts` nunca miró la respuesta y el servicio en segundo plano le
+    // hace un `console.log`. Esto fija que no vuelva a crecer sin querer.
+    $cadete = unCadeteDeLaApp();
+
+    $respuesta = $this->actingAs($cadete->user, 'sanctum')
+        ->postJson('/api/actualizarubicacion', ['lat' => -26.8241, 'lon' => -65.2226])
+        ->assertOk();
+
+    expect($respuesta->json())->toBe(['ok' => true]);
 });
 
 test('a location outside the world is refused', function () {

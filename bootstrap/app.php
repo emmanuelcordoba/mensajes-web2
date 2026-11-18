@@ -50,8 +50,14 @@ return Application::configure(basePath: dirname(__DIR__))
         | ⚠️ El sistema viejo necesitaba una subclase propia —`ThrottleRequestsByUser`— porque
         | Passport no resolvía el usuario antes de que corriera `auth:api`. El `throttle` del
         | framework ya hace lo mismo: cuenta por id cuando hay cuenta y por IP cuando no.
+        |
+        | ⚠️ **Dejó de ser `throttle:120,1` para ser un limitador con nombre**, y no es
+        | cosmético: la ubicación necesita su propio balde, más chico, para que un teléfono
+        | con el GPS enloquecido no se coma el presupuesto con el que ese mismo cadete tiene
+        | que ver y aceptar pedidos. Los números y el por qué están en
+        | `AppServiceProvider::configureRateLimiting()`.
         */
-        $middleware->api(prepend: ['throttle:120,1']);
+        $middleware->api(prepend: ['throttle:api']);
 
         // Se usa como `rol:admin` o `rol:empleado,admin`, igual que en el panel viejo.
         $middleware->alias([

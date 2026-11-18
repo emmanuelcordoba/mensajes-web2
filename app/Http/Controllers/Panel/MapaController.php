@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cadete;
+use App\Support\PuntoDelCadete;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +26,11 @@ use Inertia\Response;
  * ⚠️ Lo que viaja es el número de móvil, la posición y en qué anda. **No el nombre**, como
  * en el sistema viejo: para ver dónde está un móvil alcanza con su número, y esta pantalla
  * suele quedar abierta en una oficina.
+ *
+ * ⚠️ **Viaja también la antigüedad de cada posición.** Sin eso el mapa mostraba igual al
+ * cadete parado en una esquina hace tres minutos y al que dejó de mandar hace 57 días, que
+ * es el caso que de verdad había. La forma la arma `PuntoDelCadete`, que es el mismo que
+ * usa el detalle de un cadete de la cola.
  */
 class MapaController extends Controller
 {
@@ -46,19 +52,17 @@ class MapaController extends Controller
                 ->whereNotNull('ubicacion_lat')
                 ->whereNotNull('ubicacion_lon')
                 ->orderBy('numero_movil')
-                ->get(['id', 'numero_movil', 'ubicacion_lat', 'ubicacion_lon', 'tipo_vehiculo', 'estado'])
-                ->map(fn (Cadete $cadete): array => [
-                    'movil' => $cadete->numero_movil,
-                    // Son coordenadas, no plata: acá el float es el tipo que corresponde.
-                    'lat' => $cadete->ubicacion_lat,
-                    'lon' => $cadete->ubicacion_lon,
-                    'vehiculo' => $cadete->tipo_vehiculo,
-                    'con_pedido' => $cadete->estado === Cadete::ESTADO_CON_PEDIDO_APP,
+                ->get([
+                    'id', 'numero_movil', 'ubicacion_lat', 'ubicacion_lon',
+                    'ubicacion_actualizada_en', 'tipo_vehiculo', 'estado',
                 ])
+                ->map(PuntoDelCadete::de(...))
                 ->all(),
             'centro' => self::CENTRO,
             'zoom' => self::ZOOM,
             'refresco' => self::REFRESCO,
+            // Para que el cartel de referencias diga el mismo número que usa el corte.
+            'minutosParaQuedarVieja' => PuntoDelCadete::MINUTOS_PARA_QUEDAR_VIEJA,
             // ⚠️ La clave viaja al navegador, y tiene que viajar: la API de Maps se carga
             // desde el cliente y la clave va en la URL del script. No es un secreto que se
             // pueda guardar —cualquiera que abra la pantalla la ve—, así que lo que la

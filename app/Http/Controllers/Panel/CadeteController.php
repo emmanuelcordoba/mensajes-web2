@@ -14,6 +14,7 @@ use App\Services\ColaDeCadetes;
 use App\Services\NotificacionesAlTelefono;
 use App\Support\Momento;
 use App\Support\NumeroBuscado;
+use App\Support\PuntoDelCadete;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Database\Eloquent\Builder;
@@ -420,13 +421,9 @@ class CadeteController extends Controller
             'vehiculo' => Cadete::VEHICULOS[$cadete->tipo_vehiculo] ?? $cadete->tipo_vehiculo,
             'estado' => Cadete::ETIQUETAS_DE_ESTADO[$cadete->estado] ?? $cadete->estado,
             'posicion' => $cadete->posicionEnCola(),
-            'ubicacion' => $enLaApp && $tieneUbicacion ? [
-                'movil' => $cadete->numero_movil,
-                'lat' => $cadete->ubicacion_lat,
-                'lon' => $cadete->ubicacion_lon,
-                'vehiculo' => $cadete->tipo_vehiculo,
-                'con_pedido' => $cadete->estado === Cadete::ESTADO_CON_PEDIDO_APP,
-            ] : null,
+            // La misma forma que el Mapa del menú, y por eso la arma el mismo lugar: las
+            // dos pantallas dibujan `MapaDeCadetes` y tienen que pintar igual lo viejo.
+            'ubicacion' => $enLaApp && $tieneUbicacion ? PuntoDelCadete::de($cadete) : null,
             'por_que_no_al_final' => ColaDeCadetes::porQueNoMandarAlFinal($cadete),
             'por_que_no_sacar' => ColaDeCadetes::porQueNoSacar($cadete),
         ];

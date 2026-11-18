@@ -16,6 +16,7 @@ use App\Services\IngresoALaColaDesdeLaApp;
 use App\Services\PerfilDelCadete;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -142,7 +143,7 @@ class CadeteController extends ControladorDeLaApp
     }
 
     /**
-     * Dónde está el cadete.
+     * Dónde está el cadete, y cuándo lo dijo.
      *
      * Es lo que alimenta el mapa del panel y el del detalle de un cadete. La app la manda
      * sola mientras está activa, desde el seguimiento en segundo plano.
@@ -150,6 +151,18 @@ class CadeteController extends ControladorDeLaApp
      * ⚠️ El sistema viejo acepta esto por `form-data` o por JSON, con dos caminos distintos
      * y dos validaciones distintas —una de ellas devolvía 400 en vez de 422—. Acá es uno
      * solo: un `FormRequest` lee los dos formatos igual.
+     *
+     * ⚠️ **Guarda la fecha además de las coordenadas**, que es lo que faltaba: sin ella el
+     * mapa no puede distinguir al cadete parado en una esquina del que dejó de mandar hace
+     * semanas. Ver `PuntoDelCadete`.
+     *
+     * ⚠️ **Es el endpoint más frecuente de todo el sistema, y la respuesta ya no devuelve
+     * el cadete.** Devolvía el objeto completo —nombre, apellido, dirección, teléfono y
+     * DNI— varias veces por minuto, por los datos móviles del cadete, para que nadie lo
+     * leyera. Antes de recortarlo busqué en TODA la historia del repositorio de la app
+     * quién usaba esa respuesta: `ubicacion.page.ts` nunca la miró —siempre usó las
+     * coordenadas que ya tenía en la mano— y `backgroundgeolocation.service.ts` le hace un
+     * `console.log` y nada más. Ninguna versión publicada lee un solo campo.
      */
     public function actualizarUbicacion(UbicacionDelCadeteRequest $request): JsonResponse
     {
@@ -159,12 +172,14 @@ class CadeteController extends ControladorDeLaApp
 
         $cadete->ubicacion_lat = (float) $datos['lat'];
         $cadete->ubicacion_lon = (float) $datos['lon'];
+        // `Carbon::now()` y no `now()`: el helper devuelve `CarbonImmutable` —lo pone
+        // `AppServiceProvider::configureDefaults()`— y las propiedades de fecha de los
+        // modelos están declaradas como `Illuminate\Support\Carbon`. Es lo mismo que hace
+        // `ActividadCadete::cerrar()`.
+        $cadete->ubicacion_actualizada_en = Carbon::now();
         $cadete->save();
 
-        return response()->json([
-            'ok' => true,
-            'cadete' => new CadeteDeLaApp($cadete),
-        ]);
+        return response()->json(['ok' => true]);
     }
 
     /**

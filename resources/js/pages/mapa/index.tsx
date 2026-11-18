@@ -26,6 +26,7 @@ export default function MapaIndex({
     zoom,
     refresco,
     clave,
+    minutosParaQuedarVieja,
 }: {
     cadetes: EnElMapa[];
     centro: Punto;
@@ -33,9 +34,13 @@ export default function MapaIndex({
     refresco: number;
     /** Null si no está configurada: entonces la pantalla lo dice. */
     clave: string | null;
+    /** El corte que usa el servidor, para que el cartel diga el mismo número. */
+    minutosParaQuedarVieja: number;
 }) {
     // Los cadetes se mueven, así que la pantalla se vuelve a pedir sola. Sólo esa prop.
     usePoll(refresco, { only: ['cadetes'] });
+
+    const sinActualizar = cadetes.filter((cadete) => cadete.vieja).length;
 
     return (
         <>
@@ -50,6 +55,13 @@ export default function MapaIndex({
                         {cadetes.length === 0
                             ? 'Ningún cadete en la app ahora mismo'
                             : `${cadetes.length} en la app`}
+                        {/*
+                          | Se dice acá arriba y no sólo en el mapa: un marcador hueco se
+                          | puede pasar por alto, y éste es el número que contesta si la
+                          | ubicación está llegando.
+                        */}
+                        {sinActualizar > 0 &&
+                            `, ${sinActualizar} sin actualizar`}
                     </span>
                 </div>
 
@@ -76,8 +88,13 @@ export default function MapaIndex({
                     <ReferenciaDelMapa color={COLORES.conPedido}>
                         Con pedido
                     </ReferenciaDelMapa>
+                    <ReferenciaDelMapa color={COLORES.bicicleta} hueco>
+                        Sin actualizar hace más de {minutosParaQuedarVieja} min
+                    </ReferenciaDelMapa>
                     <span className="text-muted-foreground text-xs">
-                        Sólo los cadetes que están trabajando desde la app.
+                        Sólo los cadetes que están trabajando desde la app. Los
+                        marcadores huecos son la última posición conocida, no
+                        dónde está el cadete ahora.
                     </span>
                 </Card>
             </div>

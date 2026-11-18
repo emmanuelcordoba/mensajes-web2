@@ -146,6 +146,28 @@ test('every 429 leaves a line saying whose it was', function () {
         ->once();
 });
 
+test('the line says which version of the app it was', function () {
+    // ⚠️ Es la pregunta que con el móvil 1716 no se pudo contestar: se supo quién y cuánto,
+    // pero no qué versión corría, y sin eso no se distingue un error ya arreglado de uno
+    // nuevo. Null para las versiones viejas, que no mandan la cabecera.
+    Log::spy();
+
+    $token = unCadeteConToken('tope-version@example.test', 908);
+
+    for ($i = 0; $i < UBICACIONES_POR_MINUTO + 1; $i++) {
+        comoUnPedidoNuevo();
+        test()
+            ->withToken($token)
+            ->withHeader('X-App-Version', '2.3.14')
+            ->postJson('/api/actualizarubicacion', ['lat' => '-31.4', 'lon' => '-64.2']);
+    }
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $mensaje, array $contexto): bool => $mensaje === 'Tope de pedidos superado'
+            && $contexto['version_app'] === '2.3.14')
+        ->once();
+});
+
 test('the 429 of something with no account also leaves its line, with the IP', function () {
     Log::spy();
 

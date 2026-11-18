@@ -4,6 +4,7 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\VerificarRol;
 use App\Models\User;
+use App\Support\VersionDeLaApp;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -85,6 +86,13 @@ return Application::configure(basePath: dirname(__DIR__))
         |
         | ⚠️ Nada de datos personales: el id de la cuenta y el número de móvil, que son los
         | que sirven para buscar en el panel. Ni nombre, ni teléfono, ni el cuerpo.
+        |
+        | ⚠️ **Y la versión de la app, que es la pregunta que no se podía contestar.** Con
+        | el móvil 1716 se supo quién y cuánto, pero no QUÉ versión corría ese teléfono, y
+        | sin eso no se puede distinguir un error que ya está arreglado de uno que no. Las
+        | 23 cabeceras que llegaban no traían ninguna; desde la 2.3.14 la app manda
+        | `X-App-Version` en cada pedido. Null significa una versión vieja, que ya es una
+        | respuesta.
         */
         $exceptions->render(function (ThrottleRequestsException $e, Request $peticion) {
             $cuenta = $peticion->user();
@@ -96,6 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 'movil' => $cuenta instanceof User ? $cuenta->cadete?->numero_movil : null,
                 // Sin cuenta el tope cuenta por IP, así que ahí la IP es la única pista.
                 'ip' => $peticion->ip(),
+                'version_app' => VersionDeLaApp::de($peticion),
                 'reintentar_en' => $e->getHeaders()['Retry-After'] ?? null,
             ]);
 

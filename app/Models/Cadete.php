@@ -59,6 +59,7 @@ use Illuminate\Support\Facades\DB;
  * @property string $tipo_vehiculo
  * @property float|null $ubicacion_lat
  * @property float|null $ubicacion_lon
+ * @property Carbon|null $ubicacion_actualizada_en
  * @property string|null $fcm_token
  * @property int|null $orden_cola
  * @property Carbon|null $fecha_inicio
@@ -99,6 +100,7 @@ use Illuminate\Support\Facades\DB;
     'tipo_vehiculo',
     'ubicacion_lat',
     'ubicacion_lon',
+    'ubicacion_actualizada_en',
     'fcm_token',
     'orden_cola',
     'fecha_inicio',
@@ -229,6 +231,7 @@ class Cadete extends Model
             'fecha_vencimiento' => 'date',
             'ubicacion_lat' => 'float',
             'ubicacion_lon' => 'float',
+            'ubicacion_actualizada_en' => 'datetime',
             'orden_cola' => 'integer',
             'tiene_monto_semanal_personal' => 'boolean',
         ];

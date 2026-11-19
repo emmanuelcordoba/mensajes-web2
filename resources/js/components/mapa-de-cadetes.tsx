@@ -4,6 +4,7 @@ import {
     Aviso,
     FaltaLaClave,
     useApiDeGoogleMaps,
+    type ApiDeGoogleMaps,
     type MapaDeGoogle,
     type MarcadorDeGoogle,
     type Punto,
@@ -30,6 +31,10 @@ export type EnElMapa = {
     lon: number;
     vehiculo: string;
     con_pedido: boolean;
+    /** Minutos desde la última posición, o null si el teléfono no mandó ninguna todavía. */
+    hace_minutos: number | null;
+    /** Si pasó el corte de `PuntoDelCadete::MINUTOS_PARA_QUEDAR_VIEJA`, o no hay fecha. */
+    vieja: boolean;
 };
 
 export { Aviso };
@@ -48,6 +53,52 @@ function colorDe(cadete: EnElMapa): string {
     }
 
     return cadete.vehiculo === 'M' ? COLORES.motocicleta : COLORES.bicicleta;
+}
+
+/*
+| ⚠️ Lo viejo se dibuja hueco, no de otro color.
+|
+| El color ya dice el vehículo y si tiene pedido, que es lo que la oficina mira para
+| asignar: pintar la antigüedad encima taparía eso. Entonces la antigüedad va en el relleno
+| —transparente, con el borde del color— y así un marcador viejo se lee de un vistazo sin
+| perder de qué cadete se trata.
+*/
+function comoSeDibuja(cadete: EnElMapa, api: ApiDeGoogleMaps) {
+    const color = colorDe(cadete);
+
+    return {
+        path: api.maps.SymbolPath.CIRCLE,
+        scale: 14,
+        fillColor: cadete.vieja ? '#ffffff' : color,
+        fillOpacity: cadete.vieja ? 0.35 : 1,
+        strokeColor: cadete.vieja ? color : '#fff',
+        strokeWeight: 2,
+    };
+}
+
+/** Lo que dice el globito al pasar el mouse. */
+function comoSeLee(cadete: EnElMapa): string {
+    if (cadete.hace_minutos === null) {
+        return `Móvil ${cadete.movil} · nunca mandó su posición`;
+    }
+
+    if (!cadete.vieja) {
+        return `Móvil ${cadete.movil}`;
+    }
+
+    if (cadete.hace_minutos < 60) {
+        return `Móvil ${cadete.movil} · sin actualizar hace ${cadete.hace_minutos} min`;
+    }
+
+    const horas = Math.floor(cadete.hace_minutos / 60);
+
+    if (horas < 24) {
+        return `Móvil ${cadete.movil} · sin actualizar hace ${horas} h`;
+    }
+
+    const dias = Math.floor(horas / 24);
+
+    return `Móvil ${cadete.movil} · sin actualizar hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }
 
 export function MapaDeCadetes({
@@ -118,20 +169,14 @@ export function MapaDeCadetes({
                 new api.maps.Marker({
                     position: { lat: cadete.lat, lng: cadete.lon },
                     map: mapa.current as MapaDeGoogle,
-                    title: `Móvil ${cadete.movil}`,
+                    title: comoSeLee(cadete),
                     label: {
                         text: String(cadete.movil),
-                        color: '#fff',
+                        // Sobre un marcador hueco el número blanco no se lee.
+                        color: cadete.vieja ? '#1f2937' : '#fff',
                         fontSize: '11px',
                     },
-                    icon: {
-                        path: api.maps.SymbolPath.CIRCLE,
-                        scale: 14,
-                        fillColor: colorDe(cadete),
-                        fillOpacity: 1,
-                        strokeColor: '#fff',
-                        strokeWeight: 2,
-                    },
+                    icon: comoSeDibuja(cadete, api),
                 }),
         );
     }, [cadetes, listo, api]);
@@ -164,16 +209,23 @@ export function MapaDeCadetes({
 
 export function ReferenciaDelMapa({
     color,
+    hueco = false,
     children,
 }: {
     color: string;
+    /** Como se dibuja una posición vieja: relleno transparente y el borde del color. */
+    hueco?: boolean;
     children: React.ReactNode;
 }) {
     return (
         <span className="flex items-center gap-2">
             <span
-                className="size-4 rounded-full border-2 border-white"
-                style={{ backgroundColor: color }}
+                className="size-4 rounded-full border-2"
+                style={
+                    hueco
+                        ? { borderColor: color, backgroundColor: 'transparent' }
+                        : { borderColor: '#fff', backgroundColor: color }
+                }
             />
             {children}
         </span>
